@@ -15,7 +15,7 @@ main = do
           -- print decMsg
 
           let decMsg = decodeOrFail encMsg :: Either (ByteString, Int64, String) (ByteString, Int64, BGPMessage)
-          case decMsg of (Left (_,_,s)) -> do print $ "failed to decode message:" -- ++ s :: String
+          case decMsg of (Left (_,_,s)) -> do print $ "failed to decode message:" ++ s
                          (Right ( _,_,decMsg')) -> do print decMsg'
 
 -- toStrict lbs = B.concat $ toChunks lbs
