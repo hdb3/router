@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
--- Echo server program
+-- passive TCP server
 module Passive (main) where
 
 import Control.Concurrent (forkFinally)
@@ -7,8 +7,8 @@ import qualified Control.Exception as E
 import Control.Monad (unless, forever, void)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import Network.Socket hiding (recv)
-import Network.Socket.ByteString.Lazy (recv, sendAll)
+import Network.Socket hiding (recv, send)
+import Network.Socket.ByteString.Lazy (recv, send)
 import Common
 import BGPparse
 import Data.Binary(encode,decode)
@@ -33,7 +33,8 @@ main = do
             let bgpMsg = decode msg :: BGPMessage
             putStr "Received: "
             print bgpMsg
-            sendAll sock $ encode $ BGPOpen 1000 600 65551 B.empty
+            send sock $ encode $ BGPOpen 1000 600 65551 B.empty
+            send sock $ encode $ BGPKeepalive
             talk sock
 
 
