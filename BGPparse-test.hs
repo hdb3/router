@@ -7,7 +7,7 @@ import Data.Int
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 
-main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550
+main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550 "optional parameters"
           identityCheck "BGPKeepalive" BGPKeepalive
           identityCheck "BGPNotify" $ BGPNotify 99 99 "Error data"
           identityCheck "BGPUpdate" $ BGPUpdate "Withdrawn routes" "Path Attributes" "nlri"
