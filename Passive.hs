@@ -1,13 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- Echo server program
 module Passive (main) where
 
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 import Control.Monad (unless, forever, void)
-import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString as B
 import Network.Socket hiding (recv)
-import Network.Socket.ByteString (recv, sendAll)
+import Network.Socket.ByteString.Lazy (recv, sendAll)
 import Common
+import BGPparse
+import Data.Binary(encode,decode)
 
 main :: IO ()
 main = do
@@ -23,8 +27,13 @@ main = do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
         void $ forkFinally (talk conn) (\_ -> close conn)
-    talk conn = do
-        msg <- recv conn 1024
-        unless (S.null msg) $ do
-          sendAll conn msg
-          talk conn
+    talk sock = do
+        msg <- recv sock 8192
+        unless (L.null msg) $ do
+            let bgpMsg = decode msg :: BGPMessage
+            putStr "Received: "
+            print bgpMsg
+            sendAll sock $ encode $ BGPOpen 1000 600 65551 B.empty
+            talk sock
+
+

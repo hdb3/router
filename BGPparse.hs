@@ -16,7 +16,7 @@ _BGPKeepalive = 4 :: Word8
 _BGPMarker = B.replicate 16 0xff
 _BGPVersion = 4 :: Word8
 
-data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32 }
+data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
                   | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
@@ -24,25 +24,32 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
 
 instance Binary BGPMessage where
 
-    put (BGPOpen myAutonomousSystem holdTime bgpID) = do putByteString _BGPMarker
-                                                         putWord16be $ 16+2+1+1+2+2+4
-                                                         putWord8 _BGPOpen
-                                                         putWord8 _BGPVersion
-                                                         putWord16be myAutonomousSystem
-                                                         putWord16be holdTime
-                                                         putWord32be bgpID
+    put (BGPOpen myAutonomousSystem holdTime bgpID optionalParameters) = do let optionalParametersLength = fromIntegral $ B.length optionalParameters
+                                                                            putByteString _BGPMarker
+                                                                            putWord16be $ 16+2+1+1+2+2+4+1+optionalParametersLength
+                                                                            putWord8 _BGPOpen
+                                                                            putWord8 _BGPVersion
+                                                                            putWord16be myAutonomousSystem
+                                                                            putWord16be holdTime
+                                                                            putWord32be bgpID
+                                                                            putWord8 $ fromIntegral optionalParametersLength
+                                                                            putByteString optionalParameters
 
-    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do putByteString _BGPMarker
-                                                             putWord16be $ 16+2+1
+    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do let withdrawnRoutesLength = fromIntegral $ B.length withdrawnRoutes
+                                                                 pathAttributesLength = fromIntegral $ B.length pathAttributes
+                                                                 nlriLength = fromIntegral $ B.length nlri
+                                                             putByteString _BGPMarker
+                                                             putWord16be $ 16+2+1+2+withdrawnRoutesLength+2+pathAttributesLength+nlriLength
                                                              putWord8 _BGPUpdate
-                                                             putWord16be $ fromIntegral $ B.length withdrawnRoutes
+                                                             putWord16be withdrawnRoutesLength
                                                              putByteString withdrawnRoutes
-                                                             putWord16be $ fromIntegral $ B.length pathAttributes
+                                                             putWord16be pathAttributesLength
                                                              putByteString pathAttributes
                                                              putByteString nlri
 
-    put (BGPNotify errorCode errorSubcode errorData) = do putByteString _BGPMarker
-                                                          putWord16be $ 16+2+1
+    put (BGPNotify errorCode errorSubcode errorData) = do let errorDataLength = fromIntegral $ B.length errorData
+                                                          putByteString _BGPMarker
+                                                          putWord16be $ 16+2+1+errorDataLength
                                                           putWord8 _BGPNotify
                                                           putWord8 errorCode
                                                           putWord8 errorSubcode
@@ -62,7 +69,8 @@ instance Binary BGPMessage where
                                      myAutonomousSystem <- getWord16be
                                      holdTime <- getWord16be
                                      bgpID <- getWord32be
-                                     return $ BGPOpen myAutonomousSystem holdTime bgpID
+                                     optionalParameters <- getRemainingLazyByteString
+                                     return $ BGPOpen myAutonomousSystem holdTime bgpID $ L.toStrict optionalParameters
                              2   -> do withdrawnRoutesLength <- getWord16be
                                        withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength
                                        pathAttributesLength <- getWord16be
