@@ -1,4 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+
+{-
+ unit test framework for the BGPMessage parser/deparser BGPparse.hs
+-}
+
 module Main where
 import BGPparse
 import Hexdump

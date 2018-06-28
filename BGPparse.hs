@@ -1,6 +1,5 @@
-
+{-# LANGUAGE MultiWayIf #-}
 module BGPparse where
---import Data.ByteString (ByteString,replicate)
 import qualified Data.ByteString as B
 import Data.Word
 import Data.Binary
@@ -63,27 +62,30 @@ instance Binary BGPMessage where
              unless (marker == _BGPMarker) (fail "Bad marker")
              msgLen <- getWord16be
              msgType <- getWord8
-             case msgType of
-                             1 -> do msgVer  <- getWord8
-                                     unless (msgVer == _BGPVersion) (fail "Bad version(Open)")
-                                     myAutonomousSystem <- getWord16be
-                                     holdTime <- getWord16be
-                                     bgpID <- getWord32be
-                                     optionalParametersLength <- getWord8
-                                     optionalParameters <- getRemainingLazyByteString
-                                     unless (optionalParametersLength == (fromIntegral $ L.length optionalParameters))
-                                            (fail "optional parameter length wrong (Open)")
-                                     return $ BGPOpen myAutonomousSystem holdTime bgpID $ L.toStrict optionalParameters
-                             2   -> do withdrawnRoutesLength <- getWord16be
-                                       withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength
-                                       pathAttributesLength <- getWord16be
-                                       pathAttributes <- getByteString $ fromIntegral pathAttributesLength
-                                       nlri <- getRemainingLazyByteString
-                                       return $ BGPUpdate withdrawnRoutes pathAttributes $ L.toStrict nlri
-                             3   -> do errorCode <- getWord8
-                                       errorSubcode <- getWord8
-                                       errorData <- getRemainingLazyByteString
-                                       return $ BGPNotify errorCode errorSubcode $ L.toStrict errorData
-                             4 -> do unless (msgLen == 16+2+1) (fail "Bad length (Keepalive)")
-                                     return BGPKeepalive
-                             _ -> do fail "Bad type code"
+             if | _BGPOpen == msgType -> do
+                                           msgVer  <- getWord8
+                                           unless (msgVer == _BGPVersion) (fail "Bad version(Open)")
+                                           myAutonomousSystem <- getWord16be
+                                           holdTime <- getWord16be
+                                           bgpID <- getWord32be
+                                           optionalParametersLength <- getWord8
+                                           optionalParameters <- getRemainingLazyByteString
+                                           unless (optionalParametersLength == (fromIntegral $ L.length optionalParameters))
+                                                  (fail "optional parameter length wrong (Open)")
+                                           return $ BGPOpen myAutonomousSystem holdTime bgpID $ L.toStrict optionalParameters
+                | _BGPUpdate == msgType -> do
+                                           withdrawnRoutesLength <- getWord16be
+                                           withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength
+                                           pathAttributesLength <- getWord16be
+                                           pathAttributes <- getByteString $ fromIntegral pathAttributesLength
+                                           nlri <- getRemainingLazyByteString
+                                           return $ BGPUpdate withdrawnRoutes pathAttributes $ L.toStrict nlri
+                | _BGPNotify == msgType -> do
+                                           errorCode <- getWord8
+                                           errorSubcode <- getWord8
+                                           errorData <- getRemainingLazyByteString
+                                           return $ BGPNotify errorCode errorSubcode $ L.toStrict errorData
+                | _BGPKeepalive == msgType -> do
+                                           unless (msgLen == 16+2+1) (fail "Bad length (Keepalive)")
+                                           return BGPKeepalive
+                | otherwise -> fail "Bad type code"
