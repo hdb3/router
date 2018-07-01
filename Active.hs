@@ -7,9 +7,10 @@ import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString as B
 import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString.Lazy (recv, send)
+import Data.Binary(encode,decode)
+import Control.Concurrent
 import Common
 import BGPparse
-import Data.Binary(encode,decode)
 
 main :: IO ()
 main = do
@@ -27,4 +28,5 @@ main = do
         print bgpMsg
         putStrLn ""
         send sock $ encode BGPKeepalive
-        return ()
+        threadDelay 5
+        talk sock
