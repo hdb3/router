@@ -12,7 +12,12 @@ import Network.Socket.ByteString.Lazy (recv, send)
 import Common
 import BGPparse
 import Data.Binary(encode,decode)
+import System.Timeout
+import Network.Socket.Options
+import Data.Int(Int64)
 
+holdTimer = 10 * 1000000 :: Int
+holdTimer' = 10 * 1000000 :: Int64
 main :: IO ()
 main = do
     E.bracket open close loop
@@ -26,15 +31,16 @@ main = do
     loop sock = forever $ do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
+        -- do setRecvTimeout conn holdTimer' -- DOESN'T WORK!!!!
         void $ forkFinally (talk conn) (\_ -> close conn)
-    talk sock = do
-        msg <- recv sock 8192
-        unless (L.null msg) $ do
-            let bgpMsg = decode msg :: BGPMessage
-            putStr "Received: "
-            print bgpMsg
-            send sock $ encode $ BGPOpen 1000 600 65551 B.empty
-            send sock $ encode $ BGPKeepalive
-            talk sock
-
-
+    noOp sock = do print "timeout!"
+                   talk sock
+    talk sock = do msg <- timeout 100 (recv sock 8192)
+                   maybe (noOp sock) (talk' sock) msg
+    talk' sock msg = unless (L.null msg) $ do
+                     let bgpMsg = decode msg :: BGPMessage
+                     putStr "Received: "
+                     print bgpMsg
+                     send sock $ encode $ BGPOpen 1000 600 65551 B.empty
+                     send sock $ encode $ BGPKeepalive
+                     talk sock
