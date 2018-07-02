@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
 module GetBGPMsg (getBgpMessage,sndBgpMessage) where
 
 {- BGP messages once received are bytestrings - 
@@ -12,7 +12,7 @@ import Foreign
 import GHC.Base
 import GHC.Word
 import Data.ByteString.Unsafe(unsafeIndex)
-import Network.Socket hiding (recv, send)
+import Network.Socket
 import qualified Network.Socket.ByteString.Lazy as L
 import qualified Network.Socket.ByteString as B
 import Data.Binary.Get
@@ -29,7 +29,6 @@ _BGPMarker = B.replicate 16 0xff
 sndBgpMessage :: Socket -> L.ByteString -> IO ()
 sndBgpMessage sock bgpMsg = do let wireMessageLength = fromIntegral $ 18 + L.length bgpMsg
                                    wireMessage = L.toStrict $ toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> lazyByteString bgpMsg
-                                   -- wireMessage = L.toStrict $ toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> byteString bgpMsg
                                B.sendAll sock wireMessage
 
 getBgpMessage :: Socket -> IO L.ByteString
@@ -60,13 +59,11 @@ shiftl_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftL#` i)
 
 {-# INLINE word16be #-}
 word16be :: B.ByteString -> Word16
-word16be = \s ->
-        (fromIntegral (s `unsafeIndex` 0) `shiftl_w16` 8) .|.
-        (fromIntegral (s `unsafeIndex` 1))
+word16be s = (fromIntegral (s `unsafeIndex` 0) `shiftl_w16` 8) .|.
+             fromIntegral (s `unsafeIndex` 1)
 {-# INLINE word32be #-}
 word32be :: B.ByteString -> Word32
-word32be = \s ->
-              (fromIntegral (s `unsafeIndex` 0) `shiftl_w32` 24) .|.
-              (fromIntegral (s `unsafeIndex` 1) `shiftl_w32` 16) .|.
-              (fromIntegral (s `unsafeIndex` 2) `shiftl_w32`  8) .|.
-              (fromIntegral (s `unsafeIndex` 3) )
+word32be s = (fromIntegral (s `unsafeIndex` 0) `shiftl_w32` 24) .|.
+             (fromIntegral (s `unsafeIndex` 1) `shiftl_w32` 16) .|.
+             (fromIntegral (s `unsafeIndex` 2) `shiftl_w32`  8) .|.
+             fromIntegral (s `unsafeIndex` 3)

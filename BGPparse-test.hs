@@ -5,12 +5,11 @@
 -}
 
 module Main where
+import qualified Data.ByteString.Lazy as L
 import BGPparse
+import Data.Int(Int64)
 import Hexdump
 import Data.Binary
-import Data.Int
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString as B
 
 main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550 "optional parameters"
           identityCheck "BGPKeepalive" BGPKeepalive
