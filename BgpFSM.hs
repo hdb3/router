@@ -1,36 +1,33 @@
 module BgpFSM(bgpFSM,bgpFSMdelayOpen,bgpFSM') where
-
+import Network.Socket
+import qualified Data.ByteString as B
+import Data.Binary(encode,decode)
+import System.Timeout(timeout)
+import Control.Concurrent(threadDelay,forkIO)
+{-
 import qualified Control.Exception as E
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString.Lazy (recv, sendAll)
-import Data.Binary(encode,decode)
-import Control.Concurrent
 import Control.Monad(void)
-import System.Timeout
 import Hexdump
+-}
 import Common
 import BGPparse
 import GetBGPMsg
 import RFC4271
 
--- second = 1000000
--- minute = 60 * second
--- hour = 60 * minute
-keepAliveTimer = 5 -- * second
-holdTimer = 15 -- * second
-initialHoldTimer = 120 -- * second
-defaultDelayOpenTimer = 20 -- * second
--- data FSMConfig = FSMConfig {delayOpenTimer :: Int, initialHoldTimer :: Int, holdTimer :: Int, keepAliveTimer :: Int }
+keepAliveTimer = 5
+holdTimer = 15
+initialHoldTimer = 120
+defaultDelayOpenTimer = 20
 bgpFSM :: Socket -> IO ()
 bgpFSM sock = bgpFSM' sock 0
 bgpFSMdelayOpen :: Socket -> IO ()
 bgpFSMdelayOpen sock = bgpFSM' sock defaultDelayOpenTimer
 bgpFSM' :: Socket -> Int -> IO ()
 bgpFSM' sock delayOpenTimer = stateConnected where
-    snd msg = sndBgpMessage sock $ encode $ msg
+    snd msg = sndBgpMessage sock $ encode msg
     get' :: Int -> IO BGPMessage
     get' t = let t' = t * 10000000 in
              do mMsg <- timeout t' (getBgpMessage sock)
@@ -39,7 +36,6 @@ bgpFSM' sock delayOpenTimer = stateConnected where
                     (\msg -> do
                         let bgpMsg = decode msg :: BGPMessage
                         return bgpMsg)
-                    -- (\msg -> return $ decode msg :: BGPMessage)
                     mMsg
 
     get = do msg <- getBgpMessage sock
@@ -63,7 +59,7 @@ bgpFSM' sock delayOpenTimer = stateConnected where
                             notify@(BGPNotify a b c) -> do
                                print notify
                                exit "stateConnected - rcv notify"
-                            otherwise -> do
+                            _ -> do
                                 snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
                                 exit "stateConnected - FSM error"
     stateOpenSent = do msg <- get' initialHoldTimer
@@ -77,7 +73,7 @@ bgpFSM' sock delayOpenTimer = stateConnected where
                              snd BGPKeepalive
                              putStrLn "transition -> stateOpenConfirm"
                              stateOpenConfirm
-                         otherwise -> do
+                         _ -> do
                              snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
                              exit "stateOpenConfirm - FSM error"
     stateOpenConfirm = do msg <- get' holdTimer
@@ -91,7 +87,7 @@ bgpFSM' sock delayOpenTimer = stateConnected where
                               notify@(BGPNotify a b c) -> do
                                   print notify
                                   exit "stateOpenConfirm - rcv notify"
-                              otherwise -> do
+                              _ -> do
                                   snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
                                   exit "stateOpenConfirm - FSM error"
     exit s = do putStrLn s
@@ -102,7 +98,8 @@ bgpFSM' sock delayOpenTimer = stateConnected where
         keepAliveLoop
     toEstablished = do
         putStrLn "transition -> established"
-        void $ forkIO keepAliveLoop
+        forkIO keepAliveLoop
+        -- void $ forkIO keepAliveLoop
         established
     established = do
         msg <- get' holdTimer
@@ -120,6 +117,6 @@ bgpFSM' sock delayOpenTimer = stateConnected where
             BGPTimeout -> do
                 snd $ BGPNotify _Notification_Hold_Timer_Expired 0 B.empty
                 exit "established - FSM error"
-            otherwise -> do
+            _ -> do
                 snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
                 exit "established - FSM error"
