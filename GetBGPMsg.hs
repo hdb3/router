@@ -14,23 +14,16 @@ import GHC.Word
 import Data.ByteString.Unsafe(unsafeIndex)
 import Network.Socket hiding (recv, send)
 import qualified Network.Socket.ByteString.Lazy as L
--- import qualified Network.Socket.ByteString.Lazy(recv,sendAll) as L
 import qualified Network.Socket.ByteString as B
 import Data.Binary.Get
 import Data.Word
 import Data.Either
 import Control.Monad(unless,fail)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy               as L
+import qualified Data.ByteString.Lazy as L
 import           Data.ByteString.Builder
 import           Data.Monoid
 import Hexdump
-{-
-infixr 4 <>
-(<>) :: Monoid m => m -> m -> m
-(<>) = mappend
--}
-
 
 _BGPMarker = B.replicate 16 0xff
 sndBgpMessage :: Socket -> L.ByteString -> IO ()
