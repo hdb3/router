@@ -36,29 +36,23 @@ main = do
         putStrLn $ "Connection from " ++ show peer
         -- do setRecvTimeout conn holdTimer' -- DOESN'T WORK!!!!
         void $ forkFinally (init conn) (\_ -> close conn)
-    init sock = do msg <- getBgpMessage sock
+    init sock = do 
+                   sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
+                   msg <- getBgpMessage sock
                    let bgpMsg = decode msg :: BGPMessage
                    putStr "Init, Received: "
                    print bgpMsg
-                   sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
                    talk sock
-    talk sock = do msg <- getBgpMessage sock
+    talk sock = do msg <- getBgpMessage' sock
                    let bgpMsg = decode msg :: BGPMessage
                    putStr "Received: "
                    print bgpMsg
                    threadDelay keepAliveTimer
                    sndBgpMessage sock $ encode $ BGPKeepalive
                    talk sock
-{-
-    noOp sock = do print "timeout!"
-                   talk sock
-    talk sock = do msg <- timeout 10000 (getBgpMessage sock)
-                   maybe (noOp sock) (talk' sock) msg
-    talk' sock msg = unless (L.null msg) $ do
-                     let bgpMsg = decode msg :: BGPMessage
-                     putStr "Received: "
-                     print bgpMsg
-                     sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
-                     sndBgpMessage sock $ encode $ BGPKeepalive
-                     talk sock
--}
+
+    getBgpMessage' sock = do msg <- timeout holdTimer (getBgpMessage sock)
+                             maybe (do print "timeout!"
+                                       getBgpMessage' sock)
+                                   (return)
+                                   msg

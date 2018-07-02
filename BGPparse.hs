@@ -24,6 +24,9 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
                   | BGPKeepalive
                   | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
+                  | BGPTimeout
+                  | BGPError String
+                  | BGPEndOfStream
                     deriving (Show,Eq)
 
 instance Binary BGPMessage where

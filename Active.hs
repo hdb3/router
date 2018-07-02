@@ -14,10 +14,16 @@ import Hexdump
 import Common
 import BGPparse
 import GetBGPMsg
+import BgpFSM
+
+second = 1000000
+minute = 60 * second
+hour = 60 * minute
+aLongTime = 1 * hour
 
 main :: IO ()
 main = do
-    E.bracket open close talk
+    E.bracket open close bgpFSM
   where
     open = do
         putStrLn "begin:: "
@@ -25,6 +31,7 @@ main = do
         connect sock (SockAddrInet bgpPort ipV4_localhost)
         putStrLn "connected:: "
         return sock
+{-
     talk sock = do
         sndBgpMessage sock $ encode $ BGPOpen 1000 600 65550 B.empty
         putStrLn "sent::open "
@@ -33,5 +40,6 @@ main = do
         let bgpMsg = decode msg :: BGPMessage
         print bgpMsg
         sndBgpMessage sock $ encode BGPKeepalive
-        threadDelay 5
+        threadDelay aLongTime
         talk sock
+-}
