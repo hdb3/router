@@ -35,19 +35,27 @@ infixr 4 <>
 _BGPMarker = B.replicate 16 0xff
 sndBgpMessage :: Socket -> L.ByteString -> IO ()
 sndBgpMessage sock bgpMsg = do let wireMessageLength = fromIntegral $ 18 + L.length bgpMsg
-                                   wireMessage = toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> lazyByteString bgpMsg
+                                   wireMessage = L.toStrict $ toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> lazyByteString bgpMsg
                                    -- wireMessage = L.toStrict $ toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> byteString bgpMsg
-                               L.sendAll sock wireMessage
+                               B.sendAll sock wireMessage
 
 getBgpMessage :: Socket -> IO L.ByteString
 getBgpMessage sock = do msgHdr <- B.recv sock 18
                         let (marker,lenR) = B.splitAt 16 msgHdr
                             len = word16be lenR
-                        unless (marker == _BGPMarker) (do putStr "Received:: "
+                        unless (marker == _BGPMarker) (do putStr "Error::getBgpMessage:: "
                                                           print $ simpleHex msgHdr
                                                           putStrLn "----"
                                                           fail "Bad marker")
-                        L.recv sock (fromIntegral len)
+                        let bodyLength = fromIntegral len - 18
+                        body <- B.recv sock bodyLength
+                        unless (bodyLength == B.length body) (do let asked = show bodyLength
+                                                                     got = show (B.length body)
+                                                                 putStrLn $ "Error::getBgpMessage:: internal error - short read" ++
+                                                                                      " - asked " ++ show (fromIntegral len) ++
+                                                                                      " got " ++ show (B.length body)
+                                                                 fail "internal error - short read")
+                        return $ L.fromStrict body
 
 shiftl_w16 :: Word16 -> Int -> Word16
 shiftl_w32 :: Word32 -> Int -> Word32

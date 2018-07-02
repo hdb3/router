@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- passive TCP server
-module Passive (main) where
+module Main where
 
-import Control.Concurrent (forkFinally)
+import Control.Concurrent (forkFinally,threadDelay)
 import qualified Control.Exception as E
 import Control.Monad (unless, forever, void)
 import qualified Data.ByteString.Lazy as L
@@ -11,6 +11,7 @@ import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString.Lazy (recv, send)
 import Common
 import BGPparse
+import GetBGPMsg
 import Data.Binary(encode,decode)
 import System.Timeout
 import Network.Socket.Options
@@ -18,6 +19,8 @@ import Data.Int(Int64)
 
 holdTimer = 10 * 1000000 :: Int
 holdTimer' = 10 * 1000000 :: Int64
+seconds = 1000000 :: Int
+keepAliveTimer = 2 * seconds
 main :: IO ()
 main = do
     E.bracket open close loop
@@ -32,15 +35,30 @@ main = do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
         -- do setRecvTimeout conn holdTimer' -- DOESN'T WORK!!!!
-        void $ forkFinally (talk conn) (\_ -> close conn)
+        void $ forkFinally (init conn) (\_ -> close conn)
+    init sock = do msg <- getBgpMessage sock
+                   let bgpMsg = decode msg :: BGPMessage
+                   putStr "Init, Received: "
+                   print bgpMsg
+                   sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
+                   talk sock
+    talk sock = do msg <- getBgpMessage sock
+                   let bgpMsg = decode msg :: BGPMessage
+                   putStr "Received: "
+                   print bgpMsg
+                   threadDelay keepAliveTimer
+                   sndBgpMessage sock $ encode $ BGPKeepalive
+                   talk sock
+{-
     noOp sock = do print "timeout!"
                    talk sock
-    talk sock = do msg <- timeout 100 (recv sock 8192)
+    talk sock = do msg <- timeout 10000 (getBgpMessage sock)
                    maybe (noOp sock) (talk' sock) msg
     talk' sock msg = unless (L.null msg) $ do
                      let bgpMsg = decode msg :: BGPMessage
                      putStr "Received: "
                      print bgpMsg
-                     send sock $ encode $ BGPOpen 1000 600 65551 B.empty
-                     send sock $ encode $ BGPKeepalive
+                     sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
+                     sndBgpMessage sock $ encode $ BGPKeepalive
                      talk sock
+-}
