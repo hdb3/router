@@ -1,4 +1,4 @@
-module BgpFSM(bgpFSM) where
+module BgpFSM(bgpFSM,bgpFSMdelayOpen,bgpFSM') where
 
 import qualified Control.Exception as E
 import qualified Data.ByteString.Char8 as C
@@ -16,20 +16,24 @@ import BGPparse
 import GetBGPMsg
 import RFC4271
 
-second = 1000000
-minute = 60 * second
-hour = 60 * minute
-aLongTime = 1 * hour
-keepAliveTimer = 5 * second
-holdTimer = 15 * second
-initialHoldTimer = 120 * second
-delayOpenTimer = 120 * second
-
+-- second = 1000000
+-- minute = 60 * second
+-- hour = 60 * minute
+keepAliveTimer = 5 -- * second
+holdTimer = 15 -- * second
+initialHoldTimer = 120 -- * second
+defaultDelayOpenTimer = 20 -- * second
+-- data FSMConfig = FSMConfig {delayOpenTimer :: Int, initialHoldTimer :: Int, holdTimer :: Int, keepAliveTimer :: Int }
 bgpFSM :: Socket -> IO ()
-bgpFSM sock = stateConnected where
+bgpFSM sock = bgpFSM' sock 0
+bgpFSMdelayOpen :: Socket -> IO ()
+bgpFSMdelayOpen sock = bgpFSM' sock defaultDelayOpenTimer
+bgpFSM' :: Socket -> Int -> IO ()
+bgpFSM' sock delayOpenTimer = stateConnected where
     snd msg = sndBgpMessage sock $ encode $ msg
     get' :: Int -> IO BGPMessage
-    get' t = do mMsg <- timeout t (getBgpMessage sock)
+    get' t = let t' = t * 10000000 in
+             do mMsg <- timeout t' (getBgpMessage sock)
                 maybe
                     (return BGPTimeout)
                     (\msg -> do
@@ -49,13 +53,16 @@ bgpFSM sock = stateConnected where
                                 snd $ BGPOpen 1000 600 65550 B.empty
                                 putStrLn "transition -> stateOpenSent"
                                 stateOpenSent
-                            (BGPOpen a b c d) -> do
+                            open@(BGPOpen a b c d) -> do
                                 putStrLn "stateConnected - rcv open"
+                                print open
                                 snd $ BGPOpen 1000 600 65550 B.empty
                                 snd BGPKeepalive
                                 putStrLn "transition -> stateOpenConfirm"
                                 stateOpenConfirm
-                            (BGPNotify a b c) -> exit "stateConnected - rcv notify"
+                            notify@(BGPNotify a b c) -> do
+                               print notify
+                               exit "stateConnected - rcv notify"
                             otherwise -> do
                                 snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
                                 exit "stateConnected - FSM error"
@@ -64,8 +71,9 @@ bgpFSM sock = stateConnected where
                          BGPTimeout -> do
                              snd $ BGPNotify _Notification_Hold_Timer_Expired 0 B.empty
                              exit "stateOpenSent - error initial Hold Timer expiry"
-                         (BGPOpen a b c d) -> do
+                         open@(BGPOpen a b c d) -> do
                              putStrLn "stateOpenSent - rcv open"
+                             print open
                              snd BGPKeepalive
                              putStrLn "transition -> stateOpenConfirm"
                              stateOpenConfirm
@@ -80,7 +88,8 @@ bgpFSM sock = stateConnected where
                               BGPKeepalive -> do
                                   putStrLn "stateOpenConfirm - rcv keepalive"
                                   toEstablished
-                              (BGPNotify a b c) ->
+                              notify@(BGPNotify a b c) -> do
+                                  print notify
                                   exit "stateOpenConfirm - rcv notify"
                               otherwise -> do
                                   snd $ BGPNotify _Notification_Finite_State_Machine_Error 0 B.empty
@@ -88,7 +97,7 @@ bgpFSM sock = stateConnected where
     exit s = do putStrLn s
                 fail s
     keepAliveLoop = do
-        threadDelay keepAliveTimer
+        threadDelay $ 1000000 * keepAliveTimer
         snd BGPKeepalive
         keepAliveLoop
     toEstablished = do
@@ -98,13 +107,16 @@ bgpFSM sock = stateConnected where
     established = do
         msg <- get' holdTimer
         case msg of 
-            BGPKeepalive ->
-                do putStrLn "established - rcv keepalive"
-                   established
-            (BGPUpdate a b c) ->
-                do putStrLn "established - rcv update"
-                   established
-            (BGPNotify a b c) -> exit "established - rcv notify"
+            BGPKeepalive -> do
+                putStrLn "established - rcv keepalive"
+                established
+            update@(BGPUpdate a b c) -> do
+                putStrLn "established - rcv update"
+                print update
+                established
+            notify@(BGPNotify a b c) -> do
+                print notify
+                exit "established - rcv notify"
             BGPTimeout -> do
                 snd $ BGPNotify _Notification_Hold_Timer_Expired 0 B.empty
                 exit "established - FSM error"

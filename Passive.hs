@@ -16,6 +16,7 @@ import Data.Binary(encode,decode)
 import System.Timeout
 import Network.Socket.Options
 import Data.Int(Int64)
+import BgpFSM
 
 holdTimer = 10 * 1000000 :: Int
 holdTimer' = 10 * 1000000 :: Int64
@@ -23,6 +24,7 @@ seconds = 1000000 :: Int
 keepAliveTimer = 2 * seconds
 main :: IO ()
 main = do
+    putStrLn "Passive starting"
     E.bracket open close loop
   where
     open = do
@@ -35,7 +37,8 @@ main = do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
         -- do setRecvTimeout conn holdTimer' -- DOESN'T WORK!!!!
-        void $ forkFinally (init conn) (\_ -> close conn)
+        void $ forkFinally (bgpFSMdelayOpen conn) (\_ -> close conn)
+{-
     init sock = do 
                    sndBgpMessage sock $ encode $ BGPOpen 1000 600 65551 B.empty
                    msg <- getBgpMessage sock
@@ -56,3 +59,4 @@ main = do
                                        getBgpMessage' sock)
                                    (return)
                                    msg
+-}
