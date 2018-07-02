@@ -20,11 +20,15 @@ main = do
     E.bracket open close talk
   where
     open = do
+        putStrLn "active:: "
         sock <- socket AF_INET Stream defaultProtocol
         connect sock (SockAddrInet bgpPort ipV4_localhost)
+        putStrLn "connected:: "
         return sock
     talk sock = do
+        putStrLn "talking:: "
         sndBgpMessage sock $ encode $ BGPOpen 1000 600 65550 B.empty
+        putStrLn "Sent:: "
         msg <- getBgpMessage sock
         putStr "Received:: "
         print $ simpleHex $ L.toStrict msg
