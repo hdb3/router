@@ -117,6 +117,3 @@ parseOptionalParameters parametersBS = maybe
                                        []
                                        (map (decode . L.fromStrict) . getTLVs )
                                        (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
-                                       -- (find (\bs -> 2 == B.index bs 0) parameterList)
-                                       -- where
-                                           -- parameterList = getTLVs parametersBS
