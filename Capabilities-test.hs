@@ -26,8 +26,19 @@ main = do
     putStrLn ""
     runTests "testOptionalParameters" testOptionalParameters testList
 
-testEncodings = do
+testEncodings (d,ps) = do
     putStrLn "testEncodings"
+        putStrLn $ d ++ ":" ++ show ps
+        mapM t ps where
+        t p = do
+            let encodedCapability = encode p
+                decodedCapability = decode encodedCapability
+            putStrLn $ "encoded: " ++ simpleHex codedCapability
+            putStrLn $ "decoded: " ++ show decodedCapability
+            if (decodedCapability == p) then
+                putStrLn "conversion OK" else
+                putStrLn "*** conversion FAIL!!!"
+            putStrLn ""
     putStrLn "done"
 
 runTests desc f tests = do
