@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-{-- LANGUAGE DataKinds #-}
 module Main where
 -- import qualified Data.ByteString.Lazy as L
 -- import qualified Data.ByteString as B
@@ -17,10 +16,12 @@ main = do
     let capmp = CapMultiprotocol 0 0
         capAS4 = CapAS4 0x00010f0f
         capGrR = CapGracefulRestart False 0
-        params = buildOptionalParameters [capmp, capAS4, capGrR]
-    putStrLn $ simpleHex params
-    let decoded = parseOptionalParameters params
-    print decoded
-{-
--}
+        runtest d ps = do
+            let params = buildOptionalParameters ps
+            putStrLn $ d ++ ":"
+            putStrLn $ "encoded: " ++ ( simpleHex params)
+            putStrLn $ "decoded: " ++ ( show $ parseOptionalParameters params )
+    runtest "empty list" []
+    runtest "singleton list" [capGrR]
+    runtest "long list" [capmp, capAS4, capGrR]
     putStrLn "done"

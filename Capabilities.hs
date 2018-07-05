@@ -1,6 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-{-- LANGUAGE DataKinds #-}
-{-- LANGUAGE KindSignatures #-}
 module Capabilities where
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
@@ -13,7 +11,6 @@ import Data.ByteString.Builder
 import Data.Monoid((<>))
 import Data.List(find)
 import GetTLVs
--- import Control.Monad(unless)
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
 {-
@@ -106,6 +103,8 @@ instance Binary Capability where
                       return (CapGracefulRestart rFlag restartTime)
            | t == _CapCodeAS4 -> do as <- getWord32be
                                     return $ CapAS4 as -- surely not the most elegant way to say this!!!!
+           | otherwise        -> do error $ "Unexoected type code: " ++ show t
+                                    return undefined
 
 buildOptionalParameters :: [ Capability ] -> ByteString
 buildOptionalParameters capabilities = let caps = L.concat $ map encode capabilities in
@@ -116,4 +115,4 @@ parseOptionalParameters :: ByteString -> [ Capability ]
 parseOptionalParameters parametersBS = maybe
                                        []
                                        (map (decode . L.fromStrict) . getTLVs )
-                                       (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
+                                       (find (\bs -> 2 == B.index bs 0) (getTLVs $ B.drop 2 parametersBS))
