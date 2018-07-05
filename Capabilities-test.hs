@@ -3,11 +3,12 @@ module Main where
 -- import qualified Data.ByteString.Lazy as L
 -- import qualified Data.ByteString as B
 -- import Data.ByteString(ByteString)
--- import Data.Binary
 -- import Data.Binary.Get
 -- import Data.Binary.Put
 -- import Data.ByteString.Builder
 -- import Data.Monoid((<>))
+import Data.Binary
+import Data.ByteString.Lazy(toStrict)
 import Capabilities
 import Hexdump
 
@@ -22,23 +23,24 @@ testList = [
 
 main = do
     putStrLn "capability test"
-    testEncodings
+    runTests "testEncodings" testEncodings testList
     putStrLn ""
     runTests "testOptionalParameters" testOptionalParameters testList
 
+testEncodings :: (String,[Capability]) -> IO ()
 testEncodings (d,ps) = do
     putStrLn "testEncodings"
-        putStrLn $ d ++ ":" ++ show ps
-        mapM t ps where
-        t p = do
-            let encodedCapability = encode p
-                decodedCapability = decode encodedCapability
-            putStrLn $ "encoded: " ++ simpleHex codedCapability
-            putStrLn $ "decoded: " ++ show decodedCapability
-            if (decodedCapability == p) then
-                putStrLn "conversion OK" else
-                putStrLn "*** conversion FAIL!!!"
-            putStrLn ""
+    putStrLn $ d ++ ":" ++ show ps
+    let t p = do
+        let encodedCapability = encode p
+            decodedCapability = decode encodedCapability
+        putStrLn $ "encoded: " ++ ( simpleHex $ toStrict encodedCapability )
+        putStrLn $ "decoded: " ++ show decodedCapability
+        if (decodedCapability == p) then
+            putStrLn "conversion OK" else
+            putStrLn "*** conversion FAIL!!!"
+        putStrLn ""
+    mapM t ps
     putStrLn "done"
 
 runTests desc f tests = do
