@@ -1,6 +1,12 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 module TLV where
 import Data.Word
+import Data.Maybe(isJust,fromJust,catMaybes)
+import Data.List(intersect,(\\))
 import RFC4271
+import Capabilities(Capability)
 -- import Data.ByteString.Builder
 -- import Data.Monoid((<>))
 --import Data.ByteString(ByteString)
@@ -61,38 +67,63 @@ import RFC4271
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
 data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required}
-type Offer = { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS }
-type Required { myAS :: Maybe Word16, Maybe holdTime :: Word16, Maybe bgpID :: Word32, requiredCapabilities :: TLVS}
-type TLVS = [(Word8,ByteString)]
-type NotifyMsgs = [(Word8,Word8,TLVS)]
+data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS }
+data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS}
+type TLVS = [Capability]
+type NotifyMsg = (Word8,Word8,TLVS)
 
 makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
 makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
+
 updateOpenStateMachine :: OpenStateMachine -> Offer -> OpenStateMachine
-updateOpenStateMachine osm offer = osm { required = offer }
+updateOpenStateMachine osm offer = osm { remoteOffer = Just offer }
 
 getStatus :: OpenStateMachine -> Maybe Offer 
-getStatus osm | isJust (remoteOffer osm) = Offer ( myAS $ remoteOffer osm)  negotiatedHoldTime ( bgpID $ remoteOffer osm) negotiatedOptionalCapabilities where
-    negotiatedOptionalCapabilities = intersection (optionalCapabilities $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
-    negotiatedHoldTime = min ( holdTime $ remoteOffer osm) ( holdTime $ localOffer osm)
+getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabilities . fromJust $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
+                    negotiatedHoldTime = min ( holdTime . fromJust $ remoteOffer osm) ( holdTime $ localOffer osm)
+                in maybe
+                    Nothing
+                    (\remoteOffer -> Just $ Offer ( myAS remoteOffer)  negotiatedHoldTime ( bgpID remoteOffer) negotiatedOptionalCapabilities)
+                    (remoteOffer osm)
 
-getResponse :: OpenStateMachine -> offer -> NotifyMsgs
-getResponse osm | isJust (remoteOffer osm) = catMaybes [checkmyAS : checkBgpID : checkHoldTime : checkOptionalCapabilities] where
-    remoteOffer = remoteOffer osm
-    required    = required osm
-    status = fromJust $ getStatus osm
-    checkBgpID = maybe Nothing
-                      (\requiredBGPID -> if (bgpID remoteOffer) == requiredBGPID then Nothing else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[])
-                      (bgpID required)
-    checkHoldTime = maybe Nothing
-                      (\minimumHoldTime -> if (holdTime required) > (holdTime status)
-                                               then Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
-                                               else Nothing
-                      (holdTime required)
-    checkmyAS = maybe Nothing
-                      (\requiredAS -> if (myAS remoteOffer) == requiredAS then Nothing else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[])
-                      (myAS required)
-    checkOptionalCapabilities = let missingCapabilies = optionalCapabilities required \\ optionalCapabilities remoteOffer in
-                                if null missingCapabilies
-                                    then Nothing
-                                    else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unsupported_Capability,missingCapabilies)
+getResponse :: OpenStateMachine -> Maybe NotifyMsg
+getResponse osm = maybe
+    (Just (0, 0, []))
+    (\_ -> case catMaybes [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities] of
+                         [] -> Nothing -- signal sucess!!
+                         n:nx -> Just n)
+    (remoteOffer osm)
+    where
+        -- checkBgpID =  Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[])
+        -- checkHoldTime = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
+        -- checkmyAS = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[])
+        -- checkOptionalCapabilities = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unsupported_Capability,[])
+
+        remoteOffer' = fromJust $ remoteOffer osm
+        required' = required osm
+        status = fromJust $ getStatus osm
+
+        checkBgpID =
+            maybe Nothing
+                  (\requirement -> if (bgpID remoteOffer') == requirement
+                      then Nothing
+                      else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[]))
+                  (requiredBgpID required')
+
+        checkHoldTime = maybe Nothing
+            (\requirement -> if requirement < (holdTime status)
+                then Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
+                else Nothing)
+            (requiredHoldTime required')
+
+        checkmyAS = maybe Nothing
+            (\requirement -> if (myAS remoteOffer') == requirement
+                                then Nothing
+                                else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[]))
+            (requiredAS required')
+
+        checkOptionalCapabilities =
+            if null missingCapabilies
+                then Nothing
+                else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unsupported_Capability,missingCapabilies)
+                where missingCapabilies = requiredCapabilities required' \\ optionalCapabilities remoteOffer'
