@@ -34,27 +34,27 @@ testEncodings (d,ps) = do
     let t p = do
         let encodedCapability = encode p
             decodedCapability = decode encodedCapability
-        putStrLn $ "encoded: " ++ ( simpleHex $ toStrict encodedCapability )
+        putStrLn $ "encoded: " ++ simpleHex (toStrict encodedCapability)
         putStrLn $ "decoded: " ++ show decodedCapability
-        if (decodedCapability == p) then
+        if decodedCapability == p then
             putStrLn "conversion OK" else
             putStrLn "*** conversion FAIL!!!"
         putStrLn ""
-    mapM t ps
+    mapM_ t ps
     putStrLn "done"
 
 runTests desc f tests = do
     putStrLn desc
-    mapM  f tests
+    mapM_  f tests
     putStrLn "done"
 
 testOptionalParameters (d,ps) = do
         let params = buildOptionalParameters ps
             recodedParams = parseOptionalParameters params
         putStrLn $ d ++ ":" ++ show ps
-        putStrLn $ "encoded: " ++ ( simpleHex params)
+        putStrLn $ "encoded: " ++ simpleHex params
         putStrLn $ "decoded: " ++ show recodedParams
-        if (recodedParams == ps) then
+        if recodedParams == ps then
             putStrLn "conversion OK" else
             putStrLn "*** conversion FAIL!!!"
         putStrLn ""
