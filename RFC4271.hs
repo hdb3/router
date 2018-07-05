@@ -56,8 +56,8 @@ _Notification_Cease                      = 6 :: Word8
 
 -}
 _Notification_Header_Subcode_Connection_Not_Synchronized      = 1 :: Word8
-_Notification_Header_Subcode_Bad_Message_Length               = 1 :: Word8
-_Notification_Header_Subcode_Bad Message_Type                 = 1 :: Word8
+_Notification_Header_Subcode_Bad_Message_Length               = 2 :: Word8
+_Notification_Header_Subcode_Bad_Message_Type                 = 3 :: Word8
 
 _Notification_OPEN_Subcode_Unsupported_Version_Number         = 1 :: Word8
 _Notification_OPEN_Subcode_Bad_Peer_AS                        = 2 :: Word8
