@@ -1,17 +1,37 @@
 {-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE DataKinds #-}
+{-- LANGUAGE DataKinds #-}
 {-- LANGUAGE KindSignatures #-}
 module Capabilities where
--- import qualified Data.ByteString.Lazy as L
--- import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString as B
 import Data.ByteString(ByteString)
+import Data.Bits
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
+import Data.ByteString.Builder
+import Data.Monoid((<>))
+import Data.List(find)
+import GetTLVs
 -- import Control.Monad(unless)
+--
+-- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
+{-
 
+Value 	Description 	Reference 
+1	Multiprotocol Extensions for BGP-4	[RFC2858]
+7	BGPsec Capability	[RFC8205]
+64	Graceful Restart Capability	[RFC4724]
+65	Support for 4-octet AS number capability	[RFC6793]
+
+-}
+_CapCodeMultiprotocol = 1
+_CapCodeGracefulRestart = 64
+_CapCodeAS4 = 65
 -- in the python library I have support for the followin optional capabilities
--- multiprotocol
+-- multiprotocol (IPv6)
+-- gracefull restart
+-- AS4 (32-bit ASNs)
 {-
  The Capability Value field is defined as:
 
@@ -52,43 +72,51 @@ data Capability = CapMultiprotocol Word16 Word8
                 | CapGracefulRestart Bool Word16
                 | CapAS4 Word32 deriving (Show,Eq)
 
+instance Binary Capability where
 
-class Tupl a where
-    put :: a -> (Word8,ByteString)
-    get :: (Word8,ByteString) -> a
- 
-instance Tupl Capability where
+    put (CapAS4 as4) = do
+        putWord8 _CapCodeAS4
+        putWord8 4
+        putWord32be as4
 
-    put (CapMultiprotocol afi safi) = (1,encode (CapMultiprotocol' afi safi))
-    put (CapGracefulRestart rFlag restartTime) = (64,encode (CapGracefulRestart' rFlag restartTime))
-    put (CapAS4 as4) = (65,encode (CapAS4' as4))
+    put (CapGracefulRestart rFlag restartTime) = do
+        putWord8 _CapCodeGracefulRestart
+        putWord8 2
+        putWord16be $ if rFlag then setBit restartTime 15 else restartTime
 
-    get (t,v) = if | t == 1  -> decode v :: CapMultiprotocol'  
-                   | t == 64 -> decode v :: CapGracefulRestart'
-                   | t == 65 -> decode v :: CapAS4'
-
-data CapAS4' = CapAS4' Word32 deriving (Show,Eq)
-instance Binary CapAS4' where
-    put cap@(CapAS4' as4) = putWord32be as4
-    get = CapAS4' getWord32be
-
-data CapGracefulRestart' = CapGracefulRestart' Bool Word16
-instance Binary CapGracefulRestart' where
-    put cap@(CapGracefulRestart' rFlag restartTime) = putWord16be $ if rFlag then setBit restartTime 15 else restartTime
-    get = do
-        word0 <- getWord16be
-        let rFlag = testBit 15 word0
-            restartTime = word0 .&. 0x0fff
-        return (CapGracefulRestart' rFlag restartTime)
-
-data CapMultiprotocol' = CapMultiprotocol' Word16 Word8 deriving (Show,Eq)
-instance Binary CapMultiprotocol' where
-    put cap@(CapMultiprotocol afi safi) = do
+    put (CapMultiprotocol afi safi) = do
+        putWord8 _CapCodeMultiprotocol
+        putWord8 4
         putWord16be afi
         putWord8 0
         putWord8 safi
+
     get = do
-        afi <- getWord16be
-        _ <- getWord8
-        safi <- getWord8
-        return (CapMultiprotocol afi safi)
+        t <- getWord8
+        l <- getWord8
+        if | t == _CapCodeMultiprotocol -> do
+                      afi <- getWord16be
+                      _ <- getWord8
+                      safi <- getWord8
+                      return (CapMultiprotocol afi safi)
+           | t == _CapCodeGracefulRestart -> do
+                      word0 <- getWord16be
+                      let rFlag = testBit word0 15
+                          restartTime = word0 .&. 0x0fff
+                      return (CapGracefulRestart rFlag restartTime)
+           | t == _CapCodeAS4 -> do as <- getWord32be
+                                    return $ CapAS4 as -- surely not the most elegant way to say this!!!!
+
+buildOptionalParameters :: [ Capability ] -> ByteString
+buildOptionalParameters capabilities = let caps = L.concat $ map encode capabilities in
+                                       L.toStrict $ toLazyByteString $ word8 2 <>  word8 (fromIntegral $ L.length caps) <> lazyByteString caps
+
+parseOptionalParameters :: ByteString -> [ Capability ]
+
+parseOptionalParameters parametersBS = maybe
+                                       []
+                                       (map (decode . L.fromStrict) . getTLVs )
+                                       (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
+                                       -- (find (\bs -> 2 == B.index bs 0) parameterList)
+                                       -- where
+                                           -- parameterList = getTLVs parametersBS
