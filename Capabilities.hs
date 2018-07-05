@@ -114,5 +114,5 @@ parseOptionalParameters :: ByteString -> [ Capability ]
 
 parseOptionalParameters parametersBS = maybe
                                        []
-                                       (map (decode . L.fromStrict) . getTLVs )
-                                       (find (\bs -> 2 == B.index bs 0) (getTLVs $ B.drop 2 parametersBS))
+                                       (map (decode . L.fromStrict) . getTLVs . (B.drop 2))
+                                       (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
