@@ -6,7 +6,7 @@ import Data.Word
 
 getTLVs :: B.ByteString -> [B.ByteString]
 getTLVs bs | B.null bs = []
-           | B.length bs > 1 = tlv : (getTLVs bs') where
+           | B.length bs > 1 = tlv : getTLVs bs' where
                  -- l = fromIntegral $ 2 + unsafeIndex bs 1
                  l = fromIntegral $ 2 + B.index bs 1
                  (tlv,bs') = B.splitAt l bs

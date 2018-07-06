@@ -14,7 +14,7 @@ import qualified Data.Attoparsec.ByteString as A
 --
 
 deparser :: [(Word8,ByteString)] -> Builder
-deparser tlvs = foldMap (\(t,v) -> word8 t <> word8 (fromIntegral $ B.length v) <> byteString v) tlvs
+deparser = foldMap (\(t,v) -> word8 t <> word8 (fromIntegral $ B.length v) <> byteString v)
 
 innerDeparser :: [(Word8,ByteString)] -> L.ByteString
 innerDeparser tlvs = toLazyByteString $ deparser tlvs
@@ -35,8 +35,8 @@ outerParser :: A.Parser ByteString
 outerParser =  do
     t <- A.word8 2
     l <- A.anyWord8
-    v <- A.take (fromIntegral l)
-    return v
+    A.take (fromIntegral l)
+
 innerParser = A.parseOnly tlvsParser
 tlvsParser :: A.Parser [(Word8,ByteString)]
 tlvsParser = A.many' tlvParser
