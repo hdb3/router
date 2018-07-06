@@ -3,29 +3,20 @@ module Main where
 import Open
 import Capabilities
 
-main = do 
-    let sm = makeOpenStateMachine Offer {..} Required {..} where
-        myAS = 1234
-        holdTime = 40
-        bgpID = 65520
-        requiredAS = Just 4321
-        requiredHoldTime = Just 20
-        requiredBgpID = Nothing
-        requiredCapabilities = [CapAS4 65520,  CapGracefulRestart False 0]
-        optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0]
+test1 = (Offer { myAS = 1234, holdTime = 40, bgpID = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
+         Required { requiredAS = Just 4321, requiredHoldTime = Just 20, requiredBgpID = Nothing, requiredCapabilities = [CapAS4 65520,  CapGracefulRestart False 0]},
+         Offer { myAS = 4321, holdTime = 30, bgpID = 65521, optionalCapabilities = [ CapGracefulRestart False 0] })
+
+runTest (loc,req,rec) = do 
+    let sm = makeOpenStateMachine loc req
     putStr "initialState: "
     print sm
 
-    let receivedOffer = Offer {..} where
-        myAS = 4321
-        holdTime = 30
-        bgpID = 65521
-        optionalCapabilities = [ CapGracefulRestart False 0]
     putStrLn ""
     putStr "receivedOffer: "
-    print receivedOffer
+    print rec
 
-    let sm' = updateOpenStateMachine sm receivedOffer
+    let sm' = updateOpenStateMachine sm rec
     putStrLn ""
     putStr "updatedState: "
     print sm'
@@ -38,4 +29,5 @@ main = do
     putStr "response: "
     print $ getResponse sm'
 
-    
+main = do 
+    runTest test1
