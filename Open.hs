@@ -1,20 +1,9 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 module TLV where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes)
 import Data.List(intersect,(\\))
 import RFC4271
 import Capabilities(Capability)
--- import Data.ByteString.Builder
--- import Data.Monoid((<>))
---import Data.ByteString(ByteString)
---import qualified Data.ByteString as B
----- import Data.ByteString.Lazy()
---import qualified Data.ByteString.Lazy as L
-
--- import qualified Data.Attoparsec.ByteString as A
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -105,19 +94,19 @@ getResponse osm = maybe
 
         checkBgpID =
             maybe Nothing
-                  (\requirement -> if (bgpID remoteOffer') == requirement
+                  (\requirement -> if bgpID remoteOffer' == requirement
                       then Nothing
                       else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[]))
                   (requiredBgpID required')
 
         checkHoldTime = maybe Nothing
-            (\requirement -> if requirement < (holdTime status)
+            (\requirement -> if requirement < holdTime status
                 then Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
                 else Nothing)
             (requiredHoldTime required')
 
         checkmyAS = maybe Nothing
-            (\requirement -> if (myAS remoteOffer') == requirement
+            (\requirement -> if myAS remoteOffer' == requirement
                                 then Nothing
                                 else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[]))
             (requiredAS required')
