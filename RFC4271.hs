@@ -10,12 +10,12 @@ import Data.Word
          Finite State Machine Error 5          Section 6.6
          Cease                      6          Section 6.7
 -}
-_Notification_Message_Header_Error       = 1 :: Word8
-_Notification_OPEN_Message_Error         = 2 :: Word8
-_Notification_UPDATE_Message_Error       = 3 :: Word8
-_Notification_Hold_Timer_Expired         = 4 :: Word8
-_Notification_Finite_State_Machine_Error = 5 :: Word8
-_Notification_Cease                      = 6 :: Word8
+-- _Notification_Message_Header_Error       = 1 :: Word8
+-- _Notification_OPEN_Message_Error         = 2 :: Word8
+-- _Notification_UPDATE_Message_Error       = 3 :: Word8
+-- _Notification_Hold_Timer_Expired         = 4 :: Word8
+-- _Notification_Finite_State_Machine_Error = 5 :: Word8
+-- _Notification_Cease                      = 6 :: Word8
 
 {-
 
@@ -59,13 +59,13 @@ _Notification_Header_Subcode_Connection_Not_Synchronized      = 1 :: Word8
 _Notification_Header_Subcode_Bad_Message_Length               = 2 :: Word8
 _Notification_Header_Subcode_Bad_Message_Type                 = 3 :: Word8
 
-_Notification_OPEN_Subcode_Unsupported_Version_Number         = 1 :: Word8
-_Notification_OPEN_Subcode_Bad_Peer_AS                        = 2 :: Word8
-_Notification_OPEN_Subcode_Bad_BGP_Identifier                 = 3 :: Word8
-_Notification_OPEN_Subcode_Unsupported_Optional_Parameter     = 4 :: Word8
+-- _Notification_OPEN_Subcode_Unsupported_Version_Number         = 1 :: Word8
+-- _Notification_OPEN_Subcode_Bad_Peer_AS                        = 2 :: Word8
+-- _Notification_OPEN_Subcode_Bad_BGP_Identifier                 = 3 :: Word8
+-- _Notification_OPEN_Subcode_Unsupported_Optional_Parameter     = 4 :: Word8
 -- _Notification_OPEN_Subcode_Deprecated                         = 5 :: Word8
-_Notification_OPEN_Subcode_Unacceptable_Hold_Time             = 6 :: Word8
-_Notification_OPEN_Subcode_Unsupported_Capability             = 7 :: Word8 -- from RFC5492
+-- _Notification_OPEN_Subcode_Unacceptable_Hold_Time             = 6 :: Word8
+-- _Notification_OPEN_Subcode_Unsupported_Capability             = 7 :: Word8 -- from RFC5492
 
 class Enum e => EnumWord8 e where
     decode :: Word8 -> e
@@ -73,18 +73,49 @@ class Enum e => EnumWord8 e where
     encode :: e -> Word8
     encode = fromIntegral . fromEnum
 
-data EnumNotificationCode = UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
+-- =======================================================
+data EnumNotificationCode = InvalidNotificationError |
+                            NotificationMessageHeaderError |
+                            NotificationOPENMessageError |
+                            NotificationUPDATEMessageError |
+                            NotificationHoldTimerExpired |
+                            NotificationFiniteStateMachineError |
+                            NotificationCease
                             deriving (Show,Eq)
 instance Enum EnumNotificationCode where
-    toEnum n | n == 1 = UnsupportedVersionNumber
+    toEnum n | n == 0 = InvalidNotificationError
+             | n == 1 = NotificationMessageHeaderError
+             | n == 2 = NotificationOPENMessageError
+             | n == 3 = NotificationUPDATEMessageError
+             | n == 4 = NotificationHoldTimerExpired
+             | n == 5 = NotificationFiniteStateMachineError
+             | n == 6 = NotificationCease
+
+    fromEnum e | e == InvalidNotificationError = 0
+               | e == NotificationMessageHeaderError = 1
+               | e == NotificationOPENMessageError = 2
+               | e == NotificationUPDATEMessageError = 3
+               | e == NotificationHoldTimerExpired = 4
+               | e == NotificationFiniteStateMachineError = 5
+               | e == NotificationCease = 6
+
+instance EnumWord8 EnumNotificationCode where
+-- =======================================================
+data EnumNotificationOpenSubcode = InvalidOpenSubcode | UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
+                            deriving (Show,Eq)
+instance Enum EnumNotificationOpenSubcode where
+    toEnum n | n == 0 = InvalidOpenSubcode
+             | n == 1 = UnsupportedVersionNumber
              | n == 2 = BadPeerAS
              | n == 3 = BadBGPIdentifier
              | n == 4 = UnsupportedOptionalParameter
              | n == 6 = UnacceptableHoldTime
 
-    fromEnum e | e == UnsupportedVersionNumber = 1
+    fromEnum e | e == InvalidOpenSubcode = 0
+               | e == UnsupportedVersionNumber = 1
                | e == BadPeerAS = 2
                | e == BadBGPIdentifier = 3
                | e == UnsupportedOptionalParameter = 4
                | e == UnacceptableHoldTime = 6
 
+instance EnumWord8 EnumNotificationOpenSubcode where

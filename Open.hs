@@ -59,7 +59,7 @@ data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: M
 data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS } deriving Show
 data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS} deriving Show
 type TLVS = [Capability]
-type NotifyMsg = (Word8,Word8,TLVS)
+type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode,TLVS)
 
 makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
 makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
@@ -77,7 +77,7 @@ getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabili
 
 getResponse :: OpenStateMachine -> Maybe NotifyMsg
 getResponse osm = maybe
-    (Just (0, 0, []))
+    (Just (InvalidNotificationError, InvalidOpenSubcode, []))
     (\_ -> case catMaybes [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities] of
                          [] -> Nothing -- signal sucess!!
                          n:nx -> Just n)
@@ -96,23 +96,23 @@ getResponse osm = maybe
             maybe Nothing
                   (\requirement -> if bgpID remoteOffer' == requirement
                       then Nothing
-                      else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[]))
+                      else Just (NotificationOPENMessageError,BadBGPIdentifier,[]))
                   (requiredBgpID required')
 
         checkHoldTime = maybe Nothing
             (\requirement -> if requirement < holdTime status
-                then Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
+                then Just (NotificationOPENMessageError,UnacceptableHoldTime,[])
                 else Nothing)
             (requiredHoldTime required')
 
         checkmyAS = maybe Nothing
             (\requirement -> if myAS remoteOffer' == requirement
                                 then Nothing
-                                else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[]))
+                                else Just (NotificationOPENMessageError,BadPeerAS,[]))
             (requiredAS required')
 
         checkOptionalCapabilities =
             if null missingCapabilies
                 then Nothing
-                else Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unsupported_Capability,missingCapabilies)
+                else Just (NotificationOPENMessageError,UnsupportedOptionalParameter,missingCapabilies)
                 where missingCapabilies = requiredCapabilities required' \\ optionalCapabilities remoteOffer'
