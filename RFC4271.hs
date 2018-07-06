@@ -66,3 +66,25 @@ _Notification_OPEN_Subcode_Unsupported_Optional_Parameter     = 4 :: Word8
 -- _Notification_OPEN_Subcode_Deprecated                         = 5 :: Word8
 _Notification_OPEN_Subcode_Unacceptable_Hold_Time             = 6 :: Word8
 _Notification_OPEN_Subcode_Unsupported_Capability             = 7 :: Word8 -- from RFC5492
+
+class Enum e => EnumWord8 e where
+    decode :: Word8 -> e
+    decode = toEnum . fromIntegral
+    encode :: e -> Word8
+    encode = fromIntegral . fromEnum
+
+data EnumNotificationCode = UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
+                            deriving (Show,Eq)
+instance Enum EnumNotificationCode where
+    toEnum n | n == 1 = UnsupportedVersionNumber
+             | n == 2 = BadPeerAS
+             | n == 3 = BadBGPIdentifier
+             | n == 4 = UnsupportedOptionalParameter
+             | n == 6 = UnacceptableHoldTime
+
+    fromEnum e | e == UnsupportedVersionNumber = 1
+               | e == BadPeerAS = 2
+               | e == BadBGPIdentifier = 3
+               | e == UnsupportedOptionalParameter = 4
+               | e == UnacceptableHoldTime = 6
+
