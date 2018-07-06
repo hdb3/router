@@ -78,17 +78,12 @@ getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabili
 getResponse :: OpenStateMachine -> Maybe NotifyMsg
 getResponse osm = maybe
     Nothing
-    -- (\_ -> checkOptionalCapabilities ) -- , checkBgpID , checkHoldTime , checkOptionalCapabilities])
     (\_ -> firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities])
     (remoteOffer osm)
     where
         firstMaybe [] = Nothing
         firstMaybe (Just m : mx) = Just m
         firstMaybe (Nothing : mx) = firstMaybe mx
-        -- checkBgpID =  Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[])
-        -- checkHoldTime = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
-        -- checkmyAS = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[])
-        -- checkOptionalCapabilities = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unsupported_Capability,[])
 
         remoteOffer' = fromJust $ remoteOffer osm
         required' = required osm

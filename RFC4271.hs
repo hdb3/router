@@ -73,7 +73,6 @@ class Enum e => EnumWord8 e where
     encode :: e -> Word8
     encode = fromIntegral . fromEnum
 
--- =======================================================
 data EnumNotificationCode = InvalidNotificationError |
                             NotificationMessageHeaderError |
                             NotificationOPENMessageError |
@@ -100,7 +99,7 @@ instance Enum EnumNotificationCode where
                | e == NotificationCease = 6
 
 instance EnumWord8 EnumNotificationCode where
--- =======================================================
+
 data EnumNotificationOpenSubcode = InvalidOpenSubcode | UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
                             deriving (Show,Eq)
 instance Enum EnumNotificationOpenSubcode where
