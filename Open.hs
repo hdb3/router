@@ -1,4 +1,4 @@
-module TLV where
+module Open where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes)
 import Data.List(intersect,(\\))
@@ -55,9 +55,9 @@ import Capabilities(Capability)
 --
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
-data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required}
-data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS }
-data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS}
+data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required} deriving Show
+data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS } deriving Show
+data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS} deriving Show
 type TLVS = [Capability]
 type NotifyMsg = (Word8,Word8,TLVS)
 
