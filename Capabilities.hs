@@ -69,6 +69,12 @@ data Capability = CapMultiprotocol Word16 Word8
                 | CapGracefulRestart Bool Word16
                 | CapAS4 Word32 deriving (Show,Eq)
 
+eq_ :: Capability -> Capability -> Bool
+eq_ (CapMultiprotocol _ _) (CapMultiprotocol _ _) = True
+eq_ (CapGracefulRestart _ _) (CapGracefulRestart _ _) = True
+eq_ (CapAS4 _) (CapAS4 _) = True
+eq_ _ _ = False
+
 instance Binary Capability where
 
     put (CapAS4 as4) = do
