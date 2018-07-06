@@ -100,7 +100,7 @@ getResponse osm = maybe
                   (requiredBgpID required')
 
         checkHoldTime = maybe Nothing
-            (\requirement -> if requirement < holdTime status
+            (\requirement -> if requirement > holdTime status
                 then Just (NotificationOPENMessageError,UnacceptableHoldTime,[])
                 else Nothing)
             (requiredHoldTime required')
