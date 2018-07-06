@@ -11,6 +11,9 @@ import Data.ByteString.Builder
 import Data.Monoid((<>))
 import Data.List(find)
 import GetTLVs
+import RFC4271
+
+type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode, Maybe Capability)
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
 {-

@@ -3,7 +3,7 @@ import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes)
 import Data.List(intersect,(\\))
 import RFC4271
-import Capabilities(Capability,eq_)
+import Capabilities(NotifyMsg,Capability,eq_)
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -56,10 +56,8 @@ import Capabilities(Capability,eq_)
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
 data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required} deriving Show
-data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS } deriving Show
-data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS} deriving Show
-type TLVS = [Capability]
-type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode, Maybe Capability)
+data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: [Capability] } deriving Show
+data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: [Capability]} deriving Show
 
 makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
 makeOpenStateMachine offer required = OpenStateMachine offer Nothing required

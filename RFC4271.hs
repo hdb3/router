@@ -1,10 +1,10 @@
 module RFC4271 where
 import Data.Word
 class Enum e => EnumWord8 e where
-    decode :: Word8 -> e
-    decode = toEnum . fromIntegral
-    encode :: e -> Word8
-    encode = fromIntegral . fromEnum
+    decode8 :: Word8 -> e
+    decode8 = toEnum . fromIntegral
+    encode8 :: e -> Word8
+    encode8 = fromIntegral . fromEnum
 
 {-
          Name                       Value      Definition
