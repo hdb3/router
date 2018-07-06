@@ -3,7 +3,7 @@ import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes)
 import Data.List(intersect,(\\))
 import RFC4271
-import Capabilities(Capability)
+import Capabilities(Capability,eq_)
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -59,7 +59,7 @@ data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: M
 data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: TLVS } deriving Show
 data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: TLVS} deriving Show
 type TLVS = [Capability]
-type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode,TLVS)
+type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode, Maybe Capability)
 
 makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
 makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
@@ -77,12 +77,14 @@ getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabili
 
 getResponse :: OpenStateMachine -> Maybe NotifyMsg
 getResponse osm = maybe
-    (Just (InvalidNotificationError, InvalidOpenSubcode, []))
-    (\_ -> case catMaybes [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities] of
-                         [] -> Nothing -- signal sucess!!
-                         n:nx -> Just n)
+    Nothing
+    -- (\_ -> checkOptionalCapabilities ) -- , checkBgpID , checkHoldTime , checkOptionalCapabilities])
+    (\_ -> firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities])
     (remoteOffer osm)
     where
+        firstMaybe [] = Nothing
+        firstMaybe (Just m : mx) = Just m
+        firstMaybe (Nothing : mx) = firstMaybe mx
         -- checkBgpID =  Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_BGP_Identifier,[])
         -- checkHoldTime = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Unacceptable_Hold_Time,[])
         -- checkmyAS = Just (_Notification_OPEN_Message_Error,_Notification_OPEN_Subcode_Bad_Peer_AS,[])
@@ -96,23 +98,37 @@ getResponse osm = maybe
             maybe Nothing
                   (\requirement -> if bgpID remoteOffer' == requirement
                       then Nothing
-                      else Just (NotificationOPENMessageError,BadBGPIdentifier,[]))
+                      else Just (NotificationOPENMessageError,BadBGPIdentifier,Nothing))
                   (requiredBgpID required')
 
         checkHoldTime = maybe Nothing
             (\requirement -> if requirement > holdTime status
-                then Just (NotificationOPENMessageError,UnacceptableHoldTime,[])
+                then Just (NotificationOPENMessageError,UnacceptableHoldTime,Nothing)
                 else Nothing)
             (requiredHoldTime required')
 
         checkmyAS = maybe Nothing
             (\requirement -> if myAS remoteOffer' == requirement
                                 then Nothing
-                                else Just (NotificationOPENMessageError,BadPeerAS,[]))
+                                else Just (NotificationOPENMessageError,BadPeerAS,Nothing))
             (requiredAS required')
 
-        checkOptionalCapabilities =
+-- this naive check looks for identical values in capabilities,
+-- which is how the RFC is worded
+-- However, in practice the requirement differs for each specific case, and in fact is not
+-- clearly defined in some cases.  The minimal requirement appears to be a check for simple presence, with no comparison
+-- of value.  This is clearly true for two common cases; AS4/32-bit ASNs, and Graceful Restart.
+-- The present implementation consists simply of a check that the remote offer contains at least the capabilities in the required list.
+--  
+        checkOptionalCapabilities' =
             if null missingCapabilies
                 then Nothing
-                else Just (NotificationOPENMessageError,UnsupportedOptionalParameter,missingCapabilies)
+                else Just (NotificationOPENMessageError,UnsupportedOptionalParameter, Just $ head missingCapabilies)
                 where missingCapabilies = requiredCapabilities required' \\ optionalCapabilities remoteOffer'
+
+-- this is the mentioned check for presecnce in remote offer of required parameters
+        checkOptionalCapabilities = check required where
+            required = requiredCapabilities required'
+            offered  = optionalCapabilities remoteOffer'
+            check [] = Nothing
+            check (c:cx) = if any (eq_ c) offered then check cx else Just (NotificationOPENMessageError,UnsupportedOptionalParameter, Just c)
