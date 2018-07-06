@@ -4,8 +4,7 @@ import Open
 import Capabilities
 import RFC4271
 
-main = do 
-    mapM_ runTest [test1,test2,test3]
+main = mapM_ runTest [test1,test2,test3]
 
 test1 = ("test1",
          Offer { myAS = 1234, holdTime = 40, bgpID = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
@@ -34,7 +33,7 @@ runTest (desc,loc,req,rec,expect) = do
     let resp =  getResponse sm'
 
 
-    if (expect == resp)
+    if expect == resp
         then putStrLn $ desc ++ ": success"
         else do
             putStrLn $ desc ++ ": ***fail***"

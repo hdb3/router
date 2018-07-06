@@ -6,8 +6,7 @@ import Common
 import BgpFSM
 
 main :: IO ()
-main = do
-    bracket open close bgpFSM
+main = bracket open close bgpFSM
   where
     open = do
         putStrLn "begin:: "
