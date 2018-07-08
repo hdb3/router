@@ -6,6 +6,8 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Control.Monad(unless)
+import Data.Tuple.Extra
+import Capabilities
 
 _BGPOpen = 1 :: Word8
 _BGPUpdate = 2 :: Word8
@@ -15,7 +17,8 @@ _BGPVersion = 4 :: Word8
 
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
-                  | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
+                  -- | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
+                  | BGPNotify NotifyMsg
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
                   | BGPTimeout
                   | BGPError String
@@ -42,10 +45,13 @@ instance Binary BGPMessage where
                                                              putByteString pathAttributes
                                                              putByteString nlri
 
-    put (BGPNotify errorCode errorSubcode errorData) = do putWord8 _BGPNotify
-                                                          putWord8 errorCode
-                                                          putWord8 errorSubcode
-                                                          putByteString errorData
+    put (BGPNotify notification) = do putWord8 _BGPNotify
+                                      putWord8 $ fst3 notification
+                                      putWord8 $ snd3 notification
+                                      putLazyByteString $ maybe
+                                                        B.empty
+                                                        encode
+                                                        (thd3 notification)
 
     put BGPKeepalive                                = putWord8 _BGPKeepalive
 
