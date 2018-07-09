@@ -25,6 +25,9 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
                   | BGPError String
                   | BGPEndOfStream
                     deriving (Show,Eq)
+isKeepalive :: BGPMessage -> Bool
+isKeepalive BGPKeepalive = True
+isKeepalive _ = False
 
 instance Binary BGPMessage where
 
