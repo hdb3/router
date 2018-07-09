@@ -1,7 +1,7 @@
 {-- LANGUAGE DisambiguateRecordFields #-} 
 module Open where
 import Data.Word
-import Data.Maybe(isJust,fromJust,catMaybes)
+import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
 import Data.List(intersect,(\\))
 import RFC4271
 import Capabilities(Capability,eq_)
@@ -67,27 +67,24 @@ makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
 updateOpenStateMachine :: OpenStateMachine -> Offer -> OpenStateMachine
 updateOpenStateMachine osm offer = osm { remoteOffer = Just offer }
 
-getStatus :: OpenStateMachine -> Maybe Offer 
-getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabilities . fromJust $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
-                    negotiatedHoldTime = min ( offeredHoldTime . fromJust $ remoteOffer osm) ( offeredHoldTime $ localOffer osm)
-                in maybe
-                    Nothing
-                    (\remoteOffer -> Just $ Offer ( myAS remoteOffer)  negotiatedHoldTime ( offeredBGPid remoteOffer) negotiatedOptionalCapabilities)
-                    (remoteOffer osm)
+getStatus :: OpenStateMachine -> Offer 
+getStatus osm | isJust ( remoteOffer osm ) = Offer ( myAS offer)  negotiatedHoldTime ( offeredBGPid offer) negotiatedOptionalCapabilities where
+                                                 offer = fromJust $ remoteOffer osm
+                                                 negotiatedOptionalCapabilities = intersect (optionalCapabilities . fromJust $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
+                                                 negotiatedHoldTime = min ( offeredHoldTime . fromJust $ remoteOffer osm) ( offeredHoldTime $ localOffer osm)
 
-getResponse :: OpenStateMachine -> Maybe BGPMessage
-getResponse osm = maybe
-    Nothing
-    (\_ -> firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities])
-    (remoteOffer osm)
-    where
-        firstMaybe [] = Nothing
-        firstMaybe (Just m : mx) = Just m
+-- getResponse should not be called before an OPEN message has been received
+-- either a Keepalive is returned or the needed rejection message
+getResponse :: OpenStateMachine -> BGPMessage
+getResponse osm | isJust ( remoteOffer osm ) = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
+        firstMaybe [] = undefined
+        firstMaybe (Just m : mx) = m
         firstMaybe (Nothing : mx) = firstMaybe mx
 
         remoteOffer' = fromJust $ remoteOffer osm
         required' = required osm
-        status = fromJust $ getStatus osm
+
+        keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
         checkBgpID =
@@ -99,7 +96,7 @@ getResponse osm = maybe
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = maybe Nothing
-            (\requirement -> if requirement > offeredHoldTime status
+            (\requirement -> if requirement > offeredHoldTime ( getStatus osm )
                 then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
                 else Nothing)
             (requiredHoldTime required')
@@ -111,7 +108,7 @@ getResponse osm = maybe
                                 else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
             (requiredAS required')
 
--- this naive check looks for identical values in capabilities,
+-- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
 -- However, in practice the requirement differs for each specific case, and in fact is not
 -- clearly defined in some cases.  The minimal requirement appears to be a check for simple presence, with no comparison
@@ -121,14 +118,6 @@ getResponse osm = maybe
 -- The present implementation consists simply of a check that the remote offer contains at least the capabilities in the required list.
 --  
 --  
-{-
-        checkOptionalCapabilities' =
-            if null missingCapabilies
-                then Nothing
-                else Just (NotificationOPENMessageError,UnsupportedOptionalParameter, Just $ head missingCapabilies)
-                where missingCapabilies = requiredCapabilities required' \\ optionalCapabilities remoteOffer'
--}
-
 -- this is the mentioned check for presecnce in remote offer of required parameters
 -- return a list of capabilities required but not found in the offer
         checkOptionalCapabilities :: Maybe BGPMessage
