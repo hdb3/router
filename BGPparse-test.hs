@@ -10,10 +10,13 @@ import BGPparse
 import Data.Int(Int64)
 import Hexdump
 import Data.Binary
+import RFC4271
+import Capabilities
 
 main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550 "optional parameters"
           identityCheck "BGPKeepalive" BGPKeepalive
-          identityCheck "BGPNotify" $ BGPNotify 99 99 "Error data"
+          identityCheck "BGPNotify" $ BGPNotify  NotificationOPENMessageError UnsupportedOptionalParameter [ CapAS4 65520,  CapGracefulRestart False 0]
+          -- identityCheck "BGPNotify" $ BGPNotify 99 99 "Error data"
           identityCheck "BGPUpdate" $ BGPUpdate "Withdrawn routes" "Path Attributes" "nlri"
 
 identityCheck :: String -> BGPMessage -> IO ()

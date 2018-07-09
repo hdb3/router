@@ -7,6 +7,7 @@ import Data.Binary.Get
 import Data.Binary.Put
 import Control.Monad(unless)
 import Data.Tuple.Extra
+import RFC4271
 import Capabilities
 
 _BGPOpen = 1 :: Word8
@@ -18,7 +19,9 @@ _BGPVersion = 4 :: Word8
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
                   -- | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
-                  | BGPNotify NotifyMsg
+                  -- | BGPNotify NotifyMsg
+                  -- | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: Maybe Capability }
+                  | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
                   | BGPTimeout
                   | BGPError String
@@ -45,13 +48,11 @@ instance Binary BGPMessage where
                                                              putByteString pathAttributes
                                                              putByteString nlri
 
-    put (BGPNotify notification) = do putWord8 _BGPNotify
-                                      putWord8 $ fst3 notification
-                                      putWord8 $ snd3 notification
-                                      putLazyByteString $ maybe
-                                                        B.empty
-                                                        encode
-                                                        (thd3 notification)
+    put (BGPNotify code subCode caps) = do putWord8 _BGPNotify
+                                           putWord8 $ encode8 code
+                                           putWord8 $ encode8 subCode
+                                           putLazyByteString $ encode caps
+                                           -- putLazyByteString $ maybe L.empty encode caps
 
     put BGPKeepalive                                = putWord8 _BGPKeepalive
 
@@ -78,6 +79,6 @@ instance Binary BGPMessage where
                                            errorCode <- getWord8
                                            errorSubcode <- getWord8
                                            errorData <- getRemainingLazyByteString
-                                           return $ BGPNotify errorCode errorSubcode $ L.toStrict errorData
+                                           return $ BGPNotify (decode8 errorCode) (decode8 errorSubcode) (decode errorData)
                 | _BGPKeepalive == msgType -> return BGPKeepalive
                 | otherwise -> fail "Bad type code"

@@ -13,7 +13,7 @@ import Data.List(find)
 import GetTLVs
 import RFC4271
 
-type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode, Maybe Capability)
+-- type NotifyMsg = (EnumNotificationCode,EnumNotificationOpenSubcode, Maybe Capability)
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
 {-
