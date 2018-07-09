@@ -16,7 +16,8 @@ _BGPNotify = 3 :: Word8
 _BGPKeepalive = 4 :: Word8
 _BGPVersion = 4 :: Word8
 
-data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
+data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, caps :: [ Capability ] }
+                  -- | BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
                   | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
@@ -27,14 +28,14 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
 
 instance Binary BGPMessage where
 
-    put (BGPOpen myAutonomousSystem holdTime bgpID optionalParameters) = do let optionalParametersLength = fromIntegral $ B.length optionalParameters
-                                                                            putWord8 _BGPOpen
-                                                                            putWord8 _BGPVersion
-                                                                            putWord16be myAutonomousSystem
-                                                                            putWord16be holdTime
-                                                                            putWord32be bgpID
-                                                                            putWord8 $ fromIntegral optionalParametersLength
-                                                                            putByteString optionalParameters
+    put (BGPOpen myAutonomousSystem holdTime bgpID caps) = do putWord8 _BGPOpen
+                                                              putWord8 _BGPVersion
+                                                              putWord16be myAutonomousSystem
+                                                              putWord16be holdTime
+                                                              putWord32be bgpID
+                                                              let optionalParameters = buildOptionalParameters caps
+                                                              putWord8 $ fromIntegral $ B.length optionalParameters
+                                                              putByteString optionalParameters
 
     put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do let withdrawnRoutesLength = fromIntegral $ B.length withdrawnRoutes
                                                                  pathAttributesLength = fromIntegral $ B.length pathAttributes
@@ -63,7 +64,7 @@ instance Binary BGPMessage where
                                            optionalParameters <- getRemainingLazyByteString
                                            unless (optionalParametersLength == fromIntegral (L.length optionalParameters))
                                                   (fail "optional parameter length wrong (Open)")
-                                           return $ BGPOpen myAutonomousSystem holdTime bgpID $ L.toStrict optionalParameters
+                                           return $ BGPOpen myAutonomousSystem holdTime bgpID  ( parseOptionalParameters $ L.toStrict optionalParameters )
                 | _BGPUpdate == msgType -> do
                                            withdrawnRoutesLength <- getWord16be
                                            withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength

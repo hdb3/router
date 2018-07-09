@@ -13,7 +13,7 @@ import Data.Binary
 import RFC4271
 import Capabilities
 
-main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550 "optional parameters"
+main = do identityCheck "BGPOpen" $ BGPOpen 1000 600 65550 [ CapAS4 65520,  CapGracefulRestart False 0]
           identityCheck "BGPKeepalive" BGPKeepalive
           identityCheck "BGPNotify" $ BGPNotify  NotificationOPENMessageError UnsupportedOptionalParameter [ CapAS4 65520,  CapGracefulRestart False 0]
           -- identityCheck "BGPNotify" $ BGPNotify 99 99 "Error data"
