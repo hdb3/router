@@ -11,21 +11,21 @@ test1 = ("test1",
          Offer { myAS = 1234, offeredHoldTime = 40, offeredBGPid = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
          Required { requiredAS = Just 4321, requiredHoldTime = Just 20, requiredBgpID = Nothing, requiredCapabilities = [CapGracefulRestart False 0]},
          Offer { myAS = 4321, offeredHoldTime = 30, offeredBGPid = 65521, optionalCapabilities = [ CapGracefulRestart False 0] },
-         Nothing)
+         BGPKeepalive)
 
 test2 = ("test2", loc',req',rec',res') where
         (_, loc,req,rec,res) = test1
         loc' = loc
         req' = req { requiredCapabilities = [CapGracefulRestart False 0, CapAS4 65521]}
         rec' = rec 
-        res' = Just (BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter [CapAS4 65521])
+        res' = BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter [CapAS4 65521]
 
 test3 = ("test3", loc',req',rec',res') where
         (_, loc,req,rec,res) = test1
         loc' = loc
         req' = req { requiredHoldTime = Just 40 }
         rec' = rec 
-        res' = Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
+        res' = BGPNotify NotificationOPENMessageError UnacceptableHoldTime []
 
 
 runTest (desc,loc,req,rec,expect) = do 

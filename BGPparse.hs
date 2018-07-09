@@ -18,9 +18,6 @@ _BGPVersion = 4 :: Word8
 
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
-                  -- | BGPNotify { errorCode :: Word8, errorSubcode :: Word8, errorData :: B.ByteString }
-                  -- | BGPNotify NotifyMsg
-                  -- | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: Maybe Capability }
                   | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
                   | BGPTimeout
@@ -52,7 +49,6 @@ instance Binary BGPMessage where
                                            putWord8 $ encode8 code
                                            putWord8 $ encode8 subCode
                                            putLazyByteString $ encode caps
-                                           -- putLazyByteString $ maybe L.empty encode caps
 
     put BGPKeepalive                                = putWord8 _BGPKeepalive
 
