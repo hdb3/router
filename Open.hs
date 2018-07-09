@@ -82,13 +82,18 @@ getResponse osm | isJust ( remoteOffer osm ) = firstMaybe [checkmyAS , checkBgpI
         firstMaybe (Nothing : mx) = firstMaybe mx
 
         remoteOffer' = fromJust $ remoteOffer osm
+        localOffer' = localOffer osm
+        localBGPID = offeredBGPid localOffer'
         required' = required osm
 
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID =
-            maybe Nothing
+        checkBgpID = maybe
+                        -- sanity check that remote BGPID is different from the local value
+                  ( if offeredBGPid remoteOffer' /= localBGPID
+                      then Nothing
+                      else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
                   (\requirement -> if offeredBGPid remoteOffer' == requirement
                       then Nothing
                       else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier []))
@@ -102,11 +107,12 @@ getResponse osm | isJust ( remoteOffer osm ) = firstMaybe [checkmyAS , checkBgpI
             (requiredHoldTime required')
 
         checkmyAS :: Maybe BGPMessage
-        checkmyAS = maybe Nothing
-            (\requirement -> if myAS remoteOffer' == requirement
+        checkmyAS = maybe
+                        Nothing
+                        (\requirement -> if myAS remoteOffer' == requirement
                                 then Nothing
                                 else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
-            (requiredAS required')
+                        (requiredAS required')
 
 -- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
