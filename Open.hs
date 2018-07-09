@@ -1,9 +1,11 @@
+{-- LANGUAGE DisambiguateRecordFields #-} 
 module Open where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes)
 import Data.List(intersect,(\\))
 import RFC4271
-import Capabilities(NotifyMsg,Capability,eq_)
+import Capabilities(Capability,eq_)
+import BGPparse
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -56,7 +58,7 @@ import Capabilities(NotifyMsg,Capability,eq_)
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
 data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required} deriving Show
-data Offer = Offer { myAS :: Word16, holdTime :: Word16, bgpID :: Word32, optionalCapabilities :: [Capability] } deriving Show
+data Offer = Offer { myAS :: Word16, offeredHoldTime :: Word16, offeredBGPid :: Word32, optionalCapabilities :: [Capability] } deriving Show
 data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: [Capability]} deriving Show
 
 makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
@@ -67,13 +69,13 @@ updateOpenStateMachine osm offer = osm { remoteOffer = Just offer }
 
 getStatus :: OpenStateMachine -> Maybe Offer 
 getStatus osm = let negotiatedOptionalCapabilities = intersect (optionalCapabilities . fromJust $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
-                    negotiatedHoldTime = min ( holdTime . fromJust $ remoteOffer osm) ( holdTime $ localOffer osm)
+                    negotiatedHoldTime = min ( offeredHoldTime . fromJust $ remoteOffer osm) ( offeredHoldTime $ localOffer osm)
                 in maybe
                     Nothing
-                    (\remoteOffer -> Just $ Offer ( myAS remoteOffer)  negotiatedHoldTime ( bgpID remoteOffer) negotiatedOptionalCapabilities)
+                    (\remoteOffer -> Just $ Offer ( myAS remoteOffer)  negotiatedHoldTime ( offeredBGPid remoteOffer) negotiatedOptionalCapabilities)
                     (remoteOffer osm)
 
-getResponse :: OpenStateMachine -> Maybe NotifyMsg
+getResponse :: OpenStateMachine -> Maybe BGPMessage
 getResponse osm = maybe
     Nothing
     (\_ -> firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities])
@@ -87,23 +89,26 @@ getResponse osm = maybe
         required' = required osm
         status = fromJust $ getStatus osm
 
+        checkBgpID :: Maybe BGPMessage
         checkBgpID =
             maybe Nothing
-                  (\requirement -> if bgpID remoteOffer' == requirement
+                  (\requirement -> if offeredBGPid remoteOffer' == requirement
                       then Nothing
-                      else Just (NotificationOPENMessageError,BadBGPIdentifier,Nothing))
+                      else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier []))
                   (requiredBgpID required')
 
+        checkHoldTime :: Maybe BGPMessage
         checkHoldTime = maybe Nothing
-            (\requirement -> if requirement > holdTime status
-                then Just (NotificationOPENMessageError,UnacceptableHoldTime,Nothing)
+            (\requirement -> if requirement > offeredHoldTime status
+                then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
                 else Nothing)
             (requiredHoldTime required')
 
+        checkmyAS :: Maybe BGPMessage
         checkmyAS = maybe Nothing
             (\requirement -> if myAS remoteOffer' == requirement
                                 then Nothing
-                                else Just (NotificationOPENMessageError,BadPeerAS,Nothing))
+                                else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
             (requiredAS required')
 
 -- this naive check looks for identical values in capabilities,
@@ -111,17 +116,25 @@ getResponse osm = maybe
 -- However, in practice the requirement differs for each specific case, and in fact is not
 -- clearly defined in some cases.  The minimal requirement appears to be a check for simple presence, with no comparison
 -- of value.  This is clearly true for two common cases; AS4/32-bit ASNs, and Graceful Restart.
+-- Note - there is no negotiation concept for Optional capabilities, and the responsibility for rejecting a peering lies with the prposer of a capability
+-- which should arise when the peer has not advertised a capability which is required.
 -- The present implementation consists simply of a check that the remote offer contains at least the capabilities in the required list.
 --  
+--  
+{-
         checkOptionalCapabilities' =
             if null missingCapabilies
                 then Nothing
                 else Just (NotificationOPENMessageError,UnsupportedOptionalParameter, Just $ head missingCapabilies)
                 where missingCapabilies = requiredCapabilities required' \\ optionalCapabilities remoteOffer'
+-}
 
 -- this is the mentioned check for presecnce in remote offer of required parameters
-        checkOptionalCapabilities = check required where
+-- return a list of capabilities required but not found in the offer
+        checkOptionalCapabilities :: Maybe BGPMessage
+        checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter missingCapabilities) where
             required = requiredCapabilities required'
             offered  = optionalCapabilities remoteOffer'
-            check [] = Nothing
-            check (c:cx) = if any (eq_ c) offered then check cx else Just (NotificationOPENMessageError,UnsupportedOptionalParameter, Just c)
+            missingCapabilities = check required
+            check [] = []
+            check (c:cx) = if any (eq_ c) offered then check cx else c : check cx
