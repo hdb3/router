@@ -10,7 +10,7 @@ main = mapM_ runTest [test1,test2,test3]
 test1 = ("test1",
          BGPOpen 1234 40 65520 [ CapAS4 65520,  CapGracefulRestart False 0],
          -- Offer { myAS = 1234, offeredHoldTime = 40, offeredBGPid = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
-         Required (Just 4321) (Just 20) Nothing [CapGracefulRestart False 0],
+         Required 4321 20 0 [CapGracefulRestart False 0],
          BGPOpen 4321 30 65521 [ CapGracefulRestart False 0],
          BGPKeepalive)
 
@@ -24,7 +24,7 @@ test2 = ("test2", loc',req',rec',res') where
 test3 = ("test3", loc',req',rec',res') where
         (_, loc,req,rec,res) = test1
         loc' = loc
-        req' = req { requiredHoldTime = Just 40 }
+        req' = req { requiredHoldTime = 40 }
         rec' = rec 
         res' = BGPNotify NotificationOPENMessageError UnacceptableHoldTime []
 
