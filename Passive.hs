@@ -16,22 +16,19 @@ import System.Timeout
 import Data.Int(Int64)
 import BgpFSM
 import Capabilities
+import Args
 
 main :: IO ()
 main = do
+    (address,local,remote) <- getConfig
     putStrLn "Passive starting"
-    E.bracket open close loop
+    sock <- socket AF_INET Stream defaultProtocol 
+    setSocketOption sock ReuseAddr 1
+    bind sock address
+    listen sock 10
+    E.finally (loop local remote sock) (close sock)
   where
-    remote = BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0]
-    local = BGPOpen 65521 40 (read "192.168.0.2") [ CapAS4 65521,  CapGracefulRestart False 0]
-    bgpFSM = bgpFSMdelayOpen local remote
-    open = do
-        sock <- socket AF_INET Stream defaultProtocol 
-        setSocketOption sock ReuseAddr 1
-        bind sock (SockAddrInet bgpPort ipV4_wildcard)
-        listen sock 10
-        return sock
-    loop sock = forever $ do
+    loop local remote sock = forever $ do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
-        void $ forkFinally (bgpFSM conn) (\_ -> close conn)
+        void $ forkFinally (bgpFSMdelayOpen local remote conn) (\_ -> close conn)
