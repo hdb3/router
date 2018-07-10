@@ -10,35 +10,50 @@ import Capabilities
 
 main :: IO ()
 main = do
-          (local,remote) <- getConfig
-          bracket open close (bgpFSM local remote)
+          (address,local,remote) <- getConfig
+          bracket (open address) close (bgpFSM local remote)
   where
     getConfig = do
         args <- getArgs
-        let local = if length args > 0
+
+        let address = if length args > 0
             then
-                parseParams $ args !! 0
+                parseAddress $ args !! 0
             else
-                BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0]
-        let remote = if length args > 1
+                SockAddrInet bgpPort ipV4_localhost
+
+        let local = if length args > 1
             then
                 parseParams $ args !! 1
             else
+                BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0]
+
+        let remote = if length args > 2
+            then
+                parseParams $ args !! 2
+            else
                 BGPOpen 0 0 (read "0.0.0.0") []
+        print address
         print local
         print remote
-        return (local,remote)
+        return (address,local,remote)
 
-    open = do
+    open address = do
         putStrLn "begin:: "
         sock <- socket AF_INET Stream defaultProtocol
-        connect sock (SockAddrInet bgpPort ipV4_localhost)
+        connect sock address
+        -- connect sock (SockAddrInet bgpPort ipV4_localhost)
         putStrLn "connected:: "
         return sock
 
     -- here is an example of a valid parameter list:
     -- "30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0"
     --
+    parseAddress :: String -> SockAddr
+    parseAddress ps = SockAddrInet (read $ ws !! 1) (toHostAddress ip) where
+                      ip = (read $ ws !! 0)
+                      ws = myWords ps
+
     parseParams ps = BGPOpen (read $ ws !! 0) (read $ ws !! 1) (read $ ws !! 2) (parseCapabilities (drop 3 ws)) where
         ws = myWords ps
 
