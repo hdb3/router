@@ -49,20 +49,14 @@ import BGPparse
 -- the Open populates a 'remote' offer structure, of identical form to the 'local' one
 --
 -- getResponse calculates the compliance of the remote offer with the local requirement
--- the response includes both a text level message and a Notification
--- if the offer is acceptable then the response is an empty list
+-- the response is a BGPMessage, either Keepalive or Notification
 -- note that RFC4271 only allows a single error to be supplied in the Notification message
--- however that does not prevent this implementation from provding multiple reasons for rejection
--- the FSM can choose - probably by just taking the first i nthe list
+-- which is reported is determined by the orser of checks in the getResponse function
 --
--- getStatus provides the results of the exchange, including the agreed optional capabilities
---
-data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: Required} deriving Show
--- BGPOpen myAutonomousSystem holdTime bgpID caps
--- note: zero values are used to denote unenforced constraints...
-data Required = Required { requiredAS :: Word16, requiredHoldTime :: Word16, requiredBgpID :: Word32, requiredCapabilities :: [Capability]} deriving Show
+-- note: zero values are used to denote unenforced constraints in the 'required' section...
+data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: BGPMessage} deriving Show
 
-makeOpenStateMachine :: BGPMessage -> Required -> OpenStateMachine
+makeOpenStateMachine :: BGPMessage -> BGPMessage -> OpenStateMachine
 makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required
 
 updateOpenStateMachine :: OpenStateMachine -> BGPMessage -> OpenStateMachine
@@ -72,7 +66,7 @@ getNegotiatedHoldTime :: OpenStateMachine -> Word16
 getNegotiatedHoldTime OpenStateMachine {..} | isJust remoteOffer = min ( holdTime remoteOffer') ( holdTime localOffer) where remoteOffer' = fromJust remoteOffer
 
 -- getResponse should not be called before an OPEN message has been received
--- either a Keepalive is returned or the needed rejection message
+
 getResponse :: OpenStateMachine -> BGPMessage
 getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
         firstMaybe [] = undefined
@@ -85,18 +79,18 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID = if 0 == requiredBgpID required || bgpID remoteOffer' == requiredBgpID required
+        checkBgpID = if 0 == bgpID required || bgpID remoteOffer' == bgpID required
                      then Nothing
                      else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier [])
                         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
 
         checkHoldTime :: Maybe BGPMessage
-        checkHoldTime = if requiredHoldTime required > getNegotiatedHoldTime osm
+        checkHoldTime = if holdTime required > getNegotiatedHoldTime osm
                         then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
                         else Nothing
 
         checkmyAS :: Maybe BGPMessage
-        checkmyAS = if 0 == requiredAS required || myAutonomousSystem remoteOffer' == requiredAS required
+        checkmyAS = if 0 == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
                     then Nothing
                     else Just (BGPNotify NotificationOPENMessageError BadPeerAS [])
 
@@ -115,6 +109,6 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
         checkOptionalCapabilities :: Maybe BGPMessage
         checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter missingCapabilities) where
             offered  = caps remoteOffer'
-            missingCapabilities = check (requiredCapabilities required)
+            missingCapabilities = check (caps required)
             check [] = []
             check (c:cx) = if any (eq_ c) offered then check cx else c : check cx
