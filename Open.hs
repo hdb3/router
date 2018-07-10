@@ -59,70 +59,57 @@ import BGPparse
 --
 ---- TODO -- remove the Offer type and just use the BGPOpen message
 --
-data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required} deriving Show
+data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: Required} deriving Show
 -- BGPOpen myAutonomousSystem holdTime bgpID caps
-data Offer = Offer { myAS :: Word16, offeredHoldTime :: Word16, offeredBGPid :: Word32, optionalCapabilities :: [Capability] } deriving Show
 data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: [Capability]} deriving Show
 
 makeOpenStateMachine :: BGPMessage -> Required -> OpenStateMachine
-makeOpenStateMachine BGPOpen {..} required = OpenStateMachine (Offer myAutonomousSystem holdTime bgpID caps) Nothing required
--- updateOpenStateMachine osm BGPOpen {..} = osm { remoteOffer = Just $ Offer myAutonomousSystem holdTime bgpID caps }
-
--- makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
--- makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
-
--- updateOpenStateMachine' :: OpenStateMachine -> Offer -> OpenStateMachine
--- updateOpenStateMachine' osm offer = osm { remoteOffer = Just offer }
+makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required
 
 updateOpenStateMachine :: OpenStateMachine -> BGPMessage -> OpenStateMachine
-updateOpenStateMachine osm BGPOpen {..} = osm { remoteOffer = Just $ Offer myAutonomousSystem holdTime bgpID caps }
+updateOpenStateMachine osm remoteOpen | isOpen remoteOpen = osm { remoteOffer = Just remoteOpen }
 
-getStatus :: OpenStateMachine -> Offer 
-getStatus osm | isJust ( remoteOffer osm ) = Offer ( myAS offer)  negotiatedHoldTime ( offeredBGPid offer) negotiatedOptionalCapabilities where
-                                                 offer = fromJust $ remoteOffer osm
-                                                 negotiatedOptionalCapabilities = intersect (optionalCapabilities . fromJust $ remoteOffer osm) (optionalCapabilities $ localOffer osm)
-                                                 negotiatedHoldTime = min ( offeredHoldTime . fromJust $ remoteOffer osm) ( offeredHoldTime $ localOffer osm)
+getNegotiatedHoldTime :: OpenStateMachine -> Word16
+getNegotiatedHoldTime OpenStateMachine {..} | isJust remoteOffer = min ( holdTime remoteOffer') ( holdTime localOffer) where remoteOffer' = fromJust remoteOffer
 
 -- getResponse should not be called before an OPEN message has been received
 -- either a Keepalive is returned or the needed rejection message
 getResponse :: OpenStateMachine -> BGPMessage
-getResponse osm | isJust ( remoteOffer osm ) = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
+getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
         firstMaybe [] = undefined
         firstMaybe (Just m : mx) = m
         firstMaybe (Nothing : mx) = firstMaybe mx
 
-        remoteOffer' = fromJust $ remoteOffer osm
-        localOffer' = localOffer osm
-        localBGPID = offeredBGPid localOffer'
-        required' = required osm
+        remoteOffer' = fromJust remoteOffer
+        localBGPID = bgpID localOffer
 
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
         checkBgpID = maybe
                         -- sanity check that remote BGPID is different from the local value
-                  ( if offeredBGPid remoteOffer' /= localBGPID
+                  ( if bgpID remoteOffer' /= localBGPID
                       then Nothing
                       else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
-                  (\requirement -> if offeredBGPid remoteOffer' == requirement
+                  (\requirement -> if bgpID remoteOffer' == requirement
                       then Nothing
                       else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier []))
-                  (requiredBgpID required')
+                  (requiredBgpID required)
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = maybe Nothing
-            (\requirement -> if requirement > offeredHoldTime ( getStatus osm )
+            (\requiredHoldTime -> if requiredHoldTime > getNegotiatedHoldTime osm
                 then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
                 else Nothing)
-            (requiredHoldTime required')
+            (requiredHoldTime required)
 
         checkmyAS :: Maybe BGPMessage
         checkmyAS = maybe
                         Nothing
-                        (\requirement -> if myAS remoteOffer' == requirement
+                        (\requirement -> if myAutonomousSystem remoteOffer' == requirement
                                 then Nothing
                                 else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
-                        (requiredAS required')
+                        (requiredAS required)
 
 -- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
@@ -138,8 +125,7 @@ getResponse osm | isJust ( remoteOffer osm ) = firstMaybe [checkmyAS , checkBgpI
 -- return a list of capabilities required but not found in the offer
         checkOptionalCapabilities :: Maybe BGPMessage
         checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter missingCapabilities) where
-            required = requiredCapabilities required'
-            offered  = optionalCapabilities remoteOffer'
-            missingCapabilities = check required
+            offered  = caps remoteOffer'
+            missingCapabilities = check (requiredCapabilities required)
             check [] = []
             check (c:cx) = if any (eq_ c) offered then check cx else c : check cx
