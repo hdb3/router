@@ -10,8 +10,8 @@ import Capabilities
 main :: IO ()
 main = bracket open close (bgpFSM local remote)
   where
-    local = BGPOpen 1234 40 65520 [ CapAS4 65520,  CapGracefulRestart False 0]
-    remote = BGPOpen 4321 40 65521 [ CapAS4 65520,  CapGracefulRestart False 0]
+    local = BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0]
+    remote = BGPOpen 65521 40 (read "192.168.0.2") [ CapAS4 65521,  CapGracefulRestart False 0]
     open = do
         putStrLn "begin:: "
         sock <- socket AF_INET Stream defaultProtocol

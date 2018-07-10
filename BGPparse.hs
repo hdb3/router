@@ -9,6 +9,7 @@ import Control.Monad(unless)
 import Data.Tuple.Extra
 import RFC4271
 import Capabilities
+import Data.IP
 
 _BGPOpen = 1 :: Word8
 _BGPUpdate = 2 :: Word8
@@ -16,8 +17,7 @@ _BGPNotify = 3 :: Word8
 _BGPKeepalive = 4 :: Word8
 _BGPVersion = 4 :: Word8
 
-data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, caps :: [ Capability ] }
-                  -- | BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
+data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: IPv4, caps :: [ Capability ] }
                   | BGPKeepalive
                   | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
@@ -30,7 +30,7 @@ isKeepalive BGPKeepalive = True
 isKeepalive _ = False
 
 isOpen :: BGPMessage -> Bool
-isOpen (BGPOpen _ _ _ _) = True
+isOpen BGPOpen{} = True
 isOpen _ = False
 
 instance Binary BGPMessage where
@@ -39,7 +39,7 @@ instance Binary BGPMessage where
                                                               putWord8 _BGPVersion
                                                               putWord16be myAutonomousSystem
                                                               putWord16be holdTime
-                                                              putWord32be bgpID
+                                                              putWord32be $ toHostAddress bgpID
                                                               let optionalParameters = buildOptionalParameters caps
                                                               putWord8 $ fromIntegral $ B.length optionalParameters
                                                               putByteString optionalParameters
@@ -71,7 +71,7 @@ instance Binary BGPMessage where
                                            optionalParameters <- getRemainingLazyByteString
                                            unless (optionalParametersLength == fromIntegral (L.length optionalParameters))
                                                   (fail "optional parameter length wrong (Open)")
-                                           return $ BGPOpen myAutonomousSystem holdTime bgpID  ( parseOptionalParameters $ L.toStrict optionalParameters )
+                                           return $ BGPOpen myAutonomousSystem holdTime (fromHostAddress bgpID)  ( parseOptionalParameters $ L.toStrict optionalParameters )
                 | _BGPUpdate == msgType -> do
                                            withdrawnRoutesLength <- getWord16be
                                            withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength

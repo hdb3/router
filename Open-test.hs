@@ -1,6 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
 module Main where
 import Open
+import Common
 import Capabilities
 import RFC4271
 import BGPparse
@@ -8,10 +8,9 @@ import BGPparse
 main = mapM_ runTest [test1,test2,test3]
 
 test1 = ("test1",
-         BGPOpen 1234 40 65520 [ CapAS4 65520,  CapGracefulRestart False 0],
-         -- Offer { myAS = 1234, offeredHoldTime = 40, offeredBGPid = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
-         BGPOpen 4321 20 0 [CapGracefulRestart False 0],
-         BGPOpen 4321 30 65521 [ CapGracefulRestart False 0],
+         BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0],
+         BGPOpen 65521 20 ( read "0.0.0.0") [CapGracefulRestart False 0],
+         BGPOpen 65521 30 (read "192.168.0.2") [ CapGracefulRestart False 0],
          BGPKeepalive)
 
 test2 = ("test2", loc',req',rec',res') where

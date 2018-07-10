@@ -54,7 +54,7 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                                     -- snd $ BGPOpen 1000 600 65550 B.empty
                                     putStrLn "transition -> stateOpenSent"
                                     stateOpenSent osm
-                                open@(BGPOpen _ _ _ _) -> do
+                                open@BGPOpen{} -> do
                                     let osm' = updateOpenStateMachine osm open
                                     putStrLn "stateConnected - rcv open"
                                     print open
@@ -67,7 +67,7 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                                     else do
                                         snd resp
                                         exit "stateConnected - open rejected error"
-                                notify@(BGPNotify _ _ _) -> do
+                                notify@BGPNotify{} -> do
                                    print notify
                                    exit "stateConnected - rcv notify"
                                 _ -> do
@@ -79,7 +79,7 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                              BGPTimeout -> do
                                  snd $ BGPNotify NotificationHoldTimerExpired 0 []
                                  exit "stateOpenSent - error initial Hold Timer expiry"
-                             open@(BGPOpen _ _ _ _) -> do
+                             open@BGPOpen{} -> do
                                  let osm' = updateOpenStateMachine osm open
                                  putStrLn "stateOpenSent - rcv open"
                                  print open
@@ -101,7 +101,7 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                                   BGPKeepalive -> do
                                       putStrLn "stateOpenConfirm - rcv keepalive"
                                       toEstablished osm
-                                  notify@(BGPNotify _ _ _) -> do
+                                  notify@BGPNotify{} -> do
                                       print notify
                                       exit "stateOpenConfirm - rcv notify"
                                   _ -> do
@@ -128,11 +128,11 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
             BGPKeepalive -> do
                 putStrLn "established - rcv keepalive"
                 established osm
-            update@(BGPUpdate _ _ _) -> do
+            update@BGPUpdate{} -> do
                 putStrLn "established - rcv update"
                 print update
                 established osm
-            notify@(BGPNotify _ _ _) -> do
+            notify@BGPNotify{} -> do
                 print notify
                 exit "established - rcv notify"
             BGPTimeout -> do
