@@ -8,9 +8,10 @@ import BGPparse
 main = mapM_ runTest [test1,test2,test3]
 
 test1 = ("test1",
-         Offer { myAS = 1234, offeredHoldTime = 40, offeredBGPid = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
-         Required { requiredAS = Just 4321, requiredHoldTime = Just 20, requiredBgpID = Nothing, requiredCapabilities = [CapGracefulRestart False 0]},
-         Offer { myAS = 4321, offeredHoldTime = 30, offeredBGPid = 65521, optionalCapabilities = [ CapGracefulRestart False 0] },
+         BGPOpen 1234 40 65520 [ CapAS4 65520,  CapGracefulRestart False 0],
+         -- Offer { myAS = 1234, offeredHoldTime = 40, offeredBGPid = 65520, optionalCapabilities = [ CapAS4 65520,  CapGracefulRestart False 0] },
+         Required (Just 4321) (Just 20) Nothing [CapGracefulRestart False 0],
+         BGPOpen 4321 30 65521 [ CapGracefulRestart False 0],
          BGPKeepalive)
 
 test2 = ("test2", loc',req',rec',res') where

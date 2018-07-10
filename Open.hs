@@ -1,4 +1,4 @@
-{-- LANGUAGE DisambiguateRecordFields #-} 
+{-# LANGUAGE RecordWildCards #-} 
 module Open where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
@@ -57,15 +57,25 @@ import BGPparse
 --
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
+---- TODO -- remove the Offer type and just use the BGPOpen message
+--
 data OpenStateMachine = OpenStateMachine {localOffer :: Offer , remoteOffer :: Maybe Offer, required :: Required} deriving Show
+-- BGPOpen myAutonomousSystem holdTime bgpID caps
 data Offer = Offer { myAS :: Word16, offeredHoldTime :: Word16, offeredBGPid :: Word32, optionalCapabilities :: [Capability] } deriving Show
 data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: [Capability]} deriving Show
 
-makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
-makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
+makeOpenStateMachine :: BGPMessage -> Required -> OpenStateMachine
+makeOpenStateMachine BGPOpen {..} required = OpenStateMachine (Offer myAutonomousSystem holdTime bgpID caps) Nothing required
+-- updateOpenStateMachine osm BGPOpen {..} = osm { remoteOffer = Just $ Offer myAutonomousSystem holdTime bgpID caps }
 
-updateOpenStateMachine :: OpenStateMachine -> Offer -> OpenStateMachine
-updateOpenStateMachine osm offer = osm { remoteOffer = Just offer }
+-- makeOpenStateMachine :: Offer -> Required -> OpenStateMachine
+-- makeOpenStateMachine offer required = OpenStateMachine offer Nothing required
+
+-- updateOpenStateMachine' :: OpenStateMachine -> Offer -> OpenStateMachine
+-- updateOpenStateMachine' osm offer = osm { remoteOffer = Just offer }
+
+updateOpenStateMachine :: OpenStateMachine -> BGPMessage -> OpenStateMachine
+updateOpenStateMachine osm BGPOpen {..} = osm { remoteOffer = Just $ Offer myAutonomousSystem holdTime bgpID caps }
 
 getStatus :: OpenStateMachine -> Offer 
 getStatus osm | isJust ( remoteOffer osm ) = Offer ( myAS offer)  negotiatedHoldTime ( offeredBGPid offer) negotiatedOptionalCapabilities where
