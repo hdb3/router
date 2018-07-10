@@ -19,7 +19,7 @@ _BGPVersion = 4 :: Word8
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, caps :: [ Capability ] }
                   -- | BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: Word32, optionalParameters :: B.ByteString }
                   | BGPKeepalive
-                  | BGPNotify { code :: EnumNotificationCode, subCode :: EnumNotificationOpenSubcode, caps :: [ Capability ] }
+                  | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
                   | BGPTimeout
                   | BGPError String
@@ -55,7 +55,7 @@ instance Binary BGPMessage where
 
     put (BGPNotify code subCode caps) = do putWord8 _BGPNotify
                                            putWord8 $ encode8 code
-                                           putWord8 $ encode8 subCode
+                                           putWord8 subCode
                                            putLazyByteString $ encode caps
 
     put BGPKeepalive                                = putWord8 _BGPKeepalive
@@ -83,6 +83,6 @@ instance Binary BGPMessage where
                                            errorCode <- getWord8
                                            errorSubcode <- getWord8
                                            errorData <- getRemainingLazyByteString
-                                           return $ BGPNotify (decode8 errorCode) (decode8 errorSubcode) (decode errorData)
+                                           return $ BGPNotify (decode8 errorCode) errorSubcode (decode errorData)
                 | _BGPKeepalive == msgType -> return BGPKeepalive
                 | otherwise -> fail "Bad type code"

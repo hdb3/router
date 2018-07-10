@@ -87,6 +87,7 @@ _Notification_Header_Subcode_Connection_Not_Synchronized      = 1 :: Word8
 _Notification_Header_Subcode_Bad_Message_Length               = 2 :: Word8
 _Notification_Header_Subcode_Bad_Message_Type                 = 3 :: Word8
 
+type NotificationSubcode = Word8
 data EnumNotificationOpenSubcode = InvalidOpenSubcode | UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
                             deriving (Show,Eq)
 instance Enum EnumNotificationOpenSubcode where
@@ -103,5 +104,6 @@ instance Enum EnumNotificationOpenSubcode where
                | e == BadBGPIdentifier = 3
                | e == UnsupportedOptionalParameter = 4
                | e == UnacceptableHoldTime = 6
+nullOpenSubcode = InvalidOpenSubcode
 
 instance EnumWord8 EnumNotificationOpenSubcode where
