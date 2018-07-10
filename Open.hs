@@ -81,18 +81,18 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
         checkBgpID :: Maybe BGPMessage
         checkBgpID = if 0 == bgpID required || bgpID remoteOffer' == bgpID required
                      then Nothing
-                     else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier [])
+                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
                         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = if holdTime required > getNegotiatedHoldTime osm
-                        then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
+                        then Just (BGPNotify NotificationOPENMessageError (encode8 UnacceptableHoldTime) [])
                         else Nothing
 
         checkmyAS :: Maybe BGPMessage
         checkmyAS = if 0 == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
                     then Nothing
-                    else Just (BGPNotify NotificationOPENMessageError BadPeerAS [])
+                    else Just (BGPNotify NotificationOPENMessageError (encode8 BadPeerAS) [])
 
 -- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
@@ -107,7 +107,7 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
 -- this is the mentioned check for presecnce in remote offer of required parameters
 -- return a list of capabilities required but not found in the offer
         checkOptionalCapabilities :: Maybe BGPMessage
-        checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter missingCapabilities) where
+        checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError (encode8 UnsupportedOptionalParameter) missingCapabilities) where
             offered  = caps remoteOffer'
             missingCapabilities = check (caps required)
             check [] = []

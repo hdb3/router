@@ -19,14 +19,14 @@ test2 = ("test2", loc',req',rec',res') where
         loc' = loc
         req' = req { caps = [CapGracefulRestart False 0, CapAS4 65521]}
         rec' = rec 
-        res' = BGPNotify NotificationOPENMessageError UnsupportedOptionalParameter [CapAS4 65521]
+        res' = BGPNotify NotificationOPENMessageError (encode8 UnsupportedOptionalParameter) [CapAS4 65521]
 
 test3 = ("test3", loc',req',rec',res') where
         (_, loc,req,rec,res) = test1
         loc' = loc
         req' = req { holdTime = 40 }
         rec' = rec 
-        res' = BGPNotify NotificationOPENMessageError UnacceptableHoldTime []
+        res' = BGPNotify NotificationOPENMessageError (encode8 UnacceptableHoldTime) []
 
 
 runTest (desc,loc,req,rec,expect) = do 
