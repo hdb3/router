@@ -57,11 +57,10 @@ import BGPparse
 --
 -- getStatus provides the results of the exchange, including the agreed optional capabilities
 --
----- TODO -- remove the Offer type and just use the BGPOpen message
---
 data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: Required} deriving Show
 -- BGPOpen myAutonomousSystem holdTime bgpID caps
-data Required = Required { requiredAS :: Maybe Word16, requiredHoldTime :: Maybe Word16, requiredBgpID :: Maybe Word32, requiredCapabilities :: [Capability]} deriving Show
+-- note: zero values are used to denote unenforced constraints...
+data Required = Required { requiredAS :: Word16, requiredHoldTime :: Word16, requiredBgpID :: Word32, requiredCapabilities :: [Capability]} deriving Show
 
 makeOpenStateMachine :: BGPMessage -> Required -> OpenStateMachine
 makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required
@@ -86,30 +85,20 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID = maybe
-                        -- sanity check that remote BGPID is different from the local value
-                  ( if bgpID remoteOffer' /= localBGPID
-                      then Nothing
-                      else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
-                  (\requirement -> if bgpID remoteOffer' == requirement
-                      then Nothing
-                      else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier []))
-                  (requiredBgpID required)
+        checkBgpID = if 0 == requiredBgpID required || bgpID remoteOffer' == requiredBgpID required
+                     then Nothing
+                     else Just (BGPNotify NotificationOPENMessageError BadBGPIdentifier [])
+                        -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
 
         checkHoldTime :: Maybe BGPMessage
-        checkHoldTime = maybe Nothing
-            (\requiredHoldTime -> if requiredHoldTime > getNegotiatedHoldTime osm
-                then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
-                else Nothing)
-            (requiredHoldTime required)
+        checkHoldTime = if requiredHoldTime required > getNegotiatedHoldTime osm
+                        then Just (BGPNotify NotificationOPENMessageError UnacceptableHoldTime [])
+                        else Nothing
 
         checkmyAS :: Maybe BGPMessage
-        checkmyAS = maybe
-                        Nothing
-                        (\requirement -> if myAutonomousSystem remoteOffer' == requirement
-                                then Nothing
-                                else Just (BGPNotify NotificationOPENMessageError BadPeerAS []))
-                        (requiredAS required)
+        checkmyAS = if 0 == requiredAS required || myAutonomousSystem remoteOffer' == requiredAS required
+                    then Nothing
+                    else Just (BGPNotify NotificationOPENMessageError BadPeerAS [])
 
 -- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
