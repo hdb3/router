@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 -- passive TCP server
 module Main where
 
@@ -14,7 +13,6 @@ import BGPparse
 import GetBGPMsg
 import Data.Binary(encode,decode)
 import System.Timeout
--- import Network.Socket.Options
 import Data.Int(Int64)
 import BgpFSM
 import Capabilities
@@ -24,8 +22,8 @@ main = do
     putStrLn "Passive starting"
     E.bracket open close loop
   where
-    local = BGPOpen 1234 40 65520 [ CapAS4 65520,  CapGracefulRestart False 0]
-    remote = BGPOpen 4321 0 65521 [ CapAS4 65521,  CapGracefulRestart False 0]
+    remote = BGPOpen 65520 40 (read "192.168.0.1") [ CapAS4 65520,  CapGracefulRestart False 0]
+    local = BGPOpen 65521 40 (read "192.168.0.2") [ CapAS4 65521,  CapGracefulRestart False 0]
     bgpFSM = bgpFSMdelayOpen local remote
     open = do
         sock <- socket AF_INET Stream defaultProtocol 

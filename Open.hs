@@ -2,7 +2,7 @@
 module Open where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
-import Data.List(intersect,(\\))
+import Data.IP(toHostAddress)
 import RFC4271
 import Capabilities(Capability,eq_)
 import BGPparse
@@ -68,7 +68,7 @@ getNegotiatedHoldTime OpenStateMachine {..} | isJust remoteOffer = min ( holdTim
 -- getResponse should not be called before an OPEN message has been received
 
 getResponse :: OpenStateMachine -> BGPMessage
-getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
+getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmyAS , checkBgpID , checkHoldTime , checkOptionalCapabilities, keepalive] where
         firstMaybe [] = undefined
         firstMaybe (Just m : mx) = m
         firstMaybe (Nothing : mx) = firstMaybe mx
@@ -79,7 +79,7 @@ getResponse osm@(OpenStateMachine {..}) | isJust remoteOffer = firstMaybe [check
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID = if 0 == bgpID required || bgpID remoteOffer' == bgpID required
+        checkBgpID = if 0 == (toHostAddress . bgpID) required || bgpID remoteOffer' == bgpID required
                      then Nothing
                      else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
                         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
