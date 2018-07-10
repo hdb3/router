@@ -29,6 +29,10 @@ isKeepalive :: BGPMessage -> Bool
 isKeepalive BGPKeepalive = True
 isKeepalive _ = False
 
+isOpen :: BGPMessage -> Bool
+isOpen (BGPOpen _ _ _ _) = True
+isOpen _ = False
+
 instance Binary BGPMessage where
 
     put (BGPOpen myAutonomousSystem holdTime bgpID caps) = do putWord8 _BGPOpen

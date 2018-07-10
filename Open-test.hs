@@ -55,5 +55,5 @@ runTest (desc,loc,req,rec,expect) = do
             print sm'
 
             putStrLn ""
-            putStr "status: "
-            print $ getStatus sm'
+            putStr "holdTime: "
+            print $ getNegotiatedHoldTime sm'
