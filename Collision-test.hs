@@ -32,11 +32,15 @@ loop c t n bgpid addr = do
     threadDelay $ 1000000 * n
     p "raceCheck"
     ms <- raceCheck c bgpid addr
+    maybe (p "no collision")
+          (\collision -> p $ "collision detected with" ++ show collision)
+          ms
     putMVar t threadID
     threadDelay $ 1000000 * n
     p "registerEstablished"
     registerEstablished c bgpid addr
     putMVar t threadID
+    threadDelay $ 1000000 * n
     p "deregister"
     deregister c
     putMVar t threadID
