@@ -4,6 +4,7 @@ import qualified Data.ByteString as B
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
 import Control.Concurrent(threadDelay,forkIO)
+import Data.Maybe(fromJust)
 import Common
 import BGPparse
 import GetBGPMsg
@@ -21,8 +22,9 @@ bgpFSM local remote sock cd = bgpFSM' local remote sock cd 0
 bgpFSMdelayOpen :: BGPMessage -> BGPMessage -> Socket -> CollisionDetector -> IO ()
 bgpFSMdelayOpen local remote sock cd = bgpFSM' local remote sock cd defaultDelayOpenTimer
 bgpFSM' :: BGPMessage -> BGPMessage -> Socket -> CollisionDetector -> Int -> IO ()
-bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
-    osm = makeOpenStateMachine local remote cd
+bgpFSM' local remote sock cd delayOpenTimer = do
+    stateConnected osm where
+    osm = makeOpenStateMachine local remote
     snd msg = sndBgpMessage sock $ encode msg
     get' :: Int -> IO BGPMessage
     get' t = let t' = t * 10000000 in
@@ -50,12 +52,11 @@ bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
                                     let osm' = updateOpenStateMachine osm open
                                     putStrLn "stateConnected - event: rcv open"
                                     print open
+                                    let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm
+                                        localBGPid = bgpID $ localOffer $ osm in
+                                        collisionCheck cd localBGPid remoteBGPid
                                     let resp =  getResponse osm'
-                                    collision <- collisionCheck osm cd
-                                    if not isKeepalive collision then do 
-                                        snd collision
-                                        exit "stateConnected - event: collision - open rejected error"
-                                    else if isKeepalive resp then do 
+                                    if isKeepalive resp then do 
                                         putStrLn "stateConnected -> stateOpenConfirm"
                                         snd (localOffer osm')
                                         stateOpenConfirm osm'
@@ -79,6 +80,9 @@ bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
                                  let osm' = updateOpenStateMachine osm open
                                  putStrLn "stateOpenSent - rcv open"
                                  print open
+                                 let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm
+                                     localBGPid = bgpID $ localOffer $ osm in
+                                     collisionCheck cd localBGPid remoteBGPid
                                  let resp =  getResponse osm'
                                  snd resp
                                  if isKeepalive resp then do 
@@ -108,6 +112,7 @@ bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
                                       exit "stateOpenConfirm - FSM error"
 
     exit s = do putStrLn s
+                deregister cd
                 fail s
 
     keepAliveLoop = do
@@ -118,7 +123,9 @@ bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
     toEstablished osm = do
         putStrLn "transition -> established"
         forkIO keepAliveLoop
-        -- void $ forkIO keepAliveLoop
+        remotePeerName <- getPeerName sock
+        let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm in
+            registerEstablished cd remoteBGPid remotePeerName
         established osm
 
     established osm = do
@@ -140,3 +147,26 @@ bgpFSM' local remote sock cd delayOpenTimer = stateConnected osm where
             _ -> do
                 snd $ BGPNotify NotificationFiniteStateMachineError 0 []
                 exit "established - FSM error"
+
+
+
+
+    -- collisionCheck
+    -- manage cases where there is an established connection (always reject)
+    -- and where another connection is in openSent state (use tiebreaker)
+    -- and of couse where there is no other connection for this BGPID
+    collisionCheck :: CollisionDetector -> IPv4 -> IPv4 -> IO ()
+    collisionCheck c localBgpid remoteBgpid = do
+        remotePeerName <- getPeerName sock
+        rc <- raceCheck c remoteBgpid remotePeerName
+        maybe
+            (return ())
+            (\session ->
+                if sessionEstablished session || remoteBgpid > localBgpid
+                then do snd $ BGPNotify NotificationCease 0 []
+                        if sessionEstablished session then
+                            exit "collisionCheck - event: collision with established session - open rejected error"
+                        else
+                            exit "collisionCheck - event: collision with tie-break - open rejected error"
+                else return ())
+            rc

@@ -117,7 +117,3 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
             missingCapabilities = check (caps required)
             check [] = []
             check (c:cx) = if any (eq_ c) offered then check cx else c : check cx
-
-collisionCheck :: OpenStateMachine -> CollisionDetector -> IO BGPMessage
-collisionCheck = return BGPKeepalive
--- null implmentation beyond calling raceCheck
