@@ -2,7 +2,7 @@
 module Open where
 import Data.Word
 import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
-import Data.IP(toHostAddress)
+import Data.IP(fromHostAddress)
 import RFC4271
 import Capabilities(Capability,eq_)
 import BGPparse
@@ -75,11 +75,15 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
 
         remoteOffer' = fromJust remoteOffer
         localBGPID = bgpID localOffer
+        remoteBGPID = bgpID remoteOffer'
+        requiredBGPID = bgpID required
+        nullBGPID = fromHostAddress 0
 
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID = if 0 == (toHostAddress . bgpID) required || bgpID remoteOffer' == bgpID required
+        checkBgpID = if ( nullBGPID == requiredBGPID || remoteBGPID == requiredBGPID ) &&
+                        ( remoteBGPID /= localBGPID )
                      then Nothing
                      else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
                         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
