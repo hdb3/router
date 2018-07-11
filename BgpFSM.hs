@@ -1,9 +1,10 @@
-module BgpFSM(bgpFSM,bgpFSMdelayOpen,bgpFSM') where
+{-# LANGUAGE RecordWildCards #-}
+module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import qualified Data.ByteString as B
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
-import Control.Concurrent(threadDelay,forkIO)
+import Control.Concurrent(threadDelay,forkIO,MVar,ThreadId)
 import Data.Maybe(fromJust)
 import Common
 import BGPparse
@@ -13,17 +14,20 @@ import Open
 import Capabilities
 import Collision
 
-keepAliveTimer = 5
 holdTimer = 15
 initialHoldTimer = 120
-defaultDelayOpenTimer = 20
-bgpFSM :: BGPMessage -> BGPMessage -> Socket -> CollisionDetector-> IO ()
-bgpFSM local remote sock cd = bgpFSM' local remote sock cd 0
-bgpFSMdelayOpen :: BGPMessage -> BGPMessage -> Socket -> CollisionDetector -> IO ()
-bgpFSMdelayOpen local remote sock cd = bgpFSM' local remote sock cd defaultDelayOpenTimer
-bgpFSM' :: BGPMessage -> BGPMessage -> Socket -> CollisionDetector -> Int -> IO ()
-bgpFSM' local remote sock cd delayOpenTimer = do
+data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
+                                  remote :: BGPMessage,
+                                  sock :: Socket,
+                                  collisionDetector :: CollisionDetector,
+                                  peerName :: SockAddr,
+                                  delayOpenTimer :: Int,
+                                  exitMVar :: MVar (ThreadId,String)
+                                  }
+bgpFSM :: BgpFSMconfig -> IO ()
+bgpFSM BgpFSMconfig{..} = do
     stateConnected osm where
+    cd = collisionDetector
     osm = makeOpenStateMachine local remote
     snd msg = sndBgpMessage sock $ encode msg
     get' :: Int -> IO BGPMessage
@@ -113,19 +117,18 @@ bgpFSM' local remote sock cd delayOpenTimer = do
 
     exit s = do putStrLn s
                 deregister cd
-                fail s
+                -- fail s
 
-    keepAliveLoop = do
-        threadDelay $ 1000000 * keepAliveTimer
+    keepAliveLoop timer = do
+        threadDelay $ 1000000 * timer
         snd BGPKeepalive
-        keepAliveLoop
+        keepAliveLoop timer
 
     toEstablished osm = do
         putStrLn "transition -> established"
-        forkIO keepAliveLoop
-        remotePeerName <- getPeerName sock
+        forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm in
-            registerEstablished cd remoteBGPid remotePeerName
+            registerEstablished cd remoteBGPid peerName
         established osm
 
     established osm = do
@@ -157,8 +160,7 @@ bgpFSM' local remote sock cd delayOpenTimer = do
     -- and of couse where there is no other connection for this BGPID
     collisionCheck :: CollisionDetector -> IPv4 -> IPv4 -> IO ()
     collisionCheck c localBgpid remoteBgpid = do
-        remotePeerName <- getPeerName sock
-        rc <- raceCheck c remoteBgpid remotePeerName
+        rc <- raceCheck c remoteBgpid peerName
         maybe
             (return ())
             (\session ->

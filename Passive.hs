@@ -1,7 +1,7 @@
 -- passive TCP server
 module Main where
 
-import Control.Concurrent (forkFinally,threadDelay)
+import Control.Concurrent
 import qualified Control.Exception as E
 import Control.Monad (unless, forever, void)
 import qualified Data.ByteString.Lazy as L
@@ -26,11 +26,18 @@ main = do
     sock <- socket AF_INET Stream defaultProtocol 
     setSocketOption sock ReuseAddr 1
     bind sock address
-    listen sock 10
-    cd <- mkCollisionDetector
-    E.finally (loop local remote sock cd) (close sock)
+    listen sock 100
+    collisionDetector <- mkCollisionDetector
+    exitMVar <- newEmptyMVar
+    let config = BgpFSMconfig local remote undefined collisionDetector undefined delayOpenTimer exitMVar
+    E.finally (loop sock config) (close sock)
   where
-    loop local remote sock cd = forever $ do
+    delayOpenTimer = 10
+    loop sock config = forever $ do
         (conn, peer) <- accept sock
+        let config' = config { sock = conn, peerName = peer}
         putStrLn $ "Connection from " ++ show peer
-        void $ forkFinally (bgpFSMdelayOpen local remote conn cd) (\_ -> close conn)
+        void $ forkFinally (bgpFSM config') (\_ -> close conn)
+
+        -- (tid,msg) <- takeMVar exitMVar
+        -- putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg
