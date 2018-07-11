@@ -88,15 +88,18 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                                      putStrLn "transition -> stateOpenConfirm"
                                      stateOpenConfirm osm'
                                  else exit "stateOpenSent - open rejected error"
+                             notify@BGPNotify{} -> do
+                                print notify
+                                exit "stateOpenSent - rcv notify"
                              _ -> do
                                  snd $ BGPNotify NotificationFiniteStateMachineError 0 []
-                                 exit "stateOpenConfirm - FSM error"
+                                 exit "stateOpenSent - FSM error"
 
     stateOpenConfirm osm = do msg <- get' holdTimer
                               case msg of 
                                   BGPTimeout -> do
                                       snd $ BGPNotify NotificationHoldTimerExpired 0 []
-                                      exit "stateOpenSent - error initial Hold Timer expiry"
+                                      exit "stateOpenConfirm - error initial Hold Timer expiry"
                                   BGPKeepalive -> do
                                       putStrLn "stateOpenConfirm - rcv keepalive"
                                       toEstablished osm
