@@ -8,6 +8,7 @@ import BgpFSM
 import BGPparse
 import Capabilities
 import Args
+import Collision
 
 main :: IO ()
 main = do
@@ -16,5 +17,6 @@ main = do
         sock <- socket AF_INET Stream defaultProtocol
         connect sock address
         putStrLn "connected:: "
-        finally (bgpFSM local remote sock) (close sock) 
+        cd <- mkCollisionDetector
+        finally (bgpFSM local remote sock cd) (close sock) 
         putStrLn "complete:: "
