@@ -11,6 +11,9 @@ purge tid sx = reverse $ purge' tid [] sx  where
     purge' tid ret (s:sx) | tid == (sessionTid s) = purge' tid ret sx
                           | otherwise = purge' tid (s:ret) sx
 
+mkCollisionDetector :: IO CollisionDetector
+mkCollisionDetector = newMVar ([] :: [ Session ])
+
 raceCheck :: CollisionDetector -> IPv4 -> SockAddr -> IO (Maybe Session)
 raceCheck c bgpid addr = do
     sessions <- takeMVar c
