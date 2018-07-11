@@ -2,13 +2,11 @@ module Collision where
 import Network.Socket
 import Data.IP
 import Control.Concurrent
--- data CollisionDetector = CollisionDetector ( MVar ( [ Session ] ) )
 type CollisionDetector = MVar ( [ Session ] )
 data Session = Session { sessionBgpid :: IPv4, sessionAddr :: SockAddr, sessionTid :: ThreadId, established :: Bool }  deriving (Eq,Show)
 
 purge :: ThreadId -> [ Session ] -> [ Session ]
 purge tid sx = reverse $ purge' tid [] sx  where
-    -- purge' :: [ Session ] 
     purge' tid ret [] = ret
     purge' tid ret (s:sx) | tid == (sessionTid s) = purge' tid ret sx
                           | otherwise = purge' tid (s:ret) sx
