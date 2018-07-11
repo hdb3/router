@@ -66,6 +66,9 @@ updateOpenStateMachine osm remoteOpen | isOpen remoteOpen = osm { remoteOffer = 
 getNegotiatedHoldTime :: OpenStateMachine -> Word16
 getNegotiatedHoldTime OpenStateMachine {..} | isJust remoteOffer = min ( holdTime remoteOffer') ( holdTime localOffer) where remoteOffer' = fromJust remoteOffer
 
+getKeepAliveTimer :: OpenStateMachine -> Int
+getKeepAliveTimer osm = 1 + (fromIntegral $ getNegotiatedHoldTime osm) `div` 3
+
 -- getResponse should not be called before an OPEN message has been received
 
 getResponse :: OpenStateMachine -> BGPMessage
