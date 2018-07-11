@@ -6,10 +6,9 @@ import Control.Concurrent
 import Data.IP
 
 main = do
-    c <- newMVar ([] :: [ Session ])
+    c <- mkCollisionDetector
     threadID <- myThreadId
     t <- newMVar threadID
-    -- tid0 <- forkIO $ monitor c
     tid1 <- forkIO $ loop c t 5 (read "127.0.0.1") (SockAddrInet bgpPort (toHostAddress $ read "127.0.0.1") ) 
     tid2 <- forkIO $ loop c t 3 (read "127.0.0.1") (SockAddrInet 50000   (toHostAddress $ read "127.0.0.1") )
     monitor c t
@@ -32,17 +31,21 @@ loop c t n bgpid addr = do
     threadDelay $ 1000000 * n
     p "raceCheck"
     ms <- raceCheck c bgpid addr
-    maybe (p "no collision")
-          (\collision -> p $ "collision detected with" ++ show collision)
+    putMVar t threadID
+    maybe (do p "no collision"
+              threadDelay $ 1000000 * n
+              p "registerEstablished"
+              registerEstablished c bgpid addr
+              putMVar t threadID
+              threadDelay $ 1000000 * n
+              p "deregister"
+              deregister c
+              putMVar t threadID
+              p "exit")
+          (\collision -> do p $ "collision detected with" ++ show collision
+                            p "deregister"
+                            deregister c
+                            putMVar t threadID
+                            p "exit")
           ms
-    putMVar t threadID
-    threadDelay $ 1000000 * n
-    p "registerEstablished"
-    registerEstablished c bgpid addr
-    putMVar t threadID
-    threadDelay $ 1000000 * n
-    p "deregister"
-    deregister c
-    putMVar t threadID
-    p "exit"
 
