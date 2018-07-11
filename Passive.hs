@@ -16,6 +16,7 @@ import System.Timeout
 import Data.Int(Int64)
 import BgpFSM
 import Capabilities
+import Collision
 import Args
 
 main :: IO ()
@@ -26,9 +27,10 @@ main = do
     setSocketOption sock ReuseAddr 1
     bind sock address
     listen sock 10
-    E.finally (loop local remote sock) (close sock)
+    cd <- mkCollisionDetector
+    E.finally (loop local remote sock cd) (close sock)
   where
-    loop local remote sock = forever $ do
+    loop local remote sock cd = forever $ do
         (conn, peer) <- accept sock
         putStrLn $ "Connection from " ++ show peer
-        void $ forkFinally (bgpFSMdelayOpen local remote conn) (\_ -> close conn)
+        void $ forkFinally (bgpFSMdelayOpen local remote conn cd) (\_ -> close conn)
