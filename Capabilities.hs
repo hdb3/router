@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Capabilities where
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
@@ -77,6 +78,26 @@ eq_ (CapGracefulRestart _ _) (CapGracefulRestart _ _) = True
 eq_ (CapAS4 _) (CapAS4 _) = True
 eq_ _ _ = False
 
+putCap :: Capability -> Put
+putCap = put
+getCap :: Get Capability
+getCap = get
+
+instance {-# OVERLAPPING #-} Binary [Capability] where
+
+    put caps | null caps =  return ()
+             | otherwise =  do putCap (head caps)
+                               put ( tail caps)
+    
+    get = getCaps where
+        getCaps = do
+          empty <- isEmpty
+          if empty
+            then return []
+            else do cap <- getCap
+                    caps <- getCaps
+                    return (cap:caps)
+
 instance Binary Capability where
 
     put (CapAS4 as4) = do
@@ -115,8 +136,9 @@ instance Binary Capability where
                                     return undefined
 
 buildOptionalParameters :: [ Capability ] -> ByteString
-buildOptionalParameters capabilities = let caps = L.concat $ map encode capabilities in
-                                       L.toStrict $ toLazyByteString $ word8 2 <>  word8 (fromIntegral $ L.length caps) <> lazyByteString caps
+buildOptionalParameters capabilities | not $ null capabilities = let caps = L.concat $ map encode capabilities in
+                                                                 L.toStrict $ toLazyByteString $ word8 2 <>  word8 (fromIntegral $ L.length caps) <> lazyByteString caps
+                                     | otherwise = B.empty
 
 parseOptionalParameters :: ByteString -> [ Capability ]
 

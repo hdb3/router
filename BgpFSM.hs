@@ -51,7 +51,6 @@ bgpFSM' local remote sock delayOpenTimer = stateConnected osm where
                                 BGPTimeout -> do
                                     putStrLn "stateConnected - delay open expiry"
                                     snd (localOffer osm)
-                                    -- snd $ BGPOpen 1000 600 65550 B.empty
                                     putStrLn "transition -> stateOpenSent"
                                     stateOpenSent osm
                                 open@BGPOpen{} -> do
