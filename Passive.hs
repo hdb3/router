@@ -42,6 +42,3 @@ main = do
         let config' = config { sock = conn, peerName = peer}
         putStrLn $ "Connection from " ++ show peer
         void $ forkFinally (bgpFSM config') (\_ -> close conn)
-
-        -- (tid,msg) <- takeMVar exitMVar
-        -- putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg

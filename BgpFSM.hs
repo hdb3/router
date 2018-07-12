@@ -5,6 +5,7 @@ import qualified Data.ByteString as B
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
 import Control.Concurrent
+import Control.Monad(when)
 import Data.Maybe(fromJust)
 import Common
 import BGPparse
@@ -25,8 +26,7 @@ data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   exitMVar :: MVar (ThreadId,String)
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
-bgpFSM BgpFSMconfig{..} = do
-    stateConnected osm where
+bgpFSM BgpFSMconfig{..} = stateConnected osm where
     cd = collisionDetector
     osm = makeOpenStateMachine local remote
     snd msg = sndBgpMessage sock $ encode msg
@@ -56,8 +56,8 @@ bgpFSM BgpFSMconfig{..} = do
                                     let osm' = updateOpenStateMachine osm open
                                     putStrLn "stateConnected - event: rcv open"
                                     print open
-                                    let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm
-                                        localBGPid = bgpID $ localOffer $ osm in
+                                    let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
+                                        localBGPid = bgpID $ localOffer osm in
                                         collisionCheck cd localBGPid remoteBGPid
                                     let resp =  getResponse osm'
                                     if isKeepalive resp then do 
@@ -84,8 +84,8 @@ bgpFSM BgpFSMconfig{..} = do
                                  let osm' = updateOpenStateMachine osm open
                                  putStrLn "stateOpenSent - rcv open"
                                  print open
-                                 let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm
-                                     localBGPid = bgpID $ localOffer $ osm in
+                                 let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
+                                     localBGPid = bgpID $ localOffer osm in
                                      collisionCheck cd localBGPid remoteBGPid
                                  let resp =  getResponse osm'
                                  snd resp
@@ -130,7 +130,7 @@ bgpFSM BgpFSMconfig{..} = do
     toEstablished osm = do
         putStrLn "transition -> established"
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
-        let remoteBGPid = bgpID $ fromJust $ remoteOffer $ osm in
+        let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
         established osm
 
@@ -167,12 +167,12 @@ bgpFSM BgpFSMconfig{..} = do
         maybe
             (return ())
             (\session ->
-                if sessionEstablished session || remoteBgpid > localBgpid
-                then do snd $ BGPNotify NotificationCease 0 []
-                        if sessionEstablished session then
-                            exit "collisionCheck - event: collision with established session - open rejected error"
-                        else
-                            exit "collisionCheck - event: collision with tie-break - open rejected error"
-                else return ())
+                when (sessionEstablished session || remoteBgpid > localBgpid) $
+                    do snd $ BGPNotify NotificationCease 0 []
+                       if sessionEstablished session then
+                           exit "collisionCheck - event: collision with established session - open rejected error"
+                       else
+                           exit "collisionCheck - event: collision with tie-break - open rejected error"
+                )
             rc
             -- Nothing

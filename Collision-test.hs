@@ -24,7 +24,7 @@ monitor c t = do
 
 loop :: CollisionDetector -> MVar ThreadId -> Int -> IPv4 -> SockAddr -> IO()
 loop c t n bgpid addr = do
-    threadDelay $ 1000000
+    threadDelay 1000000
     threadID <- myThreadId
     let p s = putStrLn $ "thread: " ++ show threadID ++ " - " ++ s
     p "start"

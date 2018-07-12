@@ -26,14 +26,3 @@ main = do
         finally (bgpFSM config) (close sock) 
         (tid,msg) <- takeMVar exitMVar
         putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg
-
-{-
-data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
-                                  remote :: BGPMessage,
-                                  sock :: Socket,
-                                  collisionDetector :: CollisionDetector,
-                                  peerName :: SockAddr,
-                                  delayOpenTimer :: Int,
-                                  exitMVar :: MVar (ThreadId,String)
-                                  }
--}
