@@ -36,7 +36,7 @@ getConfig = do
     --
     parseAddress :: String -> SockAddr
     parseAddress ps = SockAddrInet (read $ ws !! 1) (toHostAddress ip) where
-                      ip = (read $ ws !! 0)
+                      ip = read $ ws !! 0
                       ws = myWords ps
 
     parseParams ps = BGPOpen (read $ ws !! 0) (read $ ws !! 1) (read $ ws !! 2) (parseCapabilities (drop 3 ws)) where
