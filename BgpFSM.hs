@@ -4,7 +4,7 @@ import Network.Socket
 import qualified Data.ByteString as B
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
-import Control.Concurrent(threadDelay,forkIO,MVar,ThreadId)
+import Control.Concurrent
 import Data.Maybe(fromJust)
 import Common
 import BGPparse
@@ -117,6 +117,9 @@ bgpFSM BgpFSMconfig{..} = do
 
     exit s = do putStrLn s
                 deregister cd
+                threadId <- myThreadId
+                putMVar exitMVar (threadId,s)
+                threadDelay $ 1000000 * 10
                 -- fail s
 
     keepAliveLoop timer = do
@@ -172,3 +175,4 @@ bgpFSM BgpFSMconfig{..} = do
                             exit "collisionCheck - event: collision with tie-break - open rejected error"
                 else return ())
             rc
+            -- Nothing
