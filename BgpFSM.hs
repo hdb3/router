@@ -44,9 +44,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     initialHoldTimer = 120
     cd = collisionDetector
     osm = makeOpenStateMachine local remote
+    myOpen = local
+    myBGPID = bgpID myOpen
     snd msg = catchIOError ( sndBgpMessage sock $ encode msg ) (\e -> exit (show (e :: IOError)))
     get :: Int -> IO BGPMessage
-    -- get t = catchIOError (get' t) (\e -> BGPError (show (e :: IOError))
     get t = catchIOError (get' t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
                                             return BGPEndOfStream
                                   )
@@ -63,18 +64,18 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                             case msg of 
                                 BGPTimeout -> do
                                     putStrLn "stateConnected - event: delay open expiry"
-                                    snd (localOffer osm)
+                                    snd myOpen
                                     putStrLn "stateConnected -> stateOpenSent"
                                     stateOpenSent osm
                                 open@BGPOpen{} -> do
                                     let osm' = updateOpenStateMachine osm open
                                     putStrLn "stateConnected - event: rcv open"
                                     print open
-                                    collisionCheck cd (bgpID $ localOffer osm) (bgpID $ fromJust $ remoteOffer osm)
+                                    collisionCheck cd myBGPID (bgpID open)
                                     let resp =  getResponse osm'
                                     if isKeepalive resp then do 
                                         putStrLn "stateConnected -> stateOpenConfirm"
-                                        snd (localOffer osm')
+                                        snd myOpen
                                         stateOpenConfirm osm'
                                         snd resp
                                     else do
@@ -96,7 +97,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                  let osm' = updateOpenStateMachine osm open
                                  putStrLn "stateOpenSent - rcv open"
                                  print open
-                                 collisionCheck cd (bgpID $ localOffer osm) (bgpID $ fromJust $ remoteOffer osm)
+                                 collisionCheck cd myBGPID (bgpID open)
                                  let resp =  getResponse osm'
                                  snd resp
                                  if isKeepalive resp then do 
@@ -164,21 +165,16 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     -- and where another connection is in openSent state (use tiebreaker)
     -- and of couse where there is no other connection for this BGPID
     collisionCheck :: CollisionDetector -> IPv4 -> IPv4 -> IO ()
-    collisionCheck c localBgpid remoteBgpid = do
-        putStrLn "collisionCheck:1"
-        rc <- raceCheck c remoteBgpid peerName
-        putStrLn "collisionCheck:2"
+    collisionCheck c self peer = do
+        rc <- raceCheck c peer peerName
         maybe
-            -- (return ())
-            (putStrLn "collisionCheck:3")
-            (\session -> do
-                putStrLn "collisionCheck:4"
-                when (sessionEstablished session || remoteBgpid > localBgpid) $
+            (\session ->
+                when (sessionEstablished session || peer > self) $
                     do snd $ BGPNotify NotificationCease 0 []
-                       putStrLn $ "collision detected with " ++ show session
+                       -- putStrLn $ "collision detected with " ++ show session
                        if sessionEstablished session then
-                           exit "collisionCheck - event: collision with established session - open rejected error"
+                           exit $ "collisionCheck - event: collision with established session - open rejected error for peer " ++ show session
                        else
-                           exit "collisionCheck - event: collision with tie-break - open rejected error"
+                           exit $ "collisionCheck - event: collision with tie-break - open rejected error for peer "  ++ show session
                 )
             rc
