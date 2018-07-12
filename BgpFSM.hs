@@ -1,10 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
+import System.IO.Error(catchIOError)
 import qualified Data.ByteString as B
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
 import Control.Concurrent
+import Control.Exception
 import Control.Monad(when)
 import Data.Maybe(fromJust)
 import Common
@@ -15,8 +17,11 @@ import Open
 import Capabilities
 import Collision
 
-holdTimer = 15
-initialHoldTimer = 120
+data FSMException = FSMException String
+    deriving Show
+
+instance Exception FSMException
+
 data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   remote :: BGPMessage,
                                   sock :: Socket,
@@ -26,11 +31,26 @@ data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   exitMVar :: MVar (ThreadId,String)
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
-bgpFSM BgpFSMconfig{..} = stateConnected osm where
+bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
+                             putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
+                             catch
+                                 (stateConnected osm)
+                                 (\(FSMException s) -> do
+                                     deregister cd
+                                     -- threadId <- myThreadId
+                                     putMVar exitMVar (threadId,s)
+                                     putStrLn $ "Thread " ++ show threadId ++ " exiting"
+                                 ) where
+    exit s = throw $ FSMException s
+    initialHoldTimer = 120
     cd = collisionDetector
     osm = makeOpenStateMachine local remote
-    snd msg = sndBgpMessage sock $ encode msg
-    get' :: Int -> IO BGPMessage
+    snd msg = catchIOError ( sndBgpMessage sock $ encode msg ) (\e -> exit (show (e :: IOError)))
+    get :: Int -> IO BGPMessage
+    -- get t = catchIOError (get' t) (\e -> BGPError (show (e :: IOError))
+    get t = catchIOError (get' t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
+                                            return BGPEndOfStream
+                                  )
     get' t = let t' = t * 10000000 in
              do mMsg <- timeout t' (getBgpMessage sock)
                 maybe
@@ -40,12 +60,7 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
                         return bgpMsg)
                     mMsg
 
-    get = do msg <- getBgpMessage sock
-             let bgpMsg = decode msg :: BGPMessage
-             print bgpMsg
-             return bgpMsg
-
-    stateConnected osm = do msg <- get' delayOpenTimer
+    stateConnected osm = do msg <- get delayOpenTimer
                             case msg of 
                                 BGPTimeout -> do
                                     putStrLn "stateConnected - event: delay open expiry"
@@ -75,7 +90,7 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
                                     snd $ BGPNotify NotificationFiniteStateMachineError 0 []
                                     exit "stateConnected - FSM error"
 
-    stateOpenSent osm = do msg <- get' initialHoldTimer
+    stateOpenSent osm = do msg <- get initialHoldTimer
                            case msg of 
                              BGPTimeout -> do
                                  snd $ BGPNotify NotificationHoldTimerExpired 0 []
@@ -100,7 +115,7 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
                                  snd $ BGPNotify NotificationFiniteStateMachineError 0 []
                                  exit "stateOpenSent - FSM error"
 
-    stateOpenConfirm osm = do msg <- get' holdTimer
+    stateOpenConfirm osm = do msg <- get (getNegotiatedHoldTime osm)
                               case msg of 
                                   BGPTimeout -> do
                                       snd $ BGPNotify NotificationHoldTimerExpired 0 []
@@ -115,13 +130,6 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
                                       snd $ BGPNotify NotificationFiniteStateMachineError 0 []
                                       exit "stateOpenConfirm - FSM error"
 
-    exit s = do putStrLn s
-                deregister cd
-                threadId <- myThreadId
-                putMVar exitMVar (threadId,s)
-                threadDelay $ 1000000 * 10
-                -- fail s
-
     keepAliveLoop timer = do
         threadDelay $ 1000000 * timer
         snd BGPKeepalive
@@ -129,13 +137,14 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
 
     toEstablished osm = do
         putStrLn "transition -> established"
+        putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
         established osm
 
     established osm = do
-        msg <- get' holdTimer
+        msg <- get (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
                 putStrLn "established - rcv keepalive"
@@ -147,15 +156,13 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
             notify@BGPNotify{} -> do
                 print notify
                 exit "established - rcv notify"
+            BGPEndOfStream -> exit "established: BGPEndOfStream"
             BGPTimeout -> do
                 snd $ BGPNotify NotificationHoldTimerExpired 0 []
-                exit "established - FSM error"
+                exit "established - HoldTimerExpired error"
             _ -> do
                 snd $ BGPNotify NotificationFiniteStateMachineError 0 []
                 exit "established - FSM error"
-
-
-
 
     -- collisionCheck
     -- manage cases where there is an established connection (always reject)
@@ -175,4 +182,3 @@ bgpFSM BgpFSMconfig{..} = stateConnected osm where
                            exit "collisionCheck - event: collision with tie-break - open rejected error"
                 )
             rc
-            -- Nothing
