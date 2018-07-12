@@ -29,10 +29,14 @@ main = do
     listen sock 100
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
+    forkIO $ reaper exitMVar
     let config = BgpFSMconfig local remote undefined collisionDetector undefined delayOpenTimer exitMVar
     E.finally (loop sock config) (close sock)
   where
     delayOpenTimer = 10
+    reaper mbox = forever $ do
+        (t,s) <- takeMVar mbox
+        putStrLn $ "thread " ++ show t ++ " exited with <" ++ s ++ ">"
     loop sock config = forever $ do
         (conn, peer) <- accept sock
         let config' = config { sock = conn, peerName = peer}
