@@ -63,8 +63,9 @@ makeOpenStateMachine local required | isOpen local = OpenStateMachine local Noth
 updateOpenStateMachine :: OpenStateMachine -> BGPMessage -> OpenStateMachine
 updateOpenStateMachine osm remoteOpen | isOpen remoteOpen = osm { remoteOffer = Just remoteOpen }
 
-getNegotiatedHoldTime :: OpenStateMachine -> Word16
-getNegotiatedHoldTime OpenStateMachine {..} | isJust remoteOffer = min ( holdTime remoteOffer') ( holdTime localOffer) where remoteOffer' = fromJust remoteOffer
+getNegotiatedHoldTime :: OpenStateMachine -> Int
+getNegotiatedHoldTime = fromIntegral . getNegotiatedHoldTime'
+getNegotiatedHoldTime' OpenStateMachine {..} | isJust remoteOffer = min ( holdTime remoteOffer') ( holdTime localOffer) where remoteOffer' = fromJust remoteOffer
 
 getKeepAliveTimer :: OpenStateMachine -> Int
 getKeepAliveTimer osm = 1 + fromIntegral (getNegotiatedHoldTime osm) `div` 3
@@ -93,7 +94,7 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
                         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
 
         checkHoldTime :: Maybe BGPMessage
-        checkHoldTime = if holdTime required > getNegotiatedHoldTime osm
+        checkHoldTime = if holdTime required > getNegotiatedHoldTime' osm
                         then Just (BGPNotify NotificationOPENMessageError (encode8 UnacceptableHoldTime) [])
                         else Nothing
 
