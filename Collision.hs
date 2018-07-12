@@ -1,3 +1,4 @@
+{-# LANGUAGE Strict #-}
 module Collision where
 import Network.Socket
 import Data.IP
@@ -16,9 +17,9 @@ mkCollisionDetector = newMVar ([] :: [ Session ])
 
 raceCheck :: CollisionDetector -> IPv4 -> SockAddr -> IO (Maybe Session)
 raceCheck c bgpid addr = do
+    threadID <- myThreadId
     sessions <- takeMVar c
     let collision = lookupBGPid bgpid sessions
-    threadID <- myThreadId
     putMVar c $ Session bgpid addr threadID False : sessions
     return collision
     where
@@ -28,8 +29,8 @@ raceCheck c bgpid addr = do
 
 registerEstablished :: CollisionDetector -> IPv4 -> SockAddr -> IO ()
 registerEstablished c bgpid addr = do
-    sessions <- takeMVar c
     threadID <- myThreadId
+    sessions <- takeMVar c
     let sessions' = purge threadID sessions
     putMVar c $ Session bgpid addr threadID True : sessions'
 

@@ -87,11 +87,10 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
-        checkBgpID = if ( nullBGPID == requiredBGPID || remoteBGPID == requiredBGPID ) &&
-                        ( remoteBGPID /= localBGPID )
-                     then Nothing
-                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
-                        -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
+        -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
+        checkBgpID = if remoteBGPID == localBGPID then Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
+                     else if requiredBGPID == nullBGPID || requiredBGPID == remoteBGPID then Nothing
+                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) []) 
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = if holdTime required > getNegotiatedHoldTime' osm
