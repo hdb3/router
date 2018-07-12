@@ -41,4 +41,5 @@ main = do
         (conn, peer) <- accept sock
         let config' = config { sock = conn, peerName = peer}
         putStrLn $ "Connection from " ++ show peer
-        void $ forkFinally (bgpFSM config') (\_ -> close conn)
+        void $ forkFinally (bgpFSM config') (\tid -> do putStrLn $ "ending " ++ show tid
+                                                        close conn)

@@ -37,7 +37,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                  (stateConnected osm)
                                  (\(FSMException s) -> do
                                      deregister cd
-                                     -- threadId <- myThreadId
                                      putMVar exitMVar (threadId,s)
                                      putStrLn $ "Thread " ++ show threadId ++ " exiting"
                                  ) where
@@ -71,9 +70,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                     let osm' = updateOpenStateMachine osm open
                                     putStrLn "stateConnected - event: rcv open"
                                     print open
-                                    let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
-                                        localBGPid = bgpID $ localOffer osm in
-                                        collisionCheck cd localBGPid remoteBGPid
+                                    collisionCheck cd (bgpID $ localOffer osm) (bgpID $ fromJust $ remoteOffer osm)
                                     let resp =  getResponse osm'
                                     if isKeepalive resp then do 
                                         putStrLn "stateConnected -> stateOpenConfirm"
@@ -99,9 +96,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                  let osm' = updateOpenStateMachine osm open
                                  putStrLn "stateOpenSent - rcv open"
                                  print open
-                                 let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
-                                     localBGPid = bgpID $ localOffer osm in
-                                     collisionCheck cd localBGPid remoteBGPid
+                                 collisionCheck cd (bgpID $ localOffer osm) (bgpID $ fromJust $ remoteOffer osm)
                                  let resp =  getResponse osm'
                                  snd resp
                                  if isKeepalive resp then do 
@@ -170,12 +165,17 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     -- and of couse where there is no other connection for this BGPID
     collisionCheck :: CollisionDetector -> IPv4 -> IPv4 -> IO ()
     collisionCheck c localBgpid remoteBgpid = do
+        putStrLn "collisionCheck:1"
         rc <- raceCheck c remoteBgpid peerName
+        putStrLn "collisionCheck:2"
         maybe
-            (return ())
-            (\session ->
+            -- (return ())
+            (putStrLn "collisionCheck:3")
+            (\session -> do
+                putStrLn "collisionCheck:4"
                 when (sessionEstablished session || remoteBgpid > localBgpid) $
                     do snd $ BGPNotify NotificationCease 0 []
+                       putStrLn $ "collision detected with " ++ show session
                        if sessionEstablished session then
                            exit "collisionCheck - event: collision with established session - open rejected error"
                        else
