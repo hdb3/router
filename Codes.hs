@@ -1,52 +1,86 @@
 module Codes where
 import RFC4271
+import Data.Word
+import Data.Bits
 
-data PathAttributeTypeCode = PathAttributeOrigin | PathAttributeASPath | PathAttributeNextHop | PathAttributeMultiExitDisc | PathAttributeLocalPref |
-                             PathAttributeAtomicAggregate | PathAttributeAggregator | PathAttributeCommunities | PathAttributeMPREachNLRI |
-                             PathAttributeMPUnreachNLRI | PathAttributeExtendedCommunities | PathAttributeAS4Path | PathAttributeAS4Aggregator |
-                             PathAttributeConnector | PathAttributeASPathlimit | PathAttributeLargeCommunity | PathAttributeAttrSet
-                            deriving (Show,Eq)
+data PathAttributeTypeCode = TypeCodePathAttributeOrigin | TypeCodePathAttributeASPath | TypeCodePathAttributeNextHop | TypeCodePathAttributeMultiExitDisc |
+                             TypeCodePathAttributeLocalPref | TypeCodePathAttributeAtomicAggregate | TypeCodePathAttributeAggregator |
+                             TypeCodePathAttributeCommunities | TypeCodePathAttributeMPREachNLRI | TypeCodePathAttributeMPUnreachNLRI |
+                             TypeCodePathAttributeExtendedCommunities | TypeCodePathAttributeAS4Path | TypeCodePathAttributeAS4Aggregator |
+                             TypeCodePathAttributeConnector | TypeCodePathAttributeASPathlimit | TypeCodePathAttributeLargeCommunity | TypeCodePathAttributeAttrSet
+                             deriving (Show,Eq)
 
-allPathAttributeTypeCodes = [ PathAttributeOrigin , PathAttributeASPath , PathAttributeNextHop , PathAttributeMultiExitDisc , PathAttributeLocalPref ,
-                             PathAttributeAtomicAggregate , PathAttributeAggregator , PathAttributeCommunities , PathAttributeMPREachNLRI ,
-                             PathAttributeMPUnreachNLRI , PathAttributeExtendedCommunities , PathAttributeAS4Path , PathAttributeAS4Aggregator ,
-                             PathAttributeConnector , PathAttributeASPathlimit , PathAttributeLargeCommunity , PathAttributeAttrSet]
+allPathAttributeTypeCodes = [ TypeCodePathAttributeOrigin , TypeCodePathAttributeASPath , TypeCodePathAttributeNextHop , TypeCodePathAttributeMultiExitDisc ,
+                              TypeCodePathAttributeLocalPref , TypeCodePathAttributeAtomicAggregate , TypeCodePathAttributeAggregator , TypeCodePathAttributeCommunities ,
+                              TypeCodePathAttributeMPREachNLRI , TypeCodePathAttributeMPUnreachNLRI , TypeCodePathAttributeExtendedCommunities ,
+                              TypeCodePathAttributeAS4Path , TypeCodePathAttributeAS4Aggregator , TypeCodePathAttributeConnector , TypeCodePathAttributeASPathlimit ,
+                              TypeCodePathAttributeLargeCommunity , TypeCodePathAttributeAttrSet]
+
+optional   = 0x80 :: Word8
+transitive = 0x40 :: Word8
+partial    = 0x20 :: Word8
+extended   = 0x10 :: Word8
+extendedBitTest :: Word8 -> Bool
+extendedBitTest w = testBit w 4 -- counting up from LSB numbered as 0
+
+
+flagCheck :: Word8 -> PathAttributeTypeCode -> Bool
+flagCheck flags code = (flags .&. 0xc0) == (flagsOf code)
+
+flagsOf :: PathAttributeTypeCode -> Word8
+flagsOf e | e == TypeCodePathAttributeOrigin = transitive 
+          | e == TypeCodePathAttributeASPath = transitive
+          | e == TypeCodePathAttributeNextHop = transitive
+          | e == TypeCodePathAttributeMultiExitDisc = optional
+          | e == TypeCodePathAttributeLocalPref = transitive
+          | e == TypeCodePathAttributeAtomicAggregate = transitive
+          | e == TypeCodePathAttributeAggregator = transitive .|. optional
+          | e == TypeCodePathAttributeCommunities = transitive .|. optional
+          | e == TypeCodePathAttributeMPREachNLRI = optional
+          | e == TypeCodePathAttributeMPUnreachNLRI = optional
+          | e == TypeCodePathAttributeExtendedCommunities = transitive .|. optional
+          | e == TypeCodePathAttributeAS4Path = transitive .|. optional
+          | e == TypeCodePathAttributeAS4Aggregator = transitive .|. optional
+          | e == TypeCodePathAttributeConnector = transitive .|. optional
+          | e == TypeCodePathAttributeASPathlimit = transitive .|. optional
+          | e == TypeCodePathAttributeLargeCommunity = transitive .|. optional
+          | e == TypeCodePathAttributeAttrSet = transitive .|. optional
 
 instance EnumWord8 PathAttributeTypeCode where
 instance Enum PathAttributeTypeCode where
 
-    toEnum n   | n == 1 = PathAttributeOrigin
-               | n == 2 = PathAttributeASPath
-               | n == 3 = PathAttributeNextHop
-               | n == 4 = PathAttributeMultiExitDisc
-               | n == 5 = PathAttributeLocalPref
-               | n == 6 = PathAttributeAtomicAggregate
-               | n == 7 = PathAttributeAggregator
-               | n == 8 = PathAttributeCommunities
-               | n == 14 = PathAttributeMPREachNLRI
-               | n == 15 = PathAttributeMPUnreachNLRI
-               | n == 16 = PathAttributeExtendedCommunities
-               | n == 17 = PathAttributeAS4Path
-               | n == 18 = PathAttributeAS4Aggregator
-               | n == 20 = PathAttributeConnector
-               | n == 21 = PathAttributeASPathlimit
-               | n == 32 = PathAttributeLargeCommunity
-               | n == 128 = PathAttributeAttrSet
+    toEnum n   | n == 1 = TypeCodePathAttributeOrigin
+               | n == 2 = TypeCodePathAttributeASPath
+               | n == 3 = TypeCodePathAttributeNextHop
+               | n == 4 = TypeCodePathAttributeMultiExitDisc
+               | n == 5 = TypeCodePathAttributeLocalPref
+               | n == 6 = TypeCodePathAttributeAtomicAggregate
+               | n == 7 = TypeCodePathAttributeAggregator
+               | n == 8 = TypeCodePathAttributeCommunities
+               | n == 14 = TypeCodePathAttributeMPREachNLRI
+               | n == 15 = TypeCodePathAttributeMPUnreachNLRI
+               | n == 16 = TypeCodePathAttributeExtendedCommunities
+               | n == 17 = TypeCodePathAttributeAS4Path
+               | n == 18 = TypeCodePathAttributeAS4Aggregator
+               | n == 20 = TypeCodePathAttributeConnector
+               | n == 21 = TypeCodePathAttributeASPathlimit
+               | n == 32 = TypeCodePathAttributeLargeCommunity
+               | n == 128 = TypeCodePathAttributeAttrSet
 
-    fromEnum e | e == PathAttributeOrigin = 1
-               | e == PathAttributeASPath = 2
-               | e == PathAttributeNextHop = 3
-               | e == PathAttributeMultiExitDisc = 4
-               | e == PathAttributeLocalPref = 5
-               | e == PathAttributeAtomicAggregate = 6
-               | e == PathAttributeAggregator = 7
-               | e == PathAttributeCommunities = 8
-               | e == PathAttributeMPREachNLRI = 14
-               | e == PathAttributeMPUnreachNLRI = 15
-               | e == PathAttributeExtendedCommunities = 16
-               | e == PathAttributeAS4Path = 17
-               | e == PathAttributeAS4Aggregator = 18
-               | e == PathAttributeConnector = 20
-               | e == PathAttributeASPathlimit = 21
-               | e == PathAttributeLargeCommunity = 32
-               | e == PathAttributeAttrSet = 128
+    fromEnum e | e == TypeCodePathAttributeOrigin = 1
+               | e == TypeCodePathAttributeASPath = 2
+               | e == TypeCodePathAttributeNextHop = 3
+               | e == TypeCodePathAttributeMultiExitDisc = 4
+               | e == TypeCodePathAttributeLocalPref = 5
+               | e == TypeCodePathAttributeAtomicAggregate = 6
+               | e == TypeCodePathAttributeAggregator = 7
+               | e == TypeCodePathAttributeCommunities = 8
+               | e == TypeCodePathAttributeMPREachNLRI = 14
+               | e == TypeCodePathAttributeMPUnreachNLRI = 15
+               | e == TypeCodePathAttributeExtendedCommunities = 16
+               | e == TypeCodePathAttributeAS4Path = 17
+               | e == TypeCodePathAttributeAS4Aggregator = 18
+               | e == TypeCodePathAttributeConnector = 20
+               | e == TypeCodePathAttributeASPathlimit = 21
+               | e == TypeCodePathAttributeLargeCommunity = 32
+               | e == TypeCodePathAttributeAttrSet = 128

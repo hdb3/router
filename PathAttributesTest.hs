@@ -1,5 +1,5 @@
 module Main where
-import PathAttributes
+import TypeCodePathAttributes
 import Control.Exception(assert)
 
 main = do
