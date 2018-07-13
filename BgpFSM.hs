@@ -168,6 +168,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     collisionCheck c self peer = do
         rc <- raceCheck c peer peerName
         maybe
+            (return())
             (\session ->
                 when (sessionEstablished session || peer > self) $
                     do snd $ BGPNotify NotificationCease 0 []
