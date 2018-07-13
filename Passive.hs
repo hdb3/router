@@ -20,9 +20,14 @@ import Collision
 import Args
 
 main :: IO ()
-main = do
-    (address,local,remote) <- getConfig
+main = do config <- getConfig
+          either putStrLn
+                 main'
+                 config
+
+main' (address,local,remote) = do
     putStrLn "Passive starting"
+    print (address,local,remote)
     sock <- socket AF_INET Stream defaultProtocol 
     setSocketOption sock ReuseAddr 1
     bind sock address

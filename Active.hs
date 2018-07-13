@@ -12,17 +12,22 @@ import Args
 import Collision
 
 main :: IO ()
-main = do
-        (address,local,remote) <- getConfig
-        putStrLn "begin:: "
-        sock <- socket AF_INET Stream defaultProtocol
-        connect sock address
-        putStrLn "connected:: "
-        collisionDetector <- mkCollisionDetector
-        peerName <- getPeerName sock
-        let delayOpenTimer = 0
-        exitMVar <- newEmptyMVar
-        let config = BgpFSMconfig local remote sock collisionDetector peerName delayOpenTimer exitMVar
-        finally (bgpFSM config) (close sock) 
-        (tid,msg) <- takeMVar exitMVar
-        putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg
+main = do config <- getConfig
+          either putStrLn
+                 main'
+                 config
+
+main' (address,local,remote) = do
+    print (address,local,remote)
+    putStrLn "begin:: "
+    sock <- socket AF_INET Stream defaultProtocol
+    connect sock address
+    putStrLn "connected:: "
+    collisionDetector <- mkCollisionDetector
+    peerName <- getPeerName sock
+    let delayOpenTimer = 0
+    exitMVar <- newEmptyMVar
+    let config = BgpFSMconfig local remote sock collisionDetector peerName delayOpenTimer exitMVar
+    finally (bgpFSM config) (close sock) 
+    (tid,msg) <- takeMVar exitMVar
+    putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg
