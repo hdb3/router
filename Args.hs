@@ -8,28 +8,32 @@ import Capabilities
 
 getConfig = do
     args <- getArgs
-
-    let address = if length args > 0
-        then
-            parseAddress $ args !! 0
-        else
-            SockAddrInet bgpPort ipV4_localhost
-
-    let local = if length args > 1
-        then
-            parseParams $ args !! 1
-        else
-            BGPOpen 65500 40 (read "127.0.0.1") [ CapAS4 65500,  CapGracefulRestart False 0]
-
-    let remote = if length args > 2
-        then
-            parseParams $ args !! 2
-        else
-            BGPOpen 0 0 (read "0.0.0.0") []
+    
+    let (address,local,remote) = getConfig' args
     print address
     print local
     print remote
     return (address,local,remote) where
+
+    getConfig' args =
+        let address = if length args > 0
+            then
+                parseAddress $ args !! 0
+            else
+                SockAddrInet bgpPort ipV4_localhost
+
+            local = if length args > 1
+            then
+                parseParams $ args !! 1
+            else
+                BGPOpen 65500 40 (read "127.0.0.1") [ CapAS4 65500,  CapGracefulRestart False 0]
+
+            remote = if length args > 2
+            then
+                parseParams $ args !! 2
+            else
+                BGPOpen 0 0 (read "0.0.0.0") []
+        in (address,local,remote)
 
     -- here is an example of a valid parameter list:
     -- "30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0"
