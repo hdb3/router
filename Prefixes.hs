@@ -7,7 +7,9 @@ import Data.Word
 import Data.Bits
 import Data.IP
 
-newtype Prefix = Prefix (Word8,Word32) deriving (Show,Eq)
+newtype Prefix = Prefix (Word8,Word32) deriving (Eq)
+instance Show Prefix where
+    show = show.toAddrRange
 
 subnet :: Prefix -> Word8
 subnet (Prefix (s,_)) = s
@@ -17,7 +19,8 @@ ip (Prefix (_,i)) = i
 
 canonicalPrefix :: Prefix -> Prefix
 canonicalPrefix (Prefix (subnet,ip)) | subnet < 33 = Prefix (subnet,canonicalise ip) where
-    canonicalise = ((flip unsafeShiftL) (fromIntegral subnet)) . ((flip unsafeShiftR) (fromIntegral subnet))
+    canonicalise = ((flip unsafeShiftR) (fromIntegral $ 32-subnet)) .
+                   ((flip unsafeShiftL) (fromIntegral $ 32-subnet))
  
 toAddrRange :: Prefix -> AddrRange IPv4
 toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress ip) (fromIntegral subnet)

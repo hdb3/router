@@ -25,4 +25,6 @@ test ar = do
 
     let pfxMasked = canonicalPrefix pfx
     putStrLn $ "prefix (masked): " ++ show pfxMasked
+    putStrLn "------------------"
+    putStrLn ""
 
