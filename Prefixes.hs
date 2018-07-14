@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
+{-- LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
 module Prefixes where
 import Data.Binary
 import Data.Binary.Get
@@ -6,6 +6,17 @@ import Data.Binary.Put
 import Data.Word
 import Data.Bits
 import Data.IP
+
+-- IMPORTANT Note re byte ordering
+-- common haskell libraries observe x86 byte ordering for network addreses
+-- thus 'byteSwap32' is required when moving from ByteString encoded protocol fields to
+-- application level if XXbe put and get are used
+-- note - the bit shifting processes are oblivious since byte order conversion from memory to registers
+-- mask this issue.
+-- So for example the type Prefix should hold IPv4 addresses as 32 bit words in little endian form
+-- the convention adopted here is that Word16 and Word32 are stored in host order thus should use
+-- put and get XXle formats not XXbe
+--
 
 newtype Prefix = Prefix (Word8,Word32) deriving (Eq)
 instance Show Prefix where
@@ -68,38 +79,38 @@ newtype PrefixList = PrefixList [Prefix] deriving (Show,Eq)
 instance Binary Prefix where 
 
     put (Prefix (subnet,ip)) | subnet == 0 = putWord8 0
-                             | subnet < 8  = do putWord8 subnet
+                             | subnet < 9  = do putWord8 subnet
                                                 putWord8 (fromIntegral $ unsafeShiftR ip 24)
-                             | subnet < 16 = do putWord8 subnet
-                                                putWord16be (fromIntegral $ unsafeShiftR ip 16)
-                             | subnet < 24 = do putWord8 subnet
-                                                putWord16be (fromIntegral $ unsafeShiftR ip 16)
+                             | subnet < 17 = do putWord8 subnet
+                                                putWord16le  (fromIntegral $ unsafeShiftR ip 16)
+                             | subnet < 25 = do putWord8 subnet
+                                                putWord16le  (fromIntegral $ unsafeShiftR ip 16)
                                                 putWord8 (fromIntegral $ unsafeShiftR ip 8)
                              | otherwise   = do putWord8 subnet
-                                                putWord32be ip
+                                                putWord32le  ip
 
     get = do
         subnet <- getWord8
         if subnet == 0
         then return $ Prefix (0,0)
-        else if subnet < 8
+        else if subnet < 9
         then do
             w8 <- getWord8
             let ip = unsafeShiftL (fromIntegral w8 :: Word32) 24
             return $ Prefix (subnet,ip)
-        else if subnet < 16
+        else if subnet < 17
         then do
-            w16be <- getWord16be
-            let ip = unsafeShiftL (fromIntegral w16be :: Word32) 16
+            w16  <- getWord16le
+            let ip = unsafeShiftL (fromIntegral w16  :: Word32) 16
             return $ Prefix (subnet,ip)
-        else if subnet < 24
+        else if subnet < 25
         then do
-            w16be <- getWord16be
+            w16  <- getWord16le
             w8  <- getWord8
-            let ip = unsafeShiftL (fromIntegral w16be :: Word32) 16 .|.
+            let ip = unsafeShiftL (fromIntegral w16  :: Word32) 16 .|.
                      unsafeShiftL (fromIntegral w8 :: Word32) 8
             return $ Prefix (subnet,ip)
-        else do ip <- getWord32be
+        else do ip <- getWord32le
                 return $ Prefix (subnet,ip)
 
 
