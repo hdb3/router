@@ -112,22 +112,6 @@ instance Binary Prefix where
             return $ Prefix (subnet,ip)
         else do ip <- getWord32be
                 return $ Prefix (subnet,ip)
-{-
-
-putn :: Binary b => [b] -> Put
-putn pfxs | null pfxs =  return ()
-          | otherwise =  do put (head pfxs)
-                            putn ( tail pfxs)
-getn :: Binary b => Get [b]
-
-getn = do
-    empty <- isEmpty
-    if empty
-    then return []
-    else do b <- get
-            bs <- getn
-            return (b:bs)
--}
 instance {-# OVERLAPPING #-} Binary [Prefix] where
     put = putn
     get = getn
