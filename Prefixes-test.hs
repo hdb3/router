@@ -6,37 +6,51 @@ import Data.IP
 import Data.Binary
 import Hexdump
 import Prefixes
-import Data.ByteString.Lazy(toStrict)
--- import Data.ByteString(ByteString,unpack)
-import Data.ByteString.Char8(ByteString,unpack)
-import qualified Data.ByteString.Base16
+import qualified Data.ByteString.Lazy as L
+-- import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy.Char8 as LC
+import qualified Data.ByteString.Base16.Lazy as Base16
 
-simpleHex' = simpleHex.toStrict
+simpleHex' = simpleHex.(L.toStrict)
 readPfx :: String -> Prefix
 readPfx = fromAddrRange.read
-toHex = (unpack).Data.ByteString.Base16.encode
-fromHex = (fst).Data.ByteString.Base16.decode
+toHex = (LC.unpack).Base16.encode
+fromHex = (fst).Base16.decode
+decodePrefix :: L.ByteString -> Prefix
+decodePrefix = decode
+encodePrefix :: Prefix -> L.ByteString
+encodePrefix = encode
+-- pfx = decode bs :: Prefix
+p = do putStrLn "------------------" ; putStrLn ""
 
 main = do
-    -- testDecode
+    testDecode
     testEncode
 
 testDecode = do
     mapM_ test1 $ map fromHex
         ["00"
-        --,"0801"
+        ,"0801"
+        ,"100102"
+        ,"18010203"
+        ,"1c01020340"
+        ,"2001020304"
         ]
     where
-    test1 :: ByteString -> IO ()
+    test1 :: L.ByteString -> IO ()
     test1 bs = do
         putStrLn $ toHex bs
-        --putStrLn $ show (encode bs)
+        let pfx = decode bs :: Prefix
+        putStrLn $ show pfx
         putStrLn "------------------"
         putStrLn ""
 
 
 testEncode = do
-    mapM_ test1
+    let test :: Prefix -> IO ()
+        test = test3
+    mapM_ test $ map fromAddrRange
         ["1.2.3.4/32"
         ,"1.2.3.4/24"
         ,"1.2.3.4/16"
@@ -49,36 +63,22 @@ testEncode = do
         , "10.1.2.3/8"
         ]
     where
-    test0 :: AddrRange IPv4 -> IO ()
-    test0 ar = do
-        let pfx = fromAddrRange ar
+    test0 pfx = do
         putStrLn $ "prefix: " ++ show pfx
-        let enc = encode pfx
+        let enc = encodePrefix pfx
         putStrLn $ "encoded: " ++ (simpleHex' enc)
-        putStrLn "------------------"
-        putStrLn ""
     
-    test1 :: AddrRange IPv4 -> IO ()
-    test1 ar = do
-        let pfx = fromAddrRange ar
+    test1 pfx = do
         putStrLn $ "prefix: " ++ show pfx
-        let enc = encode pfx
+        let enc = encodePrefix pfx
         putStrLn $ "encoded: " ++ (simpleHex' enc)
-{-
-        let dec = decode enc
-        if dec == enc then putStrLn "OK"
-                      else do putStrLn "*** FAIL ***"
-                              putStrLn $ "encoded: " ++ (simpleHex' enc)
-                              putStrLn $ "decoded: " ++ show dec
--}    
-        putStrLn "------------------"
-        putStrLn ""
+        p
     
-    test2 ar = do
-        putStrLn $ "AddrRange: " ++ show ar
-        let pfx = fromAddrRange ar
+    test2 pfx = do
+        -- putStrLn $ "AddrRange: " ++ show ar
+        -- let pfx = fromAddrRange ar
         putStrLn $ "prefix: " ++ show pfx
-        let ar' = toAddrRange pfx
+        let ar = toAddrRange pfx
         putStrLn $ "AddrRange': " ++ show ar
     
         let arMasked' = makeAddrRange (masked ip' (intToMask subnet')) subnet' where
@@ -87,5 +87,17 @@ testEncode = do
     
         let pfxMasked = canonicalPrefix pfx
         -- putStrLn $ "prefix (masked): " ++ show pfxMasked
-        putStrLn "------------------"
-        putStrLn ""
+        p
+
+    test3 pfx = do
+        putStrLn $ "prefix: " ++ show pfx
+        let enc = encodePrefix pfx
+        let dec = decodePrefix enc
+        putStrLn $ "encoded: " ++ (simpleHex' enc)
+        putStrLn $ "decoded: " ++ show dec
+        if dec == pfx then putStrLn "OK"
+                      else do putStrLn "*** FAIL ***"
+                              putStrLn $ "encoded: " ++ (simpleHex' enc)
+                              putStrLn $ "decoded: " ++ show dec
+
+        p
