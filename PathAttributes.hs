@@ -112,11 +112,6 @@ instance Binary PathAttribute where
 
                 | TypeCodePathAttributeAttrSet == code -> return undefined
 
-
-putAttr :: PathAttribute -> Put
-putAttr = put
-getAttr :: Get PathAttribute
-getAttr = get
 instance {-# OVERLAPPING #-} Binary [PathAttribute] where
 
     put = putn
