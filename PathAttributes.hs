@@ -3,6 +3,7 @@
 module PathAttributes (module Codes, module PathAttributes) where
 import RFC4271
 import Codes
+import Common
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -118,15 +119,5 @@ getAttr :: Get PathAttribute
 getAttr = get
 instance {-# OVERLAPPING #-} Binary [PathAttribute] where
 
-    put attrs | null attrs =  return ()
-              | otherwise =  do putAttr (head attrs)
-                                put ( tail attrs)
-
-    get = getAttrs where
-        getAttrs = do
-          empty <- isEmpty
-          if empty
-            then return []
-            else do attr <- getAttr
-                    attrs <- getAttrs
-                    return (attr:attrs)
+    put = putn
+    get = getn

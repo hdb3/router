@@ -13,6 +13,7 @@ import Data.Monoid((<>))
 import Data.List(find)
 import GetTLVs
 import RFC4271
+import Common
 
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
@@ -85,18 +86,8 @@ getCap = get
 
 instance {-# OVERLAPPING #-} Binary [Capability] where
 
-    put caps | null caps =  return ()
-             | otherwise =  do putCap (head caps)
-                               put ( tail caps)
-    
-    get = getCaps where
-        getCaps = do
-          empty <- isEmpty
-          if empty
-            then return []
-            else do cap <- getCap
-                    caps <- getCaps
-                    return (cap:caps)
+    put = putn
+    get = getn
 
 instance Binary Capability where
 
