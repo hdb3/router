@@ -14,6 +14,10 @@ readPfx :: String -> Prefix
 readPfx = fromAddrRange.read
 toHex = LC.unpack . Base16.encode
 fromHex = fst . Base16.decode
+decodePrefixes :: L.ByteString -> [Prefix]
+decodePrefixes = decode
+encodePrefixes :: [Prefix] -> L.ByteString
+encodePrefixes = encode
 decodePrefix :: L.ByteString -> Prefix
 decodePrefix = decode
 encodePrefix :: Prefix -> L.ByteString
@@ -21,8 +25,10 @@ encodePrefix = encode
 p = do putStrLn "------------------" ; putStrLn ""
 
 main = do
-    testDecode
-    testEncode
+    -- testDecode
+    -- testEncode
+    testEncodes
+    -- testDecodes
 
 testDecode = 
     mapM_ (test1 . fromHex)
@@ -43,10 +49,7 @@ testDecode =
         putStrLn ""
 
 
-testEncode = do
-    let test :: Prefix -> IO ()
-        test = test3
-    mapM_ (test . fromAddrRange)
+encodeList = 
         ["1.2.3.4/32"
         ,"1.2.3.4/24"
         ,"1.2.3.4/16"
@@ -57,7 +60,27 @@ testEncode = do
         , "172.16.0.77/12"
         , "169.254.108.17/32"
         , "10.1.2.3/8"
-        ]
+        ] :: [AddrRange IPv4]
+
+testEncodes = test1 encodeList where
+--testEncodes = test1 ["1.2.3.4/32"] where
+    test1 ars = do
+        let pfxs = map fromAddrRange ars
+            enc = encodePrefixes pfxs
+        -- putStrLn $ "encoded: " ++ simpleHex' enc
+        let dec = decodePrefixes enc
+        -- putStrLn $ "decoded: " ++ show dec
+        if dec == pfxs then putStrLn "OK"
+                       else do putStrLn "*** FAIL ***"
+                               putStrLn $ "encoded: " ++ simpleHex' enc
+                               putStrLn $ "decoded: " ++ show dec
+ 
+        p
+
+testEncode = do
+    let test :: Prefix -> IO ()
+        test = test3
+    mapM_ (test . fromAddrRange) encodeList
     where
     test1 pfx = do
         putStrLn $ "prefix: " ++ show pfx
