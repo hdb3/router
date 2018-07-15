@@ -8,15 +8,16 @@ import Data.Bits
 import Data.IP
 
 -- IMPORTANT Note re byte ordering
--- common haskell libraries observe x86 byte ordering for network addreses
--- thus 'byteSwap32' is required when moving from ByteString encoded protocol fields to
--- application level if XXbe put and get are used
--- note - the bit shifting processes are oblivious since byte order conversion from memory to registers
--- mask this issue.
--- So for example the type Prefix should hold IPv4 addresses as 32 bit words in little endian form
--- the convention adopted here is that Word16 and Word32 are stored in host order thus should use
--- put and get XXle formats not XXbe
---
+-- x86 byte ordering is inverted w.r.t. network order,
+-- The get/put 16/32/64be primitive
+-- operations mask this truth, and at register level big endianness behaviour is observed
+-- The 'be' ~ Big Endian refers to the external representation, not the internal one!
+-- So for example the type Prefix holds IPv4 addresses as 32 bit words in little endian form
+-- internally on x86 but get/putWord32be is required to interwork with network order protocols
+-- *** HOWEVER *** ...
+-- The 'HostAddress' type from Network.Socket, via Data.IP, is a 32 bit word holding IPv4
+-- addresses IN REVERSE ORDER !!!
+-- Therefore conversions between our Prefix type and HostAddress require byteSwap32
 
 newtype Prefix = Prefix (Word8,Word32) deriving (Eq)
 instance Show Prefix where
@@ -34,10 +35,10 @@ canonicalPrefix (Prefix (subnet,ip)) | subnet < 33 = Prefix (subnet,canonicalise
                    ((flip unsafeShiftL) (fromIntegral $ 32-subnet))
  
 toAddrRange :: Prefix -> AddrRange IPv4
-toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress ip) (fromIntegral subnet)
+toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress $ byteSwap32 ip) (fromIntegral subnet)
 
 fromAddrRange :: AddrRange IPv4 -> Prefix
-fromAddrRange ar = Prefix (fromIntegral subnet,toHostAddress ip) where
+fromAddrRange ar = Prefix (fromIntegral subnet, byteSwap32 $ toHostAddress ip) where
                    (ip,subnet) = addrRangePair ar
 
 -- data PrefixList = PrefixList [Prefix]
@@ -82,12 +83,12 @@ instance Binary Prefix where
                              | subnet < 9  = do putWord8 subnet
                                                 putWord8 (fromIntegral $ unsafeShiftR ip 24)
                              | subnet < 17 = do putWord8 subnet
-                                                putWord16le  (fromIntegral $ unsafeShiftR ip 16)
+                                                putWord16be  (fromIntegral $ unsafeShiftR ip 16)
                              | subnet < 25 = do putWord8 subnet
-                                                putWord16le  (fromIntegral $ unsafeShiftR ip 16)
+                                                putWord16be  (fromIntegral $ unsafeShiftR ip 16)
                                                 putWord8 (fromIntegral $ unsafeShiftR ip 8)
                              | otherwise   = do putWord8 subnet
-                                                putWord32le  ip
+                                                putWord32be  ip
 
     get = do
         subnet <- getWord8
@@ -100,17 +101,17 @@ instance Binary Prefix where
             return $ Prefix (subnet,ip)
         else if subnet < 17
         then do
-            w16  <- getWord16le
+            w16  <- getWord16be
             let ip = unsafeShiftL (fromIntegral w16  :: Word32) 16
             return $ Prefix (subnet,ip)
         else if subnet < 25
         then do
-            w16  <- getWord16le
+            w16  <- getWord16be
             w8  <- getWord8
             let ip = unsafeShiftL (fromIntegral w16  :: Word32) 16 .|.
                      unsafeShiftL (fromIntegral w8 :: Word32) 8
             return $ Prefix (subnet,ip)
-        else do ip <- getWord32le
+        else do ip <- getWord32be
                 return $ Prefix (subnet,ip)
 
 
