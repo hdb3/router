@@ -29,11 +29,13 @@ subnet (Prefix (s,_)) = s
 
 ip :: Prefix -> Word32
 ip (Prefix (_,i)) = i
-
+{-
+ - -- removed as untested and not obviously useful
 canonicalPrefix :: Prefix -> Prefix
 canonicalPrefix (Prefix (subnet,ip)) | subnet < 33 = Prefix (subnet,canonicalise ip) where
     canonicalise = (`unsafeShiftR` (fromIntegral $ 32 - subnet)) .
                    (`unsafeShiftL` (fromIntegral $ 32 - subnet))
+-}
  
 toAddrRange :: Prefix -> AddrRange IPv4
 toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress $ byteSwap32 ip) (fromIntegral subnet)
@@ -42,11 +44,7 @@ fromAddrRange :: AddrRange IPv4 -> Prefix
 fromAddrRange ar = Prefix (fromIntegral subnet, byteSwap32 $ toHostAddress ip) where
                    (ip,subnet) = addrRangePair ar
 
-newtype PrefixList = PrefixList [Prefix] deriving (Show,Eq)
-
 -- binary format for attributes is 1 byte flags, 1 byte type code, 1 or 2 byte length value depending on a flag bit, then payload
-
--- instance {-# OVERLAPPING #-} Binary [PrefixList] where
 
 {-RFC4271 page 20:
  -
@@ -115,32 +113,20 @@ instance Binary Prefix where
                 return $ Prefix (subnet,ip)
 
 
-putPrefix :: Prefix -> Put
-putPrefix = put
-getPrefix :: Get Prefix
-getPrefix = get
+putn :: Binary b => [b] -> Put
+putn pfxs | null pfxs =  return ()
+          | otherwise =  do put (head pfxs)
+                            putn ( tail pfxs)
+getn :: Binary b => Get [b]
+
+getn = do
+    empty <- isEmpty
+    if empty
+    then return []
+    else do b <- get
+            bs <- getn
+            return (b:bs)
+
 instance {-# OVERLAPPING #-} Binary [Prefix] where
-
-    put pfxs | null pfxs =  return ()
-              | otherwise =  do putPrefix (head pfxs)
-                                put ( tail pfxs)
-
-    get = getPrefixes where
-        getPrefixes = do
-          empty <- isEmpty
-          if empty
-            then return []
-            else do pfx <- getPrefix
-                    pfxs <- getPrefixes
-                    return (pfx:pfxs)
-{-
--}
-
-{-
-class BinList b => Binary b where
-    decodeL :: [b] -> L.ByteString
-    decode8 = toEnum . fromIntegral
-    encode8 :: e -> Word8
-    encode8 = fromIntegral . fromEnum
-
--}
+    put = putn
+    get = getn
