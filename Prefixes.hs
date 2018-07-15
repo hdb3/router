@@ -1,4 +1,4 @@
-{-- LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
+{- LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
 module Prefixes where
 import Data.Binary
 import Data.Binary.Get
@@ -31,8 +31,8 @@ ip (Prefix (_,i)) = i
 
 canonicalPrefix :: Prefix -> Prefix
 canonicalPrefix (Prefix (subnet,ip)) | subnet < 33 = Prefix (subnet,canonicalise ip) where
-    canonicalise = ((flip unsafeShiftR) (fromIntegral $ 32-subnet)) .
-                   ((flip unsafeShiftL) (fromIntegral $ 32-subnet))
+    canonicalise = (`unsafeShiftR` (fromIntegral $ 32 - subnet)) .
+                   (`unsafeShiftL` (fromIntegral $ 32 - subnet))
  
 toAddrRange :: Prefix -> AddrRange IPv4
 toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress $ byteSwap32 ip) (fromIntegral subnet)
@@ -41,7 +41,6 @@ fromAddrRange :: AddrRange IPv4 -> Prefix
 fromAddrRange ar = Prefix (fromIntegral subnet, byteSwap32 $ toHostAddress ip) where
                    (ip,subnet) = addrRangePair ar
 
--- data PrefixList = PrefixList [Prefix]
 newtype PrefixList = PrefixList [Prefix] deriving (Show,Eq)
 
 -- binary format for attributes is 1 byte flags, 1 byte type code, 1 or 2 byte length value depending on a flag bit, then payload
