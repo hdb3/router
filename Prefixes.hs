@@ -7,6 +7,7 @@ import Data.Binary.Put
 import Data.Word
 import Data.Bits
 import Data.IP
+import Common
 
 -- IMPORTANT Note re byte ordering
 -- x86 byte ordering is inverted w.r.t. network order,
@@ -111,7 +112,7 @@ instance Binary Prefix where
             return $ Prefix (subnet,ip)
         else do ip <- getWord32be
                 return $ Prefix (subnet,ip)
-
+{-
 
 putn :: Binary b => [b] -> Put
 putn pfxs | null pfxs =  return ()
@@ -126,7 +127,7 @@ getn = do
     else do b <- get
             bs <- getn
             return (b:bs)
-
+-}
 instance {-# OVERLAPPING #-} Binary [Prefix] where
     put = putn
     get = getn
