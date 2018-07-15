@@ -62,8 +62,8 @@ encodeList =
         , "10.1.2.3/8"
         ] :: [AddrRange IPv4]
 
--- testEncodes = test1 encodeList where
-testEncodes = test1 ["1.2.3.4/32"] where
+testEncodes = test1 encodeList where
+-- testEncodes = test1 ["1.2.3.4/32"] where
     test1 ars = do
         let pfxs = map fromAddrRange ars
             enc = encodePrefixes pfxs
@@ -97,8 +97,8 @@ testEncode = do
             (ip',subnet') = addrRangePair ar
         putStrLn $ "AddrRange (masked): " ++ show ar
     
-        let pfxMasked = canonicalPrefix pfx
-        putStrLn $ "prefix (masked): " ++ show pfxMasked
+        -- let pfxMasked = canonicalPrefix pfx
+        -- putStrLn $ "prefix (masked): " ++ show pfxMasked
         p
 
     test3 pfx = do
