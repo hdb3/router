@@ -62,12 +62,12 @@ encodeList =
         , "10.1.2.3/8"
         ] :: [AddrRange IPv4]
 
-testEncodes = test1 encodeList where
---testEncodes = test1 ["1.2.3.4/32"] where
+-- testEncodes = test1 encodeList where
+testEncodes = test1 ["1.2.3.4/32"] where
     test1 ars = do
         let pfxs = map fromAddrRange ars
             enc = encodePrefixes pfxs
-        -- putStrLn $ "encoded: " ++ simpleHex' enc
+        putStrLn $ "encoded: " ++ simpleHex' enc
         let dec = decodePrefixes enc
         -- putStrLn $ "decoded: " ++ show dec
         if dec == pfxs then putStrLn "OK"

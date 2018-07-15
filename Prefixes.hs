@@ -1,4 +1,5 @@
 {- LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Prefixes where
 import Data.Binary
 import Data.Binary.Get
@@ -114,23 +115,32 @@ instance Binary Prefix where
                 return $ Prefix (subnet,ip)
 
 
-{-
-putAttr :: PathAttribute -> Put
-putAttr = put
-getAttr :: Get PathAttribute
-getAttr = get
-instance {-# OVERLAPPING #-} Binary [PathAttribute] where
+putPrefix :: Prefix -> Put
+putPrefix = put
+getPrefix :: Get Prefix
+getPrefix = get
+instance {-# OVERLAPPING #-} Binary [Prefix] where
 
-    put attrs | null attrs =  return ()
-              | otherwise =  do putAttr (head attrs)
-                                put ( tail attrs)
+    put pfxs | null pfxs =  return ()
+              | otherwise =  do putPrefix (head pfxs)
+                                put ( tail pfxs)
 
-    get = getAttrs where
-        getAttrs = do
+    get = getPrefixes where
+        getPrefixes = do
           empty <- isEmpty
           if empty
             then return []
-            else do attr <- getAttr
-                    attrs <- getAttrs
-                    return (attr:attrs)
+            else do pfx <- getPrefix
+                    pfxs <- getPrefixes
+                    return (pfx:pfxs)
+{-
+-}
+
+{-
+class BinList b => Binary b where
+    decodeL :: [b] -> L.ByteString
+    decode8 = toEnum . fromIntegral
+    encode8 :: e -> Word8
+    encode8 = fromIntegral . fromEnum
+
 -}
