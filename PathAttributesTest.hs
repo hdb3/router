@@ -10,6 +10,8 @@ main = do
     mapM_ testCode allPathAttributeTypeCodes
     test []
     test [PathAttributeOrigin 2]
+    test [PathAttributeASPath (ASPath []) ]
+    test [PathAttributeASPath (ASPath [ASSequence [1]]) ]
     test attrs1
     where
         testCode c = assert ( c == (toEnum . fromEnum) c ) (putStrLn $ show c ++ " - OK" )
@@ -24,10 +26,14 @@ test :: [PathAttribute] -> IO()
 test pas = do putStrLn ""
               let enc = encode pas
                   dec = (decode enc) :: [PathAttribute]
-              print pas
-              putStrLn ""
-              putStrLn $ "encoded: " ++ simpleHex' enc
-              putStrLn $ "decoded: " ++ show dec
+              -- putStrLn $ "original: " ++ show pas
+              -- putStrLn $ "encoded:  " ++ simpleHex' enc
+              if dec == pas
+              then putStrLn $ show pas ++ " OK"
+              else do putStrLn "*** FAIL ***"
+                      putStrLn $ "original: " ++ show pas
+                      putStrLn $ "decoded:  " ++ show dec
+                      putStrLn $ "encoded:  " ++ simpleHex' enc
               putStrLn " ------------------"
 
 

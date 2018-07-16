@@ -23,6 +23,8 @@ partial    = 0x20 :: Word8
 extended   = 0x10 :: Word8
 extendedBitTest :: Word8 -> Bool
 extendedBitTest w = testBit w 4 -- counting up from LSB numbered as 0
+setExtended :: Word8 -> Word8
+setExtended w = w .|. extended
 
 
 flagCheck :: Word8 -> PathAttributeTypeCode -> Bool
