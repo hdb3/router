@@ -3,6 +3,7 @@ module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import System.IO.Error(catchIOError)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode)
 import System.Timeout(timeout)
 import Control.Concurrent
@@ -87,13 +88,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                    print notify
                                    exit "stateConnected -> exit rcv notify"
                                 _ -> do
-                                    snd $ BGPNotify NotificationFiniteStateMachineError 0 []
+                                    snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                                     exit "stateConnected - FSM error"
 
     stateOpenSent osm = do msg <- get initialHoldTimer
                            case msg of 
                              BGPTimeout -> do
-                                 snd $ BGPNotify NotificationHoldTimerExpired 0 []
+                                 snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
                                  exit "stateOpenSent - error initial Hold Timer expiry"
                              open@BGPOpen{} -> do
                                  let osm' = updateOpenStateMachine osm open
@@ -110,13 +111,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                 print notify
                                 exit "stateOpenSent - rcv notify"
                              _ -> do
-                                 snd $ BGPNotify NotificationFiniteStateMachineError 0 []
+                                 snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                                  exit "stateOpenSent - FSM error"
 
     stateOpenConfirm osm = do msg <- get (getNegotiatedHoldTime osm)
                               case msg of 
                                   BGPTimeout -> do
-                                      snd $ BGPNotify NotificationHoldTimerExpired 0 []
+                                      snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
                                       exit "stateOpenConfirm - error initial Hold Timer expiry"
                                   BGPKeepalive -> do
                                       putStrLn "stateOpenConfirm - rcv keepalive"
@@ -125,7 +126,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                       print notify
                                       exit "stateOpenConfirm - rcv notify"
                                   _ -> do
-                                      snd $ BGPNotify NotificationFiniteStateMachineError 0 []
+                                      snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                                       exit "stateOpenConfirm - FSM error"
 
     keepAliveLoop timer = do
@@ -167,10 +168,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 exit "established - rcv notify"
             BGPEndOfStream -> exit "established: BGPEndOfStream"
             BGPTimeout -> do
-                snd $ BGPNotify NotificationHoldTimerExpired 0 []
+                snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
                 exit "established - HoldTimerExpired error"
             _ -> do
-                snd $ BGPNotify NotificationFiniteStateMachineError 0 []
+                snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                 exit "established - FSM error"
 
     -- collisionCheck
@@ -184,7 +185,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             (return())
             (\session ->
                 when (sessionEstablished session || peer > self) $
-                    do snd $ BGPNotify NotificationCease 0 []
+                    do snd $ BGPNotify NotificationCease 0 L.empty
                        -- putStrLn $ "collision detected with " ++ show session
                        if sessionEstablished session then
                            exit $ "collisionCheck - event: collision with established session - open rejected error for peer " ++ show session
