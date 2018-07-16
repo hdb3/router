@@ -16,6 +16,8 @@ import RFC4271
 import Open
 import Capabilities
 import Collision
+import PathAttributes
+import Prefixes
 
 data FSMException = FSMException String
     deriving Show
@@ -145,9 +147,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 putStrLn "established - rcv keepalive"
                 established osm
-            update@BGPUpdate{} -> do
+            update@BGPUpdate{..} -> do
                 putStrLn "established - rcv update"
                 print update
+                let attributes = (decode pathAttributes) :: [PathAttribute]
+                    withdrawn = (decode withdrawnRoutes) :: [Prefix]
+                    prefixes = (decode nlri) :: [Prefix]
+                -- sendToRIB update
                 established osm
             notify@BGPNotify{} -> do
                 print notify
