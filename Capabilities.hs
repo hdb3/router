@@ -123,7 +123,7 @@ instance Binary Capability where
                       return (CapGracefulRestart rFlag restartTime)
            | t == _CapCodeAS4 -> do as <- getWord32be
                                     return $ CapAS4 as -- surely not the most elegant way to say this!!!!
-           | otherwise        -> do error $ "Unexoected type code: " ++ show t
+           | otherwise        -> do error $ "Unexpected type code: " ++ show t
                                     return undefined
 
 buildOptionalParameters :: [ Capability ] -> ByteString

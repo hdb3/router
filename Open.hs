@@ -5,9 +5,11 @@ import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
 import Data.IP(fromHostAddress)
 import RFC4271
 import Capabilities(Capability,eq_)
+import Data.Binary
 import BGPparse
 import Collision
 import Common
+import qualified Data.ByteString.Lazy as L
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -89,19 +91,19 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
 
         checkBgpID :: Maybe BGPMessage
         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
-        checkBgpID = if remoteBGPID == localBGPID then Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) [])
+        checkBgpID = if remoteBGPID == localBGPID then Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty)
                      else if requiredBGPID == nullBGPID || requiredBGPID == remoteBGPID then Nothing
-                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) []) 
+                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty) 
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = if holdTime required > getNegotiatedHoldTime' osm
-                        then Just (BGPNotify NotificationOPENMessageError (encode8 UnacceptableHoldTime) [])
+                        then Just (BGPNotify NotificationOPENMessageError (encode8 UnacceptableHoldTime) L.empty)
                         else Nothing
 
         checkmyAS :: Maybe BGPMessage
         checkmyAS = if 0 == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
                     then Nothing
-                    else Just (BGPNotify NotificationOPENMessageError (encode8 BadPeerAS) [])
+                    else Just (BGPNotify NotificationOPENMessageError (encode8 BadPeerAS) L.empty)
 
 -- a naive check looks for identical values in capabilities,
 -- which is how the RFC is worded
@@ -116,7 +118,7 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
 -- this is the mentioned check for presecnce in remote offer of required parameters
 -- return a list of capabilities required but not found in the offer
         checkOptionalCapabilities :: Maybe BGPMessage
-        checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError (encode8 UnsupportedOptionalParameter) missingCapabilities) where
+        checkOptionalCapabilities = if null missingCapabilities then Nothing else Just (BGPNotify NotificationOPENMessageError (encode8 UnsupportedOptionalParameter) (encode missingCapabilities)) where
             offered  = caps remoteOffer'
             missingCapabilities = check (caps required)
             check [] = []

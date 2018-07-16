@@ -20,7 +20,8 @@ _BGPVersion = 4 :: Word8
 
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: IPv4, caps :: [ Capability ] }
                   | BGPKeepalive
-                  | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
+                  | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, errorData :: L.ByteString }
+                  -- | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
                   | BGPUpdate { withdrawnRoutes :: L.ByteString, pathAttributes :: L.ByteString, nlri :: L.ByteString }
                   | BGPTimeout
                   | BGPError String
@@ -84,6 +85,9 @@ instance Binary BGPMessage where
                                            errorCode <- getWord8
                                            errorSubcode <- getWord8
                                            errorData <- getRemainingLazyByteString
-                                           return $ BGPNotify (decode8 errorCode) errorSubcode (decode errorData)
+                                           -- return $ BGPNotify (decode8 errorCode) errorSubcode (decode errorData)
+                                           -- decoding the error data depends on the type of notification!
+                                           -- e.g. Bad Peer AS contains just the unwanted (?) peer AS number
+                                           return $ BGPNotify (decode8 errorCode) errorSubcode errorData
                 | _BGPKeepalive == msgType -> return BGPKeepalive
                 | otherwise -> fail "Bad type code"
