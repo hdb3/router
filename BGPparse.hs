@@ -21,7 +21,7 @@ _BGPVersion = 4 :: Word8
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: IPv4, caps :: [ Capability ] }
                   | BGPKeepalive
                   | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
-                  | BGPUpdate { withdrawnRoutes :: B.ByteString, pathAttributes :: B.ByteString, nlri :: B.ByteString }
+                  | BGPUpdate { withdrawnRoutes :: L.ByteString, pathAttributes :: L.ByteString, nlri :: L.ByteString }
                   | BGPTimeout
                   | BGPError String
                   | BGPEndOfStream
@@ -45,14 +45,14 @@ instance Binary BGPMessage where
                                                               putWord8 $ fromIntegral $ B.length optionalParameters
                                                               putByteString optionalParameters
 
-    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do let withdrawnRoutesLength = fromIntegral $ B.length withdrawnRoutes
-                                                                 pathAttributesLength = fromIntegral $ B.length pathAttributes
+    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do let withdrawnRoutesLength = fromIntegral $ L.length withdrawnRoutes
+                                                                 pathAttributesLength = fromIntegral $ L.length pathAttributes
                                                              putWord8 _BGPUpdate
                                                              putWord16be withdrawnRoutesLength
-                                                             putByteString withdrawnRoutes
+                                                             putLazyByteString withdrawnRoutes
                                                              putWord16be pathAttributesLength
-                                                             putByteString pathAttributes
-                                                             putByteString nlri
+                                                             putLazyByteString pathAttributes
+                                                             putLazyByteString nlri
 
     put (BGPNotify code subCode caps) = do putWord8 _BGPNotify
                                            putWord8 $ encode8 code
@@ -75,11 +75,11 @@ instance Binary BGPMessage where
                                            return $ BGPOpen myAutonomousSystem holdTime (fromHostAddress bgpID)  ( parseOptionalParameters $ L.toStrict optionalParameters )
                 | _BGPUpdate == msgType -> do
                                            withdrawnRoutesLength <- getWord16be
-                                           withdrawnRoutes <- getByteString $ fromIntegral withdrawnRoutesLength
+                                           withdrawnRoutes <- getLazyByteString $ fromIntegral withdrawnRoutesLength
                                            pathAttributesLength <- getWord16be
-                                           pathAttributes <- getByteString $ fromIntegral pathAttributesLength
+                                           pathAttributes <- getLazyByteString $ fromIntegral pathAttributesLength
                                            nlri <- getRemainingLazyByteString
-                                           return $ BGPUpdate withdrawnRoutes pathAttributes $ L.toStrict nlri
+                                           return $ BGPUpdate withdrawnRoutes pathAttributes nlri
                 | _BGPNotify == msgType -> do
                                            errorCode <- getWord8
                                            errorSubcode <- getWord8
