@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
-module PathAttributes (module Codes, module PathAttributes) where
+module PathAttributes (module Codes, module PathAttributes, module ASPath) where
 import RFC4271
 import Codes
 import Common
@@ -10,15 +10,16 @@ import Data.Binary.Put
 import Data.Word
 import qualified Data.ByteString as B
 import Control.Monad
+import ASPath
 
-data ASPath = ASPath deriving (Show,Eq)
+-- data ASPath = ASPath deriving (Show,Eq)
 data Aggregator = Aggregator deriving (Show,Eq)
 data Communities = Communities deriving (Show,Eq)
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
 
-data PathAttribute = PathAttributeOrigin Word8 |
+data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath |
-                     PathAttributeNextHop Word32 |
+                     PathAttributeNextHop Word32 | -- should be IPv4
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
                      PathAttributeAtomicAggregate |
