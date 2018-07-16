@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Data.Binary
 import PathAttributes
@@ -20,7 +21,7 @@ main = do
         path2 = ASPath [seg1,seg2]
         seg1  = ASSet [1,2,3]
         seg2  = ASSequence [6,5,4]
-        attrs1 = [PathAttributeOrigin 2, PathAttributeASPath path2, PathAttributeNextHop 0x800001]
+        attrs1 = [PathAttributeOrigin 2, PathAttributeASPath path2, PathAttributeNextHop "192.168.0.1"]
 
 test :: [PathAttribute] -> IO()
 test pas = do putStrLn ""

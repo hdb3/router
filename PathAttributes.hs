@@ -8,19 +8,19 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
+import Data.IP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Monad
 import ASPath
 
--- data ASPath = ASPath deriving (Show,Eq)
 data Aggregator = Aggregator deriving (Show,Eq)
 data Communities = Communities deriving (Show,Eq)
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath |
-                     PathAttributeNextHop Word32 | -- should be IPv4
+                     PathAttributeNextHop IPv4 |
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
                      PathAttributeAtomicAggregate |
@@ -60,7 +60,7 @@ putAttributeByteString code b = do putWord8 (setExtended $ flagsOf code)
 instance Binary PathAttribute where 
 
     put (PathAttributeOrigin a) = putAttributeWord8 TypeCodePathAttributeOrigin a
-    put (PathAttributeNextHop a) = putAttributeWord32 TypeCodePathAttributeNextHop a
+    put (PathAttributeNextHop a) = putAttributeWord32 TypeCodePathAttributeNextHop (toHostAddress a)
     put (PathAttributeMultiExitDisc a) = putAttributeWord32 TypeCodePathAttributeMultiExitDisc a
     put (PathAttributeLocalPref a) = putAttributeWord32 TypeCodePathAttributeLocalPref a
     put (PathAttributeASPath a) = putAttributeByteString TypeCodePathAttributeASPath (encode a)
@@ -80,14 +80,13 @@ instance Binary PathAttribute where
                  unless (v < 3) (fail "Bad Origin Code")
                  return $ PathAttributeOrigin v
 
-                -- | TypeCodePathAttributeASPath == code -> return undefined
                 | TypeCodePathAttributeASPath == code -> do
                     bs <- getLazyByteString (fromIntegral len)
                     return $ PathAttributeASPath (decode bs)
 
                 | TypeCodePathAttributeNextHop == code -> do
                   v <- getWord32be
-                  return $ PathAttributeNextHop v
+                  return $ PathAttributeNextHop (fromHostAddress v)
 
                 | TypeCodePathAttributeMultiExitDisc == code -> do
                   v <- getWord32be
