@@ -21,3 +21,10 @@ getn = do
     else do b <- get
             bs <- getn
             return (b:bs)
+
+-- moved from RFC4721.hs
+class Enum e => EnumWord8 e where
+    decode8 :: Word8 -> e
+    decode8 = toEnum . fromIntegral
+    encode8 :: e -> Word8
+    encode8 = fromIntegral . fromEnum

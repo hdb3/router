@@ -1,10 +1,16 @@
 module RFC4271 where
 import Data.Word
+import Common
+
+{-
+ - moved to Common.hs
+ -
 class Enum e => EnumWord8 e where
     decode8 :: Word8 -> e
     decode8 = toEnum . fromIntegral
     encode8 :: e -> Word8
     encode8 = fromIntegral . fromEnum
+-}
 
 {-
          Name                       Value      Definition

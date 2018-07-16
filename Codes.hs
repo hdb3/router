@@ -1,5 +1,6 @@
 module Codes where
 import RFC4271
+import Common
 import Data.Word
 import Data.Bits
 
