@@ -8,6 +8,7 @@ bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")
 ipV4_localhost = toHostAddress ( read "127.0.0.1")
 
+-- todo - make this a method of Binary by hiding the default method on import.....
 putn :: Binary b => [b] -> Put
 putn pfxs | null pfxs =  return ()
           | otherwise =  do put (head pfxs)

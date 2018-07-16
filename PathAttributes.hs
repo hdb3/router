@@ -9,6 +9,7 @@ import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Control.Monad
 import ASPath
 
@@ -50,12 +51,19 @@ putAttributeWord32 code v = do putWord8 (flagsOf code)
                                putWord8 4 -- length of payload
                                putWord32be v
 
+putAttributeByteString :: PathAttributeTypeCode -> L.ByteString -> Put
+putAttributeByteString code b = do putWord8 (setExtended $ flagsOf code)
+                                   putWord8 (encode8 code)
+                                   putWord16be (fromIntegral $ L.length b) -- length of payload
+                                   putLazyByteString b
+
 instance Binary PathAttribute where 
 
     put (PathAttributeOrigin a) = putAttributeWord8 TypeCodePathAttributeOrigin a
     put (PathAttributeNextHop a) = putAttributeWord32 TypeCodePathAttributeNextHop a
     put (PathAttributeMultiExitDisc a) = putAttributeWord32 TypeCodePathAttributeMultiExitDisc a
     put (PathAttributeLocalPref a) = putAttributeWord32 TypeCodePathAttributeLocalPref a
+    put (PathAttributeASPath a) = putAttributeByteString TypeCodePathAttributeASPath (encode a)
 
     get = do flags <- getWord8
              code'  <- getWord8
@@ -72,7 +80,10 @@ instance Binary PathAttribute where
                  unless (v < 3) (fail "Bad Origin Code")
                  return $ PathAttributeOrigin v
 
-                | TypeCodePathAttributeASPath == code -> return undefined
+                -- | TypeCodePathAttributeASPath == code -> return undefined
+                | TypeCodePathAttributeASPath == code -> do
+                    bs <- getLazyByteString (fromIntegral len)
+                    return $ PathAttributeASPath (decode bs)
 
                 | TypeCodePathAttributeNextHop == code -> do
                   v <- getWord32be
