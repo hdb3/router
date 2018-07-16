@@ -150,13 +150,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 established osm
             update@BGPUpdate{..} -> do
                 putStrLn "established - rcv update"
-                print update
+                -- print update
                 let attributes = (decode pathAttributes) :: [PathAttribute]
                     withdrawn = (decode withdrawnRoutes) :: [Prefix]
                     prefixes = (decode nlri) :: [Prefix]
                 putStrLn "attributes"
                 print attributes
-                putStrLn "attributes"
+                putStrLn "nrli"
                 print prefixes
                 putStrLn "withdrawn"
                 print withdrawn
