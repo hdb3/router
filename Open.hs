@@ -7,6 +7,7 @@ import RFC4271
 import Capabilities(Capability,eq_)
 import BGPparse
 import Collision
+import Common
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
