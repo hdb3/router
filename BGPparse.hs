@@ -73,7 +73,7 @@ instance Binary BGPMessage where
                                            optionalParameters <- getRemainingLazyByteString
                                            unless (optionalParametersLength == fromIntegral (L.length optionalParameters))
                                                   (fail "optional parameter length wrong (Open)")
-                                           return $ BGPOpen myAutonomousSystem holdTime (fromHostAddress bgpID)  ( parseOptionalParameters $ L.toStrict optionalParameters )
+                                           return $ BGPOpen myAutonomousSystem holdTime (fromHostAddress bgpID)  ( parseOptionalParameters optionalParameters )
                 | _BGPUpdate == msgType -> do
                                            withdrawnRoutesLength <- getWord16be
                                            withdrawnRoutes <- getLazyByteString $ fromIntegral withdrawnRoutesLength

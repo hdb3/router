@@ -26,7 +26,7 @@ main = do
 test :: [PathAttribute] -> IO()
 test pas = do putStrLn ""
               let enc = encode pas
-                  dec = (decode enc) :: [PathAttribute]
+                  dec = decode enc :: [PathAttribute]
               -- putStrLn $ "original: " ++ show pas
               -- putStrLn $ "encoded:  " ++ simpleHex' enc
               if dec == pas

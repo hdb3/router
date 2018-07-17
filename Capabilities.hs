@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 module Capabilities where
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
@@ -11,28 +12,17 @@ import Data.Binary.Put
 import Data.ByteString.Builder
 import Data.Monoid((<>))
 import Data.List(find)
-import GetTLVs
 import RFC4271
 import Common
 
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml
-{-
-
-Value 	Description 	Reference 
-1	Multiprotocol Extensions for BGP-4	[RFC2858]
-7	BGPsec Capability	[RFC8205]
-64	Graceful Restart Capability	[RFC4724]
-65	Support for 4-octet AS number capability	[RFC6793]
-
--}
+--
 _CapCodeMultiprotocol = 1
+_CapCodeRouteRefresh = 2
 _CapCodeGracefulRestart = 64
 _CapCodeAS4 = 65
--- in the python library I have support for the followin optional capabilities
--- multiprotocol (IPv6)
--- gracefull restart
--- AS4 (32-bit ASNs)
+_CapCodeCiscoRefresh = 128
 {-
  The Capability Value field is defined as:
 
@@ -71,12 +61,17 @@ _CapCodeAS4 = 65
 --
 data Capability = CapMultiprotocol Word16 Word8 
                 | CapGracefulRestart Bool Word16
-                | CapAS4 Word32 deriving (Show,Eq)
+                | CapAS4 Word32
+                | CapRouteRefresh
+                | CapCiscoRefresh
+                  deriving (Show,Eq)
 
 eq_ :: Capability -> Capability -> Bool
 eq_ (CapMultiprotocol _ _) (CapMultiprotocol _ _) = True
 eq_ (CapGracefulRestart _ _) (CapGracefulRestart _ _) = True
 eq_ (CapAS4 _) (CapAS4 _) = True
+eq_ CapRouteRefresh CapRouteRefresh = True
+eq_ CapCiscoRefresh CapCiscoRefresh = True
 eq_ _ _ = False
 
 putCap :: Capability -> Put
@@ -90,6 +85,14 @@ instance {-# OVERLAPPING #-} Binary [Capability] where
     get = getn
 
 instance Binary Capability where
+
+    put CapRouteRefresh = do
+        putWord8 _CapCodeRouteRefresh
+        putWord8 0
+
+    put CapCiscoRefresh = do
+        putWord8 _CapCodeCiscoRefresh
+        putWord8 0
 
     put (CapAS4 as4) = do
         putWord8 _CapCodeAS4
@@ -123,6 +126,8 @@ instance Binary Capability where
                       return (CapGracefulRestart rFlag restartTime)
            | t == _CapCodeAS4 -> do as <- getWord32be
                                     return $ CapAS4 as -- surely not the most elegant way to say this!!!!
+           | t == _CapCodeRouteRefresh -> return CapRouteRefresh
+           | t == _CapCodeCiscoRefresh -> return CapCiscoRefresh
            | otherwise        -> do error $ "Unexpected type code: " ++ show t
                                     return undefined
 
@@ -133,10 +138,21 @@ buildOptionalParameters capabilities | not $ null capabilities = let caps = L.co
 
 -- need to parse multiple parameter blocks to cater for case whwere each capability is sent in a  singleton parameter
 --
-parseOptionalParameters :: ByteString -> [ Capability ]
+parseOptionalParameters :: L.ByteString -> [ Capability ]
 
-parseOptionalParameters parametersBS = maybe
-                                       []
-                                       -- (map (decode . L.fromStrict) . getTLVs . B.drop 2)
-                                       (decode . L.fromStrict)
-                                       (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
+parseOptionalParameters bs = concatMap (decode . value) capabilityParameters where
+                                 parameters = decode bs :: [TLV] 
+                                 capabilityParameters = filter ((2 ==) . code) parameters
+
+data TLV = TLV { code :: Word8 , value :: L.ByteString }
+instance Binary TLV where
+    put TLV{..} = putWord8 code <> putWord8 (fromIntegral (L.length value)) <> putLazyByteString value
+
+    get = do code <- get
+             n <- get :: Get Word8
+             bs <- getLazyByteString (fromIntegral n)
+             return $ TLV code bs
+
+instance {-# OVERLAPPING #-} Binary [TLV] where
+    put = putn
+    get = getn

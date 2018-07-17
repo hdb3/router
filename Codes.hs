@@ -28,7 +28,7 @@ setExtended w = w .|. extended
 
 
 flagCheck :: Word8 -> PathAttributeTypeCode -> Bool
-flagCheck flags code = (flags .&. 0xc0) == (flagsOf code)
+flagCheck flags code = (flags .&. 0xc0) == flagsOf code
 
 flagsOf :: PathAttributeTypeCode -> Word8
 flagsOf e | e == TypeCodePathAttributeOrigin = transitive 

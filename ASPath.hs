@@ -1,4 +1,3 @@
--- # LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
 module ASPath where
@@ -26,13 +25,10 @@ import Control.Monad
 
 newtype ASPath = ASPath [ASSegment] deriving (Show,Eq)
 data ASSegment = ASSet [ASNumber] | ASSequence [ASNumber] deriving (Show,Eq) 
-data ASNumber = ASNumber Word16 deriving (Show,Eq,Read)
+newtype ASNumber = ASNumber Word16 deriving (Show,Eq,Read)
+-- data ASNumber = ASNumber Word16 deriving (Show,Eq,Read)
 instance Num ASNumber where
     fromInteger x = ASNumber (fromIntegral x)
--- newtype ASNumber = ASNumber Word16 deriving (Show,Eq,Read,Num)
-
--- data ASNumber = AS2 Word16 | AS4 Word32 deriving (Show,Eq)
--- data ASNumber = AS2 Word16 | AS4 Word32 deriving (Show,Eq)
 
 instance Binary ASNumber where
     put (ASNumber w) = putWord16le w

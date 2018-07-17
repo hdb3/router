@@ -25,14 +25,14 @@ getConfig = do
     
     -- this forces the parser to evaluate the command line inside the exception catcher rather than later on when 
     -- the client uses the parsed parameters
-    let force v = if 0 < (length $ show v) then return v else return undefined
+    let force v = if 0 < length  (show v) then return v else return undefined
     eVal <- try (force $ getConfig' args) :: IO (Either SomeException Args)
 
     return $ either
              (\_ -> Left helpMessage)
              -- (\e -> Left $ show e)
              -- expect "Prelude.read: no parse"
-             (\args -> Right args)
+             Right
              eVal
 
 getConfig' :: [String] -> Args
@@ -69,6 +69,8 @@ getConfig' args = (address,local,remote) where
     parseCapabilities [] = []
     parseCapabilities ("CapAS4":as:cx) = CapAS4 (read as) : parseCapabilities cx
     parseCapabilities ("CapGracefulRestart":b:w:cx) = CapGracefulRestart (read b) (read w) : parseCapabilities cx
+    parseCapabilities ("CapRouteRefresh":cx) = CapRouteRefresh : parseCapabilities cx
+    parseCapabilities ("CapCiscoRefresh":cx) = CapCiscoRefresh : parseCapabilities cx
 
     myWords :: String -> [String]
     myWords "" = []
