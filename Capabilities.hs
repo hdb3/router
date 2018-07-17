@@ -131,9 +131,12 @@ buildOptionalParameters capabilities | not $ null capabilities = let caps = L.co
                                                                  L.toStrict $ toLazyByteString $ word8 2 <>  word8 (fromIntegral $ L.length caps) <> lazyByteString caps
                                      | otherwise = B.empty
 
+-- need to parse multiple parameter blocks to cater for case whwere each capability is sent in a  singleton parameter
+--
 parseOptionalParameters :: ByteString -> [ Capability ]
 
 parseOptionalParameters parametersBS = maybe
                                        []
-                                       (map (decode . L.fromStrict) . getTLVs . B.drop 2)
+                                       -- (map (decode . L.fromStrict) . getTLVs . B.drop 2)
+                                       (decode . L.fromStrict)
                                        (find (\bs -> 2 == B.index bs 0) (getTLVs parametersBS))
