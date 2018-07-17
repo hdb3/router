@@ -89,7 +89,7 @@ instance Binary Prefix where
                              | otherwise   = do putWord8 subnet
                                                 putWord32be  ip
 
-    get = do
+    get = label "Prefix" $ do
         subnet <- getWord8
         if subnet == 0
         then return $ Prefix (0,0)
