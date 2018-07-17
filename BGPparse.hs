@@ -41,7 +41,7 @@ instance Binary BGPMessage where
                                                               putWord8 _BGPVersion
                                                               putWord16be myAutonomousSystem
                                                               putWord16be holdTime
-                                                              putWord32be $ toHostAddress bgpID
+                                                              putWord32le $ toHostAddress bgpID
                                                               let optionalParameters = buildOptionalParameters caps
                                                               putWord8 $ fromIntegral $ B.length optionalParameters
                                                               putByteString optionalParameters
@@ -68,7 +68,7 @@ instance Binary BGPMessage where
                                            unless (msgVer == _BGPVersion) (fail "Bad version(Open)")
                                            myAutonomousSystem <- getWord16be
                                            holdTime <- getWord16be
-                                           bgpID <- getWord32be
+                                           bgpID <- getWord32le
                                            optionalParametersLength <- getWord8
                                            optionalParameters <- getRemainingLazyByteString
                                            unless (optionalParametersLength == fromIntegral (L.length optionalParameters))
