@@ -105,7 +105,8 @@ instance Binary PathAttribute where
     put (PathAttributeExtendedCommunities a) = putAttributeByteString TypeCodePathAttributeExtendedCommunities (encode a)
     put (PathAttributeAS4Path a) = putAttributeByteString TypeCodePathAttributeAS4Path (encode a)
 
-    get = do flags <- getWord8
+    get = label "PathAttribute" $ do
+             flags <- getWord8
              code'  <- getWord8
              let code = decode8 code'
              len <- if extendedBitTest flags then do l <- getWord16be

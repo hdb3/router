@@ -111,7 +111,7 @@ instance Binary Capability where
         putWord8 0
         putWord8 safi
 
-    get = do
+    get = label "Capability" $ do
         t <- getWord8
         l <- getWord8
         if | t == _CapCodeMultiprotocol -> do
@@ -148,7 +148,8 @@ data TLV = TLV { code :: Word8 , value :: L.ByteString }
 instance Binary TLV where
     put TLV{..} = putWord8 code <> putWord8 (fromIntegral (L.length value)) <> putLazyByteString value
 
-    get = do code <- get
+    get = label "TLV" $ do
+             code <- get
              n <- get :: Get Word8
              bs <- getLazyByteString (fromIntegral n)
              return $ TLV code bs

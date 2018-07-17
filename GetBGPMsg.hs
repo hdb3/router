@@ -43,7 +43,7 @@ instance Binary BGPMessage where
                              putWord16be (fromIntegral $ L.length bs +18)
                              putLazyByteString bs
 
-    get = do
+    get = label "BGPMessage" $ do
         empty <- isEmpty
         when empty (fail "BGP end of stream")
         marker <- getLazyByteString 16

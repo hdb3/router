@@ -32,7 +32,8 @@ instance Num ASNumber where
 
 instance Binary ASNumber where
     put (ASNumber w) = putWord16le w
-    get = do w <- getWord16le
+    get = label "ASNumber" $ do
+             w <- getWord16le
              return (ASNumber w)
 
 instance {-# OVERLAPPING #-} Binary [ASNumber] where
@@ -48,7 +49,8 @@ putASSegmentElement code asns = do putWord8 (encode8 code)
                                    putWord8 (fromIntegral $ length asns)
                                    put asns
 instance Binary ASPath where 
-    get = do segments <- get
+    get = label "ASPath" $ do
+             segments <- get
              return (ASPath segments)
 
     put (ASPath segments) =  put segments
@@ -58,7 +60,7 @@ instance Binary ASSegment where
     put (ASSet asns) = putASSegmentElement EnumASSet asns
     put (ASSequence asns) = putASSegmentElement EnumASSequence asns
 
-    get = do 
+    get = label "ASSegment" $ do 
              code'  <- getWord8
              let code = decode8 code'
              len <- getWord8

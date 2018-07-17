@@ -62,7 +62,8 @@ instance Binary BGPMessage where
 
     put BGPKeepalive                                = putWord8 _BGPKeepalive
 
-    get = do msgType <- getWord8
+    get = label "BGPMessage" $ do
+             msgType <- getWord8
              if | _BGPOpen == msgType -> do
                                            msgVer  <- getWord8
                                            unless (msgVer == _BGPVersion) (fail "Bad version(Open)")
