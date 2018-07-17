@@ -95,7 +95,7 @@ putFlexAttributeByteString code b | L.length b > 255 = putAttributeByteString co
 instance Binary PathAttribute where 
 
     put (PathAttributeOrigin a) = putAttributeWord8 TypeCodePathAttributeOrigin a
-    put (PathAttributeNextHop a) = putAttributeWord32 TypeCodePathAttributeNextHop (toHostAddress a)
+    put (PathAttributeNextHop a) = putAttributeWord32 TypeCodePathAttributeNextHop (byteSwap32 $ toHostAddress a)
     put (PathAttributeMultiExitDisc a) = putAttributeWord32 TypeCodePathAttributeMultiExitDisc a
     put (PathAttributeLocalPref a) = putAttributeWord32 TypeCodePathAttributeLocalPref a
     put (PathAttributeASPath a) = putAttributeByteString TypeCodePathAttributeASPath (encode a)
@@ -125,7 +125,7 @@ instance Binary PathAttribute where
                     return $ PathAttributeASPath (decode bs)
 
                 | TypeCodePathAttributeNextHop == code -> do
-                  v <- getWord32be
+                  v <- getWord32le
                   return $ PathAttributeNextHop (fromHostAddress v)
 
                 | TypeCodePathAttributeMultiExitDisc == code -> do
@@ -140,7 +140,7 @@ instance Binary PathAttribute where
 
                 | TypeCodePathAttributeAggregator == code -> do
                     as <- getWord16be
-                    bgpid <- getWord32be
+                    bgpid <- getWord32le
                     return $ PathAttributeAggregator (as,fromHostAddress bgpid)
 
                 | TypeCodePathAttributeCommunities == code -> do
