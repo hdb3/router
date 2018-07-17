@@ -1,4 +1,5 @@
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE FlexibleInstances,BangPatterns #-}
 module GetBGPMsg (getBgpMessage,sndBgpMessage) where
 
 {- BGP messages once received are bytestrings - 
@@ -8,62 +9,87 @@ module GetBGPMsg (getBgpMessage,sndBgpMessage) where
  - the marker and length field reapplied before transmission on the network.
 -}
 
-import Foreign
-import GHC.Base
-import GHC.Word
-import Data.ByteString.Unsafe(unsafeIndex)
-import Network.Socket
-import qualified Network.Socket.ByteString.Lazy as L
-import qualified Network.Socket.ByteString as B
+import Data.Bits
+import Data.Binary
 import Data.Binary.Get
+import Data.Binary.Put
 import Data.Word
-import Data.Either
-import Control.Monad(unless,fail)
+import Common
+-- import qualified Network.Socket.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy as L
+--import Foreign
+--import GHC.Base
+--import GHC.Word
+--import Data.ByteString.Lazy.Unsafe(unsafeIndex)
+import Network.Socket hiding(send, sendTo, recv, recvFrom)
+import qualified Network.Socket.ByteString.Lazy as L
+-- import qualified Network.Socket.ByteString as B
+--import Data.Either
+import Control.Monad(when,unless,fail)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import           Data.ByteString.Builder
-import           Data.Monoid
+--import           Data.ByteString.Builder
+--import           Data.Monoid
 import Hexdump
+simpleHex' = simpleHex . L.toStrict
 
-_BGPMarker = B.replicate 16 0xff
+data BGPMessage = BGPMessage L.ByteString
+
+!lBGPMarker = L.replicate 16 0xff
+!_BGPMarker = B.replicate 16 0xff
+instance Binary BGPMessage where 
+
+    put (BGPMessage bs) = do putLazyByteString lBGPMarker
+                             putWord16be (fromIntegral $ L.length bs +18)
+                             putLazyByteString bs
+
+    get = do
+        empty <- isEmpty
+        when empty (fail "BGP end of stream")
+        marker <- getLazyByteString 16
+        unless ( marker == lBGPMarker ) (fail "BGP marker synchronisation error")
+        len <- getWord16be
+        bs <- getLazyByteString (fromIntegral len)
+        return (BGPMessage bs)
+
+
+instance {-# OVERLAPPING #-} Binary [BGPMessage] where
+    put = putn
+    get = getn
+
 sndBgpMessage :: Socket -> L.ByteString -> IO ()
-sndBgpMessage sock bgpMsg = do let wireMessageLength = fromIntegral $ 18 + L.length bgpMsg
-                                   wireMessage = L.toStrict $ toLazyByteString $ byteString _BGPMarker <>  word16BE wireMessageLength <> lazyByteString bgpMsg
-                               B.sendAll sock wireMessage
+sndBgpMessage sock bgpMsg = L.sendAll sock $ encode (BGPMessage bgpMsg)
+sndBgpMessage' :: Socket -> BGPMessage -> IO ()
+sndBgpMessage' sock bgpMsg = L.sendAll sock (encode bgpMsg)
+
+getBgpMessage' :: Socket -> IO BGPMessage
+getBgpMessage' sock = do bgpMsg <- getBgpMessage sock
+                         return $ BGPMessage bgpMsg
 
 getBgpMessage :: Socket -> IO L.ByteString
-getBgpMessage sock = do msgHdr <- B.recv sock 18
-                        let (marker,lenR) = B.splitAt 16 msgHdr
-                            len = word16be lenR
-                        unless (marker == _BGPMarker) (do putStr "Error::getBgpMessage:: "
-                                                          print $ simpleHex msgHdr
-                                                          putStrLn "----"
-                                                          fail "Bad marker")
-                        let bodyLength = fromIntegral len - 18
-                        body <- B.recv sock bodyLength
-                        unless (bodyLength == B.length body) (do let asked = show bodyLength
-                                                                     got = show (B.length body)
-                                                                 putStrLn $ "Error::getBgpMessage:: internal error - short read" ++
-                                                                                      " - asked " ++ show (fromIntegral len) ++
-                                                                                      " got " ++ show (B.length body)
-                                                                 fail "internal error - short read")
-                        return $ L.fromStrict body
+getBgpMessage sock = do -- putStrLn "getBgpMessage"
+                        msgHdr <- recv' sock 18
+                        let (marker,lenW) = L.splitAt 16 msgHdr
+                            l0 = fromIntegral $ L.index lenW 0 :: Word16
+                            l1 = fromIntegral $ L.index lenW 1 :: Word16
+                            len = l1 .|. (unsafeShiftL l0 8)
+                            bodyLength = fromIntegral len - 18
+                        -- putStrLn $ "payload length: " ++ show bodyLength
+                        unless (marker == lBGPMarker)
+                               (fail "Bad marker")
+                        body <- recv' sock bodyLength
+                        unless (bodyLength == L.length body)
+                                (fail $ "internal error - short read" ++ " - asked " ++ show bodyLength ++ " got " ++ show (L.length body))
+                        return body
 
-shiftl_w16 :: Word16 -> Int -> Word16
-shiftl_w32 :: Word32 -> Int -> Word32
-shiftl_w64 :: Word64 -> Int -> Word64
+recv' sock n = get L.empty 0 where
+    get buf got | got == n = return buf
+                | otherwise = do more <- L.recv sock (n-got)
+                                 get (buf `L.append` more) (got + L.length more) 
+                      
+                        -- return $ L.fromStrict body
 
-shiftl_w16 (W16# w) (I# i) = W16# (w `uncheckedShiftL#`   i)
-shiftl_w32 (W32# w) (I# i) = W32# (w `uncheckedShiftL#`   i)
-shiftl_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftL#` i)
+-- recv' :: Socket -> Int -> IO L.ByteString
+-- recv' :: Socket -> IO L.ByteString
+-- recv' sock = L.recv sock 4096 `L.append` recv' sock
 
-{-# INLINE word16be #-}
-word16be :: B.ByteString -> Word16
-word16be s = (fromIntegral (s `unsafeIndex` 0) `shiftl_w16` 8) .|.
-             fromIntegral (s `unsafeIndex` 1)
-{-# INLINE word32be #-}
-word32be :: B.ByteString -> Word32
-word32be s = (fromIntegral (s `unsafeIndex` 0) `shiftl_w32` 24) .|.
-             (fromIntegral (s `unsafeIndex` 1) `shiftl_w32` 16) .|.
-             (fromIntegral (s `unsafeIndex` 2) `shiftl_w32`  8) .|.
-             fromIntegral (s `unsafeIndex` 3)
