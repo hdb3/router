@@ -27,7 +27,7 @@ main = do
 test :: ASPath -> IO()
 test path = do putStrLn ""
                let enc = encode path
-                   dec = (decode enc) :: ASPath
+                   dec = decode enc :: ASPath
                print path
                putStrLn ""
                putStrLn $ "encoded: " ++ simpleHex' enc
