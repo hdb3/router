@@ -6,7 +6,7 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Control.Monad(unless)
-import Data.Tuple.Extra
+-- import Data.Tuple.Extra
 import RFC4271
 import Capabilities
 import Common
