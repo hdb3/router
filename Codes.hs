@@ -27,6 +27,7 @@ extendedBitTest w = testBit w 4 -- counting up from LSB numbered as 0
 setExtended :: Word8 -> Word8
 setExtended w = w .|. extended
 
+requiredPathAttributes = [TypeCodePathAttributeOrigin,TypeCodePathAttributeASPath,TypeCodePathAttributeNextHop]
 
 flagCheck :: Word8 -> PathAttributeTypeCode -> Bool
 flagCheck _ TypeCodePathAttributeUnknown = True

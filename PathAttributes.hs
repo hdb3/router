@@ -17,6 +17,10 @@ import ASPath
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
 type LargeCommunity = (Word32,Word32,Word32)
 
+checkForRequiredPathAttributes :: [PathAttribute] -> Bool
+checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
+-- checkForRequiredPathAttributes = (included requiredPathAttributes)  . (map identify)
+
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath2 |
                      PathAttributeNextHop IPv4 |
@@ -207,3 +211,23 @@ instance {-# OVERLAPPING #-} Binary [LargeCommunity] where
 
     put = putn
     get = getn
+
+identify :: PathAttribute -> PathAttributeTypeCode
+identify PathAttributeOrigin{} = TypeCodePathAttributeOrigin
+identify PathAttributeASPath{} = TypeCodePathAttributeASPath
+identify PathAttributeNextHop{} = TypeCodePathAttributeNextHop
+identify PathAttributeMultiExitDisc{} = TypeCodePathAttributeMultiExitDisc
+identify PathAttributeLocalPref{} = TypeCodePathAttributeLocalPref
+identify PathAttributeAtomicAggregate{} = TypeCodePathAttributeAtomicAggregate
+identify PathAttributeAggregator{} = TypeCodePathAttributeAggregator
+identify PathAttributeCommunities{} = TypeCodePathAttributeCommunities
+identify PathAttributeMPREachNLRI{} = TypeCodePathAttributeMPREachNLRI
+identify PathAttributeMPUnreachNLRI{} = TypeCodePathAttributeMPUnreachNLRI
+identify PathAttributeExtendedCommunities{} = TypeCodePathAttributeExtendedCommunities
+identify PathAttributeAS4Path{} = TypeCodePathAttributeAS4Path
+identify PathAttributeAS4Aggregator{} = TypeCodePathAttributeAS4Aggregator
+identify PathAttributeConnector{} = TypeCodePathAttributeConnector
+identify PathAttributeASPathlimit{} = TypeCodePathAttributeASPathlimit
+identify PathAttributeLargeCommunity{} = TypeCodePathAttributeLargeCommunity
+identify PathAttributeAttrSet{} = TypeCodePathAttributeAttrSet
+identify PathAttributeUnknown{} = TypeCodePathAttributeUnknown

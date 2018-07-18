@@ -20,7 +20,7 @@ main = mapM incTest [
     ([1,2],[2,3,4,5,6,7,8],False)]
 
 incTest (a,b,p) = do
-    let p' = inc a b
+    let p' = included a b
     if p == p'  then
         putStr "OK "
     else
