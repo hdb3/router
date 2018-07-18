@@ -14,26 +14,15 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
-import Common
--- import qualified Network.Socket.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy as L
---import Foreign
---import GHC.Base
---import GHC.Word
---import Data.ByteString.Lazy.Unsafe(unsafeIndex)
+import qualified Data.ByteString as B
 import Network.Socket hiding(send, sendTo, recv, recvFrom)
 import qualified Network.Socket.ByteString.Lazy as L
--- import qualified Network.Socket.ByteString as B
---import Data.Either
 import Control.Monad(when,unless,fail)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
---import           Data.ByteString.Builder
---import           Data.Monoid
-import Hexdump
-simpleHex' = simpleHex . L.toStrict
 
-data BGPMessage = BGPMessage L.ByteString
+import Common
+
+newtype BGPMessage = BGPMessage L.ByteString
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff
@@ -72,7 +61,7 @@ getBgpMessage sock = do -- putStrLn "getBgpMessage"
                         let (marker,lenW) = L.splitAt 16 msgHdr
                             l0 = fromIntegral $ L.index lenW 0 :: Word16
                             l1 = fromIntegral $ L.index lenW 1 :: Word16
-                            len = l1 .|. (unsafeShiftL l0 8)
+                            len = l1 .|. unsafeShiftL l0 8
                             bodyLength = fromIntegral len - 18
                         -- putStrLn $ "payload length: " ++ show bodyLength
                         unless (marker == lBGPMarker)

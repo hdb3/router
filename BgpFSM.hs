@@ -26,7 +26,7 @@ import Data.Int(Int64)
 --prettyHex' = prettyHex . L.toStrict
 
 
-data FSMException = FSMException String
+newtype FSMException = FSMException String
     deriving Show
 
 instance Exception FSMException
@@ -192,8 +192,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 let parsedAttributes = decode pathAttributes :: [PathAttribute]
                     prefixes = decode nlri :: [Prefix]
                     withdrawn = decode withdrawnRoutes :: [Prefix]
-                    valid = ((null prefixes) && (null parsedAttributes)) || checkForRequiredPathAttributes parsedAttributes
-                    endOfRIB = (null prefixes) && (null withdrawn)
+                    valid = (null prefixes && null parsedAttributes) || checkForRequiredPathAttributes parsedAttributes
+                    endOfRIB = null prefixes && null withdrawn
                 if endOfRIB then
                     putStrLn "End-of-RIB"
                 else if not valid then do
