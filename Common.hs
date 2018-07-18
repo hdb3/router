@@ -7,7 +7,24 @@ import Data.Binary.Get
 import Data.Binary.Put
 import qualified Data.ByteString.Builder.Prim as Prim
 import qualified Data.ByteString.Lazy as L
-import           Data.Monoid
+import qualified Data.ByteString.Char8 as C8
+import Data.Monoid
+
+-- Debug stuff
+--
+import qualified Data.ByteString.Base16 as Base16
+import Hexdump
+
+fromHex = fst . Base16.decode
+fromHex' = L.fromStrict . fst . Base16.decode
+toHex = C8.unpack . Base16.encode
+toHex' = toHex . L.toStrict
+simpleHex' = simpleHex . L.toStrict
+prettyHex' = prettyHex . L.toStrict
+
+
+-- application stuff
+--
 
 bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")

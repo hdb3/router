@@ -4,10 +4,12 @@ import Data.Binary
 import PathAttributes
 import Control.Exception(assert)
 import qualified Data.ByteString.Lazy as L
-import Hexdump
-simpleHex' = simpleHex . L.toStrict
+import Data.Int(Int64)
+import Common
 
 main = do
+    main'
+    test [PathAttributeLargeCommunity[(1::Word32,2::Word32,3::Word32)]]
     mapM_ testCode allPathAttributeTypeCodes
     test []
     test [PathAttributeOrigin 2]
@@ -24,11 +26,12 @@ main = do
         attrs1 = [PathAttributeOrigin 2, PathAttributeASPath path2, PathAttributeNextHop "192.168.0.1"]
 
 test :: [PathAttribute] -> IO()
-test pas = do putStrLn ""
+test pas = do
+              putStrLn ""
               let enc = encode pas
                   dec = decode enc :: [PathAttribute]
-              -- putStrLn $ "original: " ++ show pas
-              -- putStrLn $ "encoded:  " ++ simpleHex' enc
+              putStrLn $ "original: " ++ show pas
+              putStrLn $ "encoded:  " ++ simpleHex' enc
               if dec == pas
               then putStrLn $ show pas ++ " OK"
               else do putStrLn "*** FAIL ***"
@@ -37,4 +40,18 @@ test pas = do putStrLn ""
                       putStrLn $ "encoded:  " ++ simpleHex' enc
               putStrLn " ------------------"
 
+main' = decodeAttributes $ fromHex' "40010100500200100207fbf563740cb900ae5ba051cc51cc400304c0a87af0c008140cb91f630cb975ca0cb9c3510cb9d4800cb9d481d011001e02070000fbf50000637400000cb9000000ae000320b3000051cc000051cce02030000320b30000000100000001000320b30000000200000001000320b30000000300000004000320b300000004000051cc"
 
+decodeAttributes :: L.ByteString -> IO()
+decodeAttributes ps = 
+    either
+        (\(_,offset,msg) -> do
+            putStrLn $ "failed at offset " ++ show offset
+            putStrLn $ prettyHex' ps
+        )
+        (\(_,_,attributes) -> do
+            putStrLn "success"
+            putStrLn "attributes"
+            print attributes
+        )
+        (decodeOrFail ps :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute]))
