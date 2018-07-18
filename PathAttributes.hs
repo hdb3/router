@@ -32,7 +32,8 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeConnector B.ByteString |
                      PathAttributeASPathlimit B.ByteString |
                      PathAttributeLargeCommunity [(Word32,Word32,Word32)] |
-                     PathAttributeAttrSet B.ByteString
+                     PathAttributeAttrSet B.ByteString |
+                     PathAttributeUnknown B.ByteString
                      deriving (Show,Eq)
 
 -- binary format for attributes is 1 byte flags, 1 byte type code, 1 or 2 byte length value depending on a flag bit, then payload
@@ -185,6 +186,10 @@ instance Binary PathAttribute where
                     bs <- getByteString (fromIntegral len)
                     return $ PathAttributeAttrSet bs
 
+                | TypeCodePathAttributeUnknown == code -> do
+                    bs <- getByteString (fromIntegral len)
+                    fail ("unknown type code: " ++ show code')
+                    return $ PathAttributeUnknown bs
 
 instance {-# OVERLAPPING #-} Binary [PathAttribute] where
 
