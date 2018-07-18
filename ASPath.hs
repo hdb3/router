@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
 module ASPath where
 import RFC4271
 import Codes
@@ -23,39 +24,34 @@ import Control.Monad
 -- note: 4 byte AS numbers may be used inthe AS PATH as well as in the AS4_PATH
 -- therefore decoding AS_PATH requires to know whether 2 or 4 byte AS numbers are in use.
 
-newtype ASPath = ASPath [ASSegment] deriving (Show,Eq)
-data ASSegment = ASSet [ASNumber] | ASSequence [ASNumber] deriving (Show,Eq) 
-newtype ASNumber = ASNumber Word16 deriving (Show,Eq,Read)
--- data ASNumber = ASNumber Word16 deriving (Show,Eq,Read)
-instance Num ASNumber where
-    fromInteger x = ASNumber (fromIntegral x)
+newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
+data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
 
-instance Binary ASNumber where
-    put (ASNumber w) = putWord16le w
-    get = label "ASNumber" $ do
-             w <- getWord16le
-             return (ASNumber w)
-
-instance {-# OVERLAPPING #-} Binary [ASNumber] where
+instance {-# OVERLAPPING #-}(ASNumber asn) =>  Binary [ASSegment asn] where
     put = putn
     get = getn
 
-instance {-# OVERLAPPING #-} Binary [ASSegment] where
-    put = putn
-    get = getn
+class (Eq a, Num a, Show a, Read a, Binary a) => ASNumber a where
+    putASSegmentElement :: ASSegmentElementTypeCode -> [a] -> Put
+    putASSegmentElement code asns = do putWord8 (encode8 code)
+                                       putWord8 (fromIntegral $ length asns)
+                                       putn asns
+instance ASNumber Word16 where
+as2list :: Integral a => [a] -> [Word16]
+as2list = map fromIntegral
 
-putASSegmentElement :: ASSegmentElementTypeCode -> [ASNumber] -> Put
-putASSegmentElement code asns = do putWord8 (encode8 code)
-                                   putWord8 (fromIntegral $ length asns)
-                                   put asns
-instance Binary ASPath where 
+instance ASNumber Word32 where
+as4list :: Integral a => [a] -> [Word32]
+as4list = map fromIntegral
+
+instance (ASNumber asn) => Binary (ASPath asn) where 
     get = label "ASPath" $ do
              segments <- get
              return (ASPath segments)
 
     put (ASPath segments) =  put segments
 
-instance Binary ASSegment where 
+instance (ASNumber asn) => Binary (ASSegment asn) where 
 
     put (ASSet asns) = putASSegmentElement EnumASSet asns
     put (ASSequence asns) = putASSegmentElement EnumASSequence asns
@@ -69,7 +65,7 @@ instance Binary ASSegment where
                 | code == EnumASSequence -> return $ ASSequence asns
                 | otherwise -> fail "invalid code in ASpath"
              where
-             getNasns :: Word8 -> Get [ASNumber]
+             getNasns :: (Binary asn) => Word8 -> Get [asn]
              getNasns n | n == 0 = return []
                         | otherwise = do asn <- get
                                          asns <- getNasns (n-1)
