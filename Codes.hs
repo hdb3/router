@@ -8,7 +8,8 @@ data PathAttributeTypeCode = TypeCodePathAttributeOrigin | TypeCodePathAttribute
                              TypeCodePathAttributeLocalPref | TypeCodePathAttributeAtomicAggregate | TypeCodePathAttributeAggregator |
                              TypeCodePathAttributeCommunities | TypeCodePathAttributeMPREachNLRI | TypeCodePathAttributeMPUnreachNLRI |
                              TypeCodePathAttributeExtendedCommunities | TypeCodePathAttributeAS4Path | TypeCodePathAttributeAS4Aggregator |
-                             TypeCodePathAttributeConnector | TypeCodePathAttributeASPathlimit | TypeCodePathAttributeLargeCommunity | TypeCodePathAttributeAttrSet
+                             TypeCodePathAttributeConnector | TypeCodePathAttributeASPathlimit | TypeCodePathAttributeLargeCommunity | TypeCodePathAttributeAttrSet |
+                             TypeCodePathAttributeUnknown
                              deriving (Show,Eq)
 
 allPathAttributeTypeCodes = [ TypeCodePathAttributeOrigin , TypeCodePathAttributeASPath , TypeCodePathAttributeNextHop , TypeCodePathAttributeMultiExitDisc ,
@@ -28,6 +29,7 @@ setExtended w = w .|. extended
 
 
 flagCheck :: Word8 -> PathAttributeTypeCode -> Bool
+flagCheck _ TypeCodePathAttributeUnknown = True
 flagCheck flags code = (flags .&. 0xc0) == flagsOf code
 
 flagsOf :: PathAttributeTypeCode -> Word8
@@ -48,6 +50,7 @@ flagsOf e | e == TypeCodePathAttributeOrigin = transitive
           | e == TypeCodePathAttributeASPathlimit = transitive .|. optional
           | e == TypeCodePathAttributeLargeCommunity = transitive .|. optional
           | e == TypeCodePathAttributeAttrSet = transitive .|. optional
+          | e == TypeCodePathAttributeUnknown = optional
 
 instance EnumWord8 PathAttributeTypeCode where
 instance Enum PathAttributeTypeCode where
@@ -69,6 +72,7 @@ instance Enum PathAttributeTypeCode where
                | n == 21 = TypeCodePathAttributeASPathlimit
                | n == 32 = TypeCodePathAttributeLargeCommunity
                | n == 128 = TypeCodePathAttributeAttrSet
+               | otherwise = TypeCodePathAttributeUnknown
 
     fromEnum e | e == TypeCodePathAttributeOrigin = 1
                | e == TypeCodePathAttributeASPath = 2
