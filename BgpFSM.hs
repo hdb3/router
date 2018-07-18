@@ -155,8 +155,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn "established - rcv keepalive"
                 established osm
             update@BGPUpdate{..} -> do
+ 
+{-
+ -- diagnostic code
                 putStrLn "established - rcv update"
-                -- print update
                 let attributesE = decodeOrFail pathAttributes :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])
                 either
                     (\(_,offset,msg) -> do
@@ -170,10 +172,15 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                         print attributes
                     )
                     attributesE
+ -- end diagnostic code
+-}
 
-                --let attributes = decode pathAttributes :: [PathAttribute]
-                --print attributes
-                --putStrLn "nrli"
+-- verbose code....
+{-
+                putStrLn "attributes"
+                let attributes = decode pathAttributes :: [PathAttribute]
+                print attributes
+                putStrLn "nrli"
                 let prefixes = decode nlri :: [Prefix]
                 print prefixes
                 putStrLn "withdrawn"
@@ -181,6 +188,20 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 print withdrawn
                 putStrLn "---------------------"
                 -- sendToRIB update
+-}
+                let parsedAttributes = decode pathAttributes :: [PathAttribute]
+                    prefixes = decode nlri :: [Prefix]
+                    withdrawn = decode withdrawnRoutes :: [Prefix]
+                    valid = ((null prefixes) && (null parsedAttributes)) || checkForRequiredPathAttributes parsedAttributes
+                    endOfRIB = (null prefixes) && (null withdrawn)
+                if endOfRIB then
+                    putStrLn "End-of-RIB"
+                else if not valid then do
+                    putStrLn "***Invalid Update!!!"
+                    print parsedAttributes
+                    print prefixes
+                    print withdrawn
+                else putChar '.'
                 established osm
             notify@BGPNotify{} -> do
                 print notify

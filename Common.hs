@@ -29,9 +29,9 @@ prettyHex' = prettyHex . L.toStrict
 
 -- a basic list inclusion test that you might have expected in Data.List
 --
-inc [] _ = True
-inc ax [] | not (null ax) = False
-inc ax (b:bx) = inc (delete b ax) bx
+included [] _ = True
+included ax [] | not (null ax) = False
+included ax (b:bx) = included (delete b ax) bx
 
 bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")
