@@ -7,8 +7,6 @@ import qualified Data.ByteString.Lazy as L
 import Hexdump
 simpleHex' = simpleHex . L.toStrict
 
-type ASPath2 = ASPath Word16
-type ASPath4 = ASPath Word32
 asSequence2 = ASSequence . as2list
 asSet2 = ASSet . as2list
 asSequence4 = ASSequence . as4list

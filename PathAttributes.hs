@@ -17,7 +17,7 @@ import ASPath
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
-                     PathAttributeASPath ASPath |
+                     PathAttributeASPath ASPath2 |
                      PathAttributeNextHop IPv4 |
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
@@ -27,7 +27,7 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeMPREachNLRI B.ByteString |
                      PathAttributeMPUnreachNLRI B.ByteString |
                      PathAttributeExtendedCommunities [Word64] |
-                     PathAttributeAS4Path ASPath |
+                     PathAttributeAS4Path ASPath4 |
                      PathAttributeAS4Aggregator (Word32,Word32) |
                      PathAttributeConnector B.ByteString |
                      PathAttributeASPathlimit B.ByteString |
