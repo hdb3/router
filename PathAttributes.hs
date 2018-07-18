@@ -1,9 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
 module PathAttributes (module Codes, module PathAttributes, module ASPath) where
-import RFC4271
-import Codes
-import Common
 import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
@@ -12,6 +9,10 @@ import Data.IP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Monad
+
+import RFC4271
+import Codes
+import Common
 import ASPath
 
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
@@ -19,7 +20,6 @@ type LargeCommunity = (Word32,Word32,Word32)
 
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
--- checkForRequiredPathAttributes = (included requiredPathAttributes)  . (map identify)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath2 |
