@@ -1,11 +1,12 @@
 module Main where
+{-
 import Data.List(delete)
 
 inc [] _ = True
 inc ax [] | not (null ax) = False
 inc ax (b:bx) = inc (delete b ax) bx
-
-
+-}
+import Common
 
 main = mapM incTest [
     ([1],[2,3],False),
