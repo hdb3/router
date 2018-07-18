@@ -4,7 +4,7 @@ import Network.Socket
 import System.IO.Error(catchIOError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
-import Data.Binary(encode,decode)
+import Data.Binary(encode,decode,decodeOrFail)
 import System.Timeout(timeout)
 import Control.Concurrent
 import Control.Exception
@@ -19,6 +19,7 @@ import Capabilities
 import Collision
 import PathAttributes
 import Prefixes
+import Data.Int(Int64)
 
 data FSMException = FSMException String
     deriving Show
@@ -151,14 +152,25 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             update@BGPUpdate{..} -> do
                 putStrLn "established - rcv update"
                 -- print update
-                let attributes = decode pathAttributes :: [PathAttribute]
-                    withdrawn = decode withdrawnRoutes :: [Prefix]
-                    prefixes = decode nlri :: [Prefix]
-                putStrLn "attributes"
-                print attributes
-                putStrLn "nrli"
+                let attributesE = decodeOrFail pathAttributes :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])
+                either
+                    (\(_,_,msg) -> do
+                        snd update
+                        exit msg
+                    )
+                    (\(_,_,attributes) -> do
+                        putStrLn "attributes"
+                        print attributes
+                    )
+                    attributesE
+
+                --let attributes = decode pathAttributes :: [PathAttribute]
+                --print attributes
+                --putStrLn "nrli"
+                let prefixes = decode nlri :: [Prefix]
                 print prefixes
                 putStrLn "withdrawn"
+                let withdrawn = decode withdrawnRoutes :: [Prefix]
                 print withdrawn
                 putStrLn "---------------------"
                 -- sendToRIB update
