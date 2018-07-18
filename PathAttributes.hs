@@ -15,6 +15,7 @@ import Control.Monad
 import ASPath
 
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
+type LargeCommunity = (Word32,Word32,Word32)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath2 |
@@ -31,7 +32,7 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeAS4Aggregator (Word32,Word32) |
                      PathAttributeConnector B.ByteString |
                      PathAttributeASPathlimit B.ByteString |
-                     PathAttributeLargeCommunity [(Word32,Word32,Word32)] |
+                     PathAttributeLargeCommunity [LargeCommunity] |
                      PathAttributeAttrSet B.ByteString |
                      PathAttributeUnknown B.ByteString
                      deriving (Show,Eq)
@@ -105,6 +106,7 @@ instance Binary PathAttribute where
     put (PathAttributeCommunities a) = putAttributeByteString TypeCodePathAttributeCommunities (encode a)
     put (PathAttributeExtendedCommunities a) = putAttributeByteString TypeCodePathAttributeExtendedCommunities (encode a)
     put (PathAttributeAS4Path a) = putAttributeByteString TypeCodePathAttributeAS4Path (encode a)
+    put (PathAttributeLargeCommunity a) = putAttributeByteString TypeCodePathAttributeLargeCommunity (encode a)
 
     get = label "PathAttribute" $ do
              flags <- getWord8
@@ -180,7 +182,7 @@ instance Binary PathAttribute where
 
                 | TypeCodePathAttributeLargeCommunity == code -> do
                     ws <- getMany ( len `div` 12)
-                    return $ PathAttributeExtendedCommunities ws
+                    return $ PathAttributeLargeCommunity ws
 
                 | TypeCodePathAttributeAttrSet == code -> do
                     bs <- getByteString (fromIntegral len)
@@ -197,6 +199,11 @@ instance {-# OVERLAPPING #-} Binary [PathAttribute] where
     get = getn
 
 instance {-# OVERLAPPING #-} Binary [Word64] where
+
+    put = putn
+    get = getn
+
+instance {-# OVERLAPPING #-} Binary [LargeCommunity] where
 
     put = putn
     get = getn

@@ -20,6 +20,11 @@ import Collision
 import PathAttributes
 import Prefixes
 import Data.Int(Int64)
+--import qualified Data.ByteString.Base16.Lazy as Base16
+--import Hexdump
+--simpleHex' = simpleHex . L.toStrict
+--prettyHex' = prettyHex . L.toStrict
+
 
 data FSMException = FSMException String
     deriving Show
@@ -154,9 +159,11 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 -- print update
                 let attributesE = decodeOrFail pathAttributes :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])
                 either
-                    (\(_,_,msg) -> do
+                    (\(_,offset,msg) -> do
                         snd update
-                        exit msg
+                        putStrLn $ toHex' pathAttributes
+                        -- putStrLn $ prettyHex' pathAttributes
+                        exit (msg ++ " at position " ++ show offset)
                     )
                     (\(_,_,attributes) -> do
                         putStrLn "attributes"
