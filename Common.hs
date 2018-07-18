@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Common(module Data.IP, module Common) where
+import Data.List(delete)
 import Data.IP
 import Network.Socket (PortNumber)
 import Data.Binary
@@ -25,6 +26,12 @@ prettyHex' = prettyHex . L.toStrict
 
 -- application stuff
 --
+
+-- a basic list inclusion test that you might have expected in Data.List
+--
+inc [] _ = True
+inc ax [] | not (null ax) = False
+inc ax (b:bx) = inc (delete b ax) bx
 
 bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")
