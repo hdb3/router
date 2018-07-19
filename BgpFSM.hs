@@ -63,9 +63,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                  return (next, decodeBGPByteString bytes )
 
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
-    fsm (s,b,o) | s == Idle = putStrLn $ "FSM is exiting" ++  show ( rcvStatus $ result b)
+    fsm (s,b,o) | s == Idle = putStrLn $ "FSM exiting" ++  show ( rcvStatus $ result b)
                 | otherwise = do
-        putStrLn $ "FSM executing " ++ show s
+        -- putStrLn $ "FSM executing " ++ show s
         (s',b',o') <- (f s) (b,o)
         fsm (s',b',o') where
             f StateConnected = stateConnected
