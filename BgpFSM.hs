@@ -5,7 +5,7 @@ import System.IO.Error(catchIOError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode,decodeOrFail)
-import System.Timeout(timeout)
+-- import System.Timeout(timeout)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad(when,unless)
@@ -57,6 +57,12 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     myOpen = local
     myBGPID = bgpID myOpen
     snd msg = catchIOError ( sndBgpMessage bsock0 (encode msg)) (\e -> exit (show (e :: IOError)))
+
+    get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
+    get b t = do (next,bytes) <- getMsg b t
+                 return (next, decodeBGPByteString bytes )
+
+{-
     get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
     get b t = catchIOError (get' b t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
                                                 return (b,BGPEndOfStream)
@@ -77,8 +83,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                     )
                     resMaybe
 
+-}
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
-    fsm (s,b,o) | s == Idle = putStrLn $ "FSM is exiting" ++ ( fromLeft "" (result b))
+    fsm (s,b,o) | s == Idle = putStrLn $ "FSM is exiting" ++ ( show $ rcvStatus $ result b)
                 | otherwise = do
         putStrLn $ "FSM executing " ++ show s
         (s',b',o') <- (f s) $ (b,o)
