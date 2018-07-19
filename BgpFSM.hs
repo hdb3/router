@@ -49,19 +49,20 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                      putMVar exitMVar (threadId,s)
                                      putStrLn $ "Thread " ++ show threadId ++ " exiting"
                                  ) where
+    bsock = newBufferedSocket sock
     exit s = throw $ FSMException s
     initialHoldTimer = 120
     cd = collisionDetector
     osm = makeOpenStateMachine local remote
     myOpen = local
     myBGPID = bgpID myOpen
-    snd msg = catchIOError ( sndBgpMessage sock $ encode msg ) (\e -> exit (show (e :: IOError)))
+    snd msg = catchIOError ( sndBgpMessage bsock $ encode msg ) (\e -> exit (show (e :: IOError)))
     get :: Int -> IO BGPMessage
     get t = catchIOError (get' t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
                                             return BGPEndOfStream
                                   )
     get' t = let t' = t * 10000000 in
-             do mMsg <- timeout t' (getBgpMessage sock)
+             do mMsg <- timeout t' (getBgpMessage bsock)
                 maybe
                     (return BGPTimeout)
                     (\msg -> do
