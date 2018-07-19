@@ -1,4 +1,3 @@
-{- LANGUAGE MultiWayIf,FlexibleInstances,OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 module Prefixes where
 import Data.Binary
@@ -7,6 +6,7 @@ import Data.Binary.Put
 import Data.Word
 import Data.Bits
 import Data.IP
+
 import Common
 
 -- IMPORTANT Note re byte ordering

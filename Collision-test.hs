@@ -1,9 +1,10 @@
 module Main where
-import Collision
-import Common
 import Network.Socket
 import Control.Concurrent
 import Data.IP
+
+import Collision
+import Common
 
 main = do
     c <- mkCollisionDetector

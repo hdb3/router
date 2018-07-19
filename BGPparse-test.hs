@@ -6,10 +6,11 @@
 
 module Main where
 import qualified Data.ByteString.Lazy as L
-import BGPparse
 import Data.Int(Int64)
-import Hexdump
 import Data.Binary
+
+import BGPparse
+import Common
 import RFC4271
 import Capabilities
 

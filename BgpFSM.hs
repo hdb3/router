@@ -5,12 +5,13 @@ import System.IO.Error(catchIOError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode,decodeOrFail)
--- import System.Timeout(timeout)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
+import Data.Int(Int64)
+
 import Common
 import BGPparse
 import GetBGPMsg
@@ -20,7 +21,6 @@ import Capabilities
 import Collision
 import PathAttributes
 import Prefixes
-import Data.Int(Int64)
 
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
 
@@ -62,33 +62,11 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     get b t = do (next,bytes) <- getMsg b t
                  return (next, decodeBGPByteString bytes )
 
-{-
-    get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
-    get b t = catchIOError (get' b t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
-                                                return (b,BGPEndOfStream)
-                                  )
-    get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
-    get' b t = let t' = t * 10000000 in
-             do resMaybe <- timeout t' (getNext b)
-                maybe
-                    (return (b,BGPTimeout))
-                    -- getNext returned, switch on success or fail....
-                    (\next -> either
-                                  -- failed getting next BGP message
-                                  (\s ->do putStrLn $ "got end of stream: " ++ s
-                                           return (next,BGPEndOfStream))
-                                  -- message OK, unpack it
-                                  (\(BGPByteString msg) -> return (next, decode msg :: BGPMessage))
-                                  (result next)
-                    )
-                    resMaybe
-
--}
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
-    fsm (s,b,o) | s == Idle = putStrLn $ "FSM is exiting" ++ ( show $ rcvStatus $ result b)
+    fsm (s,b,o) | s == Idle = putStrLn $ "FSM is exiting" ++  show ( rcvStatus $ result b)
                 | otherwise = do
         putStrLn $ "FSM executing " ++ show s
-        (s',b',o') <- (f s) $ (b,o)
+        (s',b',o') <- (f s) (b,o)
         fsm (s',b',o') where
             f StateConnected = stateConnected
             f StateOpenSent = stateOpenSent
@@ -97,7 +75,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             f Established = established
 
     idle s = do putStrLn $ "IDLE - reason: " ++ s
-                return (Idle,(newBufferedSocket undefined),undefined)
+                return (Idle,newBufferedSocket undefined,undefined)
     stateConnected :: F
     stateConnected (bsock,osm) = do
         (bsock',msg) <- get bsock delayOpenTimer

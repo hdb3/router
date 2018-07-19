@@ -5,11 +5,12 @@ import qualified Data.ByteString as B
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
+import Data.IP
 import Control.Monad(unless)
+
 import RFC4271
 import Capabilities
 import Common
-import Data.IP
 import GetBGPMsg(BGPByteString(..),RcvStatus(..))
 
 _BGPOpen = 1 :: Word8

@@ -12,6 +12,7 @@ import Data.Binary.Put
 import Data.ByteString.Builder
 import Data.Monoid((<>))
 import Data.List(find)
+
 import RFC4271
 import Common
 
