@@ -47,6 +47,7 @@ getMsg b t = do next <- getNextTimeout t b
 -- core functions...
 
 getNextTimeout :: Int -> BufferedSocket -> IO BufferedSocket
+getNextTimeout' t b = getNext b
 getNextTimeout t bsock = let t' = t * 10000000 in
              do resMaybe <- timeout t' (getNext bsock)
                 maybe
@@ -62,7 +63,9 @@ getNext b = catchIOError (getNext' b)
              
 getNext':: BufferedSocket -> IO BufferedSocket
 getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
-                                          | isLeft result = ignore
+                                          -- possibly should not have this check at all...
+                                          -- if the application wants to try again?
+                                          | isLeft result && result /= (Left Timeout) = ignore
                                           | bufferLength < 19 = getMore
                                           | bufferLength < len = getMore
                                           | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
