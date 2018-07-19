@@ -20,11 +20,6 @@ import Collision
 import PathAttributes
 import Prefixes
 import Data.Int(Int64)
---import qualified Data.ByteString.Base16.Lazy as Base16
---import Hexdump
---simpleHex' = simpleHex . L.toStrict
---prettyHex' = prettyHex . L.toStrict
-
 
 newtype FSMException = FSMException String
     deriving Show
@@ -43,118 +38,121 @@ bgpFSM :: BgpFSMconfig -> IO ()
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                              putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
                              catch
-                                 (stateConnected osm)
+                                 (stateConnected (bsock0,osm) )
                                  (\(FSMException s) -> do
                                      deregister cd
                                      putMVar exitMVar (threadId,s)
                                      putStrLn $ "Thread " ++ show threadId ++ " exiting"
                                  ) where
-    bsock = newBufferedSocket sock
+    bsock0 = newBufferedSocket sock
     exit s = throw $ FSMException s
     initialHoldTimer = 120
     cd = collisionDetector
     osm = makeOpenStateMachine local remote
     myOpen = local
     myBGPID = bgpID myOpen
-    snd msg = catchIOError ( sndBgpMessage bsock $ encode msg ) (\e -> exit (show (e :: IOError)))
-    get :: Int -> IO BGPMessage
-    get t = catchIOError (get' t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
-                                            return BGPEndOfStream
+    snd msg = catchIOError ( sndBgpMessage bsock0 $ encode msg ) (\e -> exit (show (e :: IOError)))
+    get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
+    get b t = catchIOError (get' b t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
+                                                return (b,BGPEndOfStream)
                                   )
-    get' t = let t' = t * 10000000 in
-             do mMsg <- timeout t' (getBgpMessage bsock)
+    get' b t = let t' = t * 10000000 in
+             do mMsg <- timeout t' (getBgpMessage bsock0)
                 maybe
-                    (return BGPTimeout)
+                    (return (b,BGPTimeout))
                     (\msg -> do
                         let bgpMsg = decode msg :: BGPMessage
-                        return bgpMsg)
+                        return (b,bgpMsg))
                     mMsg
 
-    stateConnected osm = do msg <- get delayOpenTimer
-                            case msg of 
-                                BGPTimeout -> do
-                                    putStrLn "stateConnected - event: delay open expiry"
-                                    snd myOpen
-                                    putStrLn "stateConnected -> stateOpenSent"
-                                    stateOpenSent osm
-                                open@BGPOpen{} -> do
-                                    let osm' = updateOpenStateMachine osm open
-                                    putStrLn "stateConnected - event: rcv open"
-                                    print open
-                                    collisionCheck cd myBGPID (bgpID open)
-                                    let resp =  getResponse osm'
-                                    if isKeepalive resp then do 
-                                        putStrLn "stateConnected -> stateOpenConfirm"
-                                        snd myOpen
-                                        stateOpenConfirm osm'
-                                        snd resp
-                                    else do
-                                        snd resp
-                                        exit "stateConnected - event: open rejected error"
-                                notify@BGPNotify{} -> do
-                                   print notify
-                                   exit "stateConnected -> exit rcv notify"
-                                _ -> do
-                                    snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
-                                    exit "stateConnected - FSM error"
+    stateConnected (bsock,osm) = do
+        (bsock',msg) <- get bsock delayOpenTimer
+        case msg of 
+            BGPTimeout -> do
+                putStrLn "stateConnected - event: delay open expiry"
+                snd myOpen
+                putStrLn "stateConnected -> stateOpenSent"
+                stateOpenSent (bsock',osm)
+            open@BGPOpen{} -> do
+                let osm' = updateOpenStateMachine osm open
+                putStrLn "stateConnected - event: rcv open"
+                print open
+                collisionCheck cd myBGPID (bgpID open)
+                let resp =  getResponse osm'
+                if isKeepalive resp then do 
+                    putStrLn "stateConnected -> stateOpenConfirm"
+                    snd myOpen
+                    stateOpenConfirm (bsock',osm')
+                    snd resp
+                else do
+                    snd resp
+                    exit "stateConnected - event: open rejected error"
+            notify@BGPNotify{} -> do
+               print notify
+               exit "stateConnected -> exit rcv notify"
+            _ -> do
+                snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
+                exit "stateConnected - FSM error"
 
-    stateOpenSent osm = do msg <- get initialHoldTimer
-                           case msg of 
-                             BGPTimeout -> do
-                                 snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
-                                 exit "stateOpenSent - error initial Hold Timer expiry"
-                             open@BGPOpen{} -> do
-                                 let osm' = updateOpenStateMachine osm open
-                                 putStrLn "stateOpenSent - rcv open"
-                                 print open
-                                 collisionCheck cd myBGPID (bgpID open)
-                                 let resp =  getResponse osm'
-                                 snd resp
-                                 if isKeepalive resp then do 
-                                     putStrLn "stateOpenSent -> stateOpenConfirm"
-                                     stateOpenConfirm osm'
-                                 else exit "stateOpenSent - open rejected error"
-                             notify@BGPNotify{} -> do
-                                print notify
-                                exit "stateOpenSent - rcv notify"
-                             _ -> do
-                                 snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
-                                 exit "stateOpenSent - FSM error"
+    stateOpenSent (bsock,osm) = do
+        (bsock',msg) <- get bsock initialHoldTimer
+        case msg of 
+          BGPTimeout -> do
+              snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
+              exit "stateOpenSent - error initial Hold Timer expiry"
+          open@BGPOpen{} -> do
+              let osm' = updateOpenStateMachine osm open
+              putStrLn "stateOpenSent - rcv open"
+              print open
+              collisionCheck cd myBGPID (bgpID open)
+              let resp =  getResponse osm'
+              snd resp
+              if isKeepalive resp then do 
+                  putStrLn "stateOpenSent -> stateOpenConfirm"
+                  stateOpenConfirm (bsock',osm')
+              else exit "stateOpenSent - open rejected error"
+          notify@BGPNotify{} -> do
+             print notify
+             exit "stateOpenSent - rcv notify"
+          _ -> do
+              snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
+              exit "stateOpenSent - FSM error"
 
-    stateOpenConfirm osm = do msg <- get (getNegotiatedHoldTime osm)
-                              case msg of 
-                                  BGPTimeout -> do
-                                      snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
-                                      exit "stateOpenConfirm - error initial Hold Timer expiry"
-                                  BGPKeepalive -> do
-                                      putStrLn "stateOpenConfirm - rcv keepalive"
-                                      toEstablished osm
-                                  notify@BGPNotify{} -> do
-                                      print notify
-                                      exit "stateOpenConfirm - rcv notify"
-                                  _ -> do
-                                      snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
-                                      exit "stateOpenConfirm - FSM error"
+    stateOpenConfirm (bsock,osm) = do
+        (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
+        case msg of 
+            BGPTimeout -> do
+                snd $ BGPNotify NotificationHoldTimerExpired 0 L.empty
+                exit "stateOpenConfirm - error initial Hold Timer expiry"
+            BGPKeepalive -> do
+                putStrLn "stateOpenConfirm - rcv keepalive"
+                toEstablished (bsock',osm)
+            notify@BGPNotify{} -> do
+                print notify
+                exit "stateOpenConfirm - rcv notify"
+            _ -> do
+                snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
+                exit "stateOpenConfirm - FSM error"
 
     keepAliveLoop timer = do
         threadDelay $ 1000000 * timer
         snd BGPKeepalive
         keepAliveLoop timer
 
-    toEstablished osm = do
+    toEstablished (bsock,osm) = do
         putStrLn "transition -> established"
         putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        established osm
+        established (bsock,osm)
 
-    established osm = do
-        msg <- get (getNegotiatedHoldTime osm)
+    established (bsock,osm) = do
+        (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
                 putStrLn "established - rcv keepalive"
-                established osm
+                established (bsock',osm)
             update@BGPUpdate{..} -> do
  
 {-
@@ -203,7 +201,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                     print prefixes
                     print withdrawn
                 else putChar '.'
-                established osm
+                established (bsock',osm)
             notify@BGPNotify{} -> do
                 print notify
                 exit "established - rcv notify"
