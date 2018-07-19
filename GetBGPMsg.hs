@@ -1,14 +1,5 @@
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE FlexibleInstances,BangPatterns #-}
--- module GetBGPMsg where
 module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
-
-{- BGP messages once received are bytestrings - 
- - removing the static marker and length fields is
- - an obvious simplification.   Subsequent parsers
- - need not manage them.  However this means that binary represntations will need to have
- - the marker and length field reapplied before transmission on the network.
--}
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
@@ -31,7 +22,6 @@ data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 data BGPByteString = BGPByteString (Either RcvStatus L.ByteString)
 
 rcvStatus (BGPByteString (Left status)) = status
--- rcvStatus (BGPByteString bgpE) = fromLeft bgpE
 
 data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString}
 newBufferedSocket sock = BufferedSocket sock L.empty (BGPByteString $ Right L.empty)
@@ -65,7 +55,7 @@ getNext':: BufferedSocket -> IO BufferedSocket
 getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
                                           -- possibly should not have this check at all...
                                           -- if the application wants to try again?
-                                          | isLeft result && result /= (Left Timeout) = ignore
+                                          | isLeft result && result /= Left Timeout = ignore
                                           | bufferLength < 19 = getMore
                                           | bufferLength < len = getMore
                                           | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
@@ -77,13 +67,13 @@ getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
     (rawMsg,newBuffer) = L.splitAt len buffer
     newMsg = L.drop 18 rawMsg 
     ignore = do putStrLn "getNext called on finished stream"
-                return bs -- (BufferedSocket sock buffer result)
+                return bs
     getMore = do
         more <- L.recv sock 4096
         if L.null more then
-            return $  bs {result= BGPByteString $ Left EndOfStream } -- BufferedSocket sock buffer (Left EndOfStream)
+            return $  bs {result= BGPByteString $ Left EndOfStream }
         else
-            getNext' $ bs {buf = buffer `L.append` more} -- BufferedSocket sock (buffer `L.append` more) result
+            getNext' $ bs {buf = buffer `L.append` more}
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
@@ -115,5 +105,3 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
 
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
 sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ encode (BGPByteString $ Right bgpMsg)
--- sndBgpMessage' :: BufferedSocket -> BGPByteString -> IO ()
--- sndBgpMessage' bsock bgpMsg = L.sendAll (rawSocket bsock) (encode bgpMsg)

@@ -1,5 +1,6 @@
 module RFC4271 where
 import Data.Word
+
 import Common
 
 {-

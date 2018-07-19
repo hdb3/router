@@ -1,11 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Main where
-import ASPath
 import Data.Binary
 import qualified Data.ByteString.Lazy as L
-import Hexdump
-simpleHex' = simpleHex . L.toStrict
+
+import Common
+import ASPath
 
 asSequence2 = ASSequence . as2list
 asSet2 = ASSet . as2list

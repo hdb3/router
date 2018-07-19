@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Data.Binary
-import PathAttributes
 import Control.Exception(assert)
 import qualified Data.ByteString.Lazy as L
 import Data.Int(Int64)
+
 import Common
+import PathAttributes
 
 main = do
     main'

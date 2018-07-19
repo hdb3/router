@@ -1,16 +1,10 @@
 {-# LANGUAGE MultiWayIf #-}
 module Main where
--- import qualified Data.ByteString.Lazy as L
--- import qualified Data.ByteString as B
--- import Data.ByteString(ByteString)
--- import Data.Binary.Get
--- import Data.Binary.Put
--- import Data.ByteString.Builder
--- import Data.Monoid((<>))
 import Data.Binary
 import Data.ByteString.Lazy(toStrict)
+
 import Capabilities
-import Hexdump
+import Common
 
 capmp = CapMultiprotocol 0 0
 capAS4 = CapAS4 0x00010f0f

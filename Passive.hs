@@ -8,12 +8,13 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import Network.Socket
 import Network.Socket.ByteString.Lazy (recv, send)
-import Common
-import BGPparse
-import GetBGPMsg
 import Data.Binary(encode,decode)
 import System.Timeout
 import Data.Int(Int64)
+
+import Common
+import BGPparse
+import GetBGPMsg
 import BgpFSM
 import Capabilities
 import Collision

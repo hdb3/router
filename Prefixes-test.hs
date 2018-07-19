@@ -3,17 +3,13 @@ module Main where
 import Data.Word
 import Data.IP
 import Data.Binary
---import Hexdump
-import Prefixes
 import qualified Data.ByteString.Lazy as L
---import qualified Data.ByteString.Lazy.Char8 as LC
---import qualified Data.ByteString.Base16.Lazy as Base16
 
---simpleHex' = simpleHex . L.toStrict
+import Common
+import Prefixes
+
 readPfx :: String -> Prefix
 readPfx = fromAddrRange.read
---toHex = LC.unpack . Base16.encode
---fromHex = fst . Base16.decode
 decodePrefixes :: L.ByteString -> [Prefix]
 decodePrefixes = decode
 encodePrefixes :: [Prefix] -> L.ByteString

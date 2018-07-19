@@ -2,15 +2,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
 module ASPath where
-import RFC4271
-import Codes
-import Common
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
 import qualified Data.ByteString as B
 import Control.Monad
+
+import RFC4271
+import Codes
+import Common
 
 -- data ASPath = ASPath deriving (Show,Eq)
 -- data Aggregator = Aggregator deriving (Show,Eq)
