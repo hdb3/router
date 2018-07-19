@@ -1,1 +1,1 @@
-cabal install iproute pretty-hex
+cabal install iproute pretty-hex base16-bytestring
