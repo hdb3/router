@@ -56,6 +56,23 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     get b t = catchIOError (get' b t) (\e -> do putStrLn $ "IOError in get: " ++ show (e :: IOError)
                                                 return (b,BGPEndOfStream)
                                   )
+    get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
+    get' b t = let t' = t * 10000000 in
+             do resMaybe <- timeout t' (getNext b)
+                maybe
+                    (return (b,BGPTimeout))
+                    -- getNext returned, switch on success or fail....
+                    (\next -> either
+                                  -- failed getting next BGP message
+                                  (\s ->do putStrLn $ "got end of stream: " ++ s
+                                           return (next,BGPEndOfStream))
+                                  -- message OK, unpack it
+                                  (\(BGPByteString msg) -> return (next, decode msg :: BGPMessage))
+                                  (result next)
+                    )
+                    resMaybe
+
+{-
     get' b t = let t' = t * 10000000 in
              do mMsg <- timeout t' (getBgpMessage bsock0)
                 maybe
@@ -64,7 +81,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                         let bgpMsg = decode msg :: BGPMessage
                         return (b,bgpMsg))
                     mMsg
-
+-}
     stateConnected (bsock,osm) = do
         (bsock',msg) <- get bsock delayOpenTimer
         case msg of 
