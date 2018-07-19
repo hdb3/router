@@ -96,7 +96,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             f ToEstablished = toEstablished
             f Established = established
 
-    idle s = return (Idle,(newBufferedSocket undefined),undefined)
+    idle s = do putStrLn $ "IDLE - reason: " ++ s
+                return (Idle,(newBufferedSocket undefined),undefined)
     stateConnected :: F
     stateConnected (bsock,osm) = do
         (bsock',msg) <- get bsock delayOpenTimer
