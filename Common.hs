@@ -23,6 +23,10 @@ toHex' = toHex . L.toStrict
 simpleHex' = simpleHex . L.toStrict
 prettyHex' = prettyHex . L.toStrict
 
+-- not in GHC libs until at leats 8.2....
+fromLeft :: a -> Either a b -> a
+fromLeft _ (Left a) = a
+fromLeft a _        = a
 
 -- application stuff
 --

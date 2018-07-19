@@ -28,7 +28,7 @@ newtype BGPByteString = BGPByteString L.ByteString
 
 data BufferedSocket = BufferedSocket Socket L.ByteString (Either String BGPByteString)
 newBufferedSocket sock = BufferedSocket sock L.empty (Right (BGPByteString L.empty))
-socket (BufferedSocket s _ _) = s
+rawSocket (BufferedSocket s _ _) = s
 buf (BufferedSocket _ b _) = b
 result (BufferedSocket _ _ res) = res
 getNext :: BufferedSocket -> IO BufferedSocket
@@ -82,9 +82,9 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
     get = getn
 
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndBgpMessage bsock bgpMsg = L.sendAll (socket bsock) $ encode (BGPByteString bgpMsg)
+sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ encode (BGPByteString bgpMsg)
 sndBgpMessage' :: BufferedSocket -> BGPByteString -> IO ()
-sndBgpMessage' bsock bgpMsg = L.sendAll (socket bsock) (encode bgpMsg)
+sndBgpMessage' bsock bgpMsg = L.sendAll (rawSocket bsock) (encode bgpMsg)
 
 getBgpMessage' :: BufferedSocket -> IO BGPByteString
 getBgpMessage' bsock = do
@@ -93,7 +93,7 @@ getBgpMessage' bsock = do
 
 getBgpMessage :: BufferedSocket -> IO L.ByteString
 getBgpMessage bsock = do -- putStrLn "getBgpMessage"
-    msgHdr <- recv' (socket bsock) 18
+    msgHdr <- recv' (rawSocket bsock) 18
     let (marker,lenW) = L.splitAt 16 msgHdr
         l0 = fromIntegral $ L.index lenW 0 :: Word16
         l1 = fromIntegral $ L.index lenW 1 :: Word16
@@ -102,7 +102,7 @@ getBgpMessage bsock = do -- putStrLn "getBgpMessage"
     -- putStrLn $ "payload length: " ++ show bodyLength
     unless (marker == lBGPMarker)
            (fail "Bad marker")
-    body <- recv' (socket bsock) bodyLength
+    body <- recv' (rawSocket bsock) bodyLength
     unless (bodyLength == L.length body)
            (fail $ "internal error - short read" ++ " - asked " ++ show bodyLength ++ " got " ++ show (L.length body))
     return body
