@@ -6,17 +6,22 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Control.Monad(unless)
--- import Data.Tuple.Extra
 import RFC4271
 import Capabilities
 import Common
 import Data.IP
+import GetBGPMsg(BGPByteString(..),RcvStatus(..))
 
 _BGPOpen = 1 :: Word8
 _BGPUpdate = 2 :: Word8
 _BGPNotify = 3 :: Word8
 _BGPKeepalive = 4 :: Word8
 _BGPVersion = 4 :: Word8
+
+decodeBGPByteString (BGPByteString (Left Timeout)) = BGPTimeout
+decodeBGPByteString (BGPByteString (Left EndOfStream)) = BGPEndOfStream
+decodeBGPByteString (BGPByteString (Left (Error s))) = BGPError s
+decodeBGPByteString (BGPByteString (Right lbs)) = decode lbs :: BGPMessage
 
 data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bgpID :: IPv4, caps :: [ Capability ] }
                   | BGPKeepalive

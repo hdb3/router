@@ -1,7 +1,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE FlexibleInstances,BangPatterns #-}
-module GetBGPMsg where
--- module GetBGPMsg (BufferedSocket(..),getBgpMessage,sndBgpMessage) where
+-- module GetBGPMsg where
+module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
 
 {- BGP messages once received are bytestrings - 
  - removing the static marker and length fields is
@@ -10,6 +10,8 @@ module GetBGPMsg where
  - the marker and length field reapplied before transmission on the network.
 -}
 
+import System.Timeout(timeout)
+import System.IO.Error(catchIOError)
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
@@ -24,20 +26,47 @@ import Control.Monad(when,unless,fail)
 
 import Common
 
-newtype BGPByteString = BGPByteString L.ByteString
+data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
-data BufferedSocket = BufferedSocket Socket L.ByteString (Either String BGPByteString)
-newBufferedSocket sock = BufferedSocket sock L.empty (Right (BGPByteString L.empty))
-rawSocket (BufferedSocket s _ _) = s
-buf (BufferedSocket _ b _) = b
-result (BufferedSocket _ _ res) = res
-getNext :: BufferedSocket -> IO BufferedSocket
-getNext (BufferedSocket sock buffer result)
+data BGPByteString = BGPByteString (Either RcvStatus L.ByteString)
+
+rcvStatus (BGPByteString (Left status)) = status
+-- rcvStatus (BGPByteString bgpE) = fromLeft bgpE
+
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString}
+newBufferedSocket sock = BufferedSocket sock L.empty (BGPByteString $ Right L.empty)
+
+-- convenince functions...
+-- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
+-- get' b t = do (next,bytes) <- get b t
+--               return (next, decode bytes :: BGPMessage)
+getMsg :: BufferedSocket -> Int -> IO (BufferedSocket,BGPByteString)
+getMsg b t = do next <- getNextTimeout t b
+                return (next,result next)
+
+-- core functions...
+
+getNextTimeout :: Int -> BufferedSocket -> IO BufferedSocket
+getNextTimeout t bsock = let t' = t * 10000000 in
+             do resMaybe <- timeout t' (getNext bsock)
+                maybe
+                    (return (bsock {result = BGPByteString $ Left Timeout} ))
+                    return
+                    resMaybe
+
+getNext:: BufferedSocket -> IO BufferedSocket
+getNext b = catchIOError (getNext' b)
+                         (\e -> do -- can get rid of error to screen if the response is displayed elsewhere
+                                   putStrLn $ "IOError in get: " ++ show (e :: IOError)
+                                   return (b {result = BGPByteString $ Left (Error (show e))} ))
+             
+getNext':: BufferedSocket -> IO BufferedSocket
+getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
                                           | isLeft result = ignore
                                           | bufferLength < 19 = getMore
                                           | bufferLength < len = getMore
-                                          | marker /= lBGPMarker = finish "Bad marker"
-                                          | otherwise = return $ BufferedSocket sock newBuffer (Right $ BGPByteString newMsg)
+                                          | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
+                                          | otherwise = return $ BufferedSocket sock newBuffer (BGPByteString $ Right newMsg)
                                           where
     bufferLength = L.length buffer
     marker = L.take 16 buffer
@@ -45,14 +74,13 @@ getNext (BufferedSocket sock buffer result)
     (rawMsg,newBuffer) = L.splitAt len buffer
     newMsg = L.drop 18 rawMsg 
     ignore = do putStrLn "getNext called on finished stream"
-                return (BufferedSocket sock buffer result)
-    finish s = return $ BufferedSocket sock buffer (Left s)
+                return bs -- (BufferedSocket sock buffer result)
     getMore = do
         more <- L.recv sock 4096
         if L.null more then
-            return $ BufferedSocket sock buffer (Left "end of stream")
+            return $  bs {result= BGPByteString $ Left EndOfStream } -- BufferedSocket sock buffer (Left EndOfStream)
         else
-            getNext $ BufferedSocket sock (buffer `L.append` more) result
+            getNext' $ bs {buf = buffer `L.append` more} -- BufferedSocket sock (buffer `L.append` more) result
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
@@ -62,10 +90,11 @@ getNext (BufferedSocket sock buffer result)
 !_BGPMarker = B.replicate 16 0xff
 instance Binary BGPByteString where 
 
-    put (BGPByteString bs) = do
+    put (BGPByteString (Right bs)) = do
         putLazyByteString lBGPMarker
         putWord16be (fromIntegral $ L.length bs +18)
         putLazyByteString bs
+    put (BGPByteString (Left _)) = fail "trying to but an invalid BGPByteString"
 
     get = label "BGPByteString" $ do
         empty <- isEmpty
@@ -74,7 +103,7 @@ instance Binary BGPByteString where
         unless ( marker == lBGPMarker ) (fail "BGP marker synchronisation error")
         len <- getWord16be
         bs <- getLazyByteString (fromIntegral len)
-        return (BGPByteString bs)
+        return (BGPByteString $ Right bs)
 
 
 instance {-# OVERLAPPING #-} Binary [BGPByteString] where
@@ -82,39 +111,6 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
     get = getn
 
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ encode (BGPByteString bgpMsg)
-sndBgpMessage' :: BufferedSocket -> BGPByteString -> IO ()
-sndBgpMessage' bsock bgpMsg = L.sendAll (rawSocket bsock) (encode bgpMsg)
-
-getBgpMessage' :: BufferedSocket -> IO BGPByteString
-getBgpMessage' bsock = do
-    bgpMsg <- getBgpMessage bsock
-    return $ BGPByteString bgpMsg
-
-getBgpMessage :: BufferedSocket -> IO L.ByteString
-getBgpMessage bsock = do -- putStrLn "getBgpMessage"
-    msgHdr <- recv' (rawSocket bsock) 18
-    let (marker,lenW) = L.splitAt 16 msgHdr
-        l0 = fromIntegral $ L.index lenW 0 :: Word16
-        l1 = fromIntegral $ L.index lenW 1 :: Word16
-        len = l1 .|. unsafeShiftL l0 8
-        bodyLength = fromIntegral len - 18
-    -- putStrLn $ "payload length: " ++ show bodyLength
-    unless (marker == lBGPMarker)
-           (fail "Bad marker")
-    body <- recv' (rawSocket bsock) bodyLength
-    unless (bodyLength == L.length body)
-           (fail $ "internal error - short read" ++ " - asked " ++ show bodyLength ++ " got " ++ show (L.length body))
-    return body
-
-recv' sock n = get L.empty 0 where
-    get buf got | got == n = return buf
-                | otherwise = do more <- L.recv sock (n-got)
-                                 get (buf `L.append` more) (got + L.length more) 
-                      
-                        -- return $ L.fromStrict body
-
--- recv' :: Socket -> Int -> IO L.ByteString
--- recv' :: Socket -> IO L.ByteString
--- recv' sock = L.recv sock 4096 `L.append` recv' sock
-
+sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ encode (BGPByteString $ Right bgpMsg)
+-- sndBgpMessage' :: BufferedSocket -> BGPByteString -> IO ()
+-- sndBgpMessage' bsock bgpMsg = L.sendAll (rawSocket bsock) (encode bgpMsg)
