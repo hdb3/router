@@ -4,11 +4,14 @@ import FarmHash(hash64)
 import Data.HashTable.IO
 import Control.Monad(when)
 import Data.Word
+import Data.Bits
+import Data.List(foldl')
 import Data.Maybe(fromJust)
 import qualified Data.ByteString as B
 
 import Prefixes
 import PathAttributes
+import Count(count)
 
 -- a RIB holds both infomation from updates and a little static context derived from the 
 -- BGP Open exchange, of which the most significant is the AS4 capability which affects the way in which
@@ -31,14 +34,18 @@ data Rib = Rib { prefixTable :: LinearHashTable Prefix Word64
                  , as4 :: Bool }
 
 
+print' = return
+myHash x = (hash64 x) .&. 0xfff
+
 display Rib{..} = do
   s1 <- toList prefixTable
   s2 <- toList pathTable
   s3 <- toList pathTableRefCount
-  return $ unlines [ "prefixTable", show s1
-                   , "pathTable", show s2
-                   , "pathTableRefCount", show s3
+  return $ unlines [ "prefixTable", unlines $ map show s1
+                   , "pathTable", unlines $ map show (map kv1 s2)
+                   , "pathTableRefCount", unlines $ map show s3
                    , "as4", show $ as4 ]
+  where kv1 (k,(v1,v2)) = (k,v1)
 
 newRib :: IO Rib
 newRib = do
@@ -55,28 +62,71 @@ newRib4 = do
     return $ rib { as4 = True }
 
 ribUpdateMany :: Rib -> ([PathAttribute],B.ByteString)-> [Prefix] -> IO()
-ribUpdateMany rib attrs prefixes = Prelude.mapM_ (ribUpdate rib attrs) prefixes
+ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
+    let hash = myHash bytes
+        m = flip ( mutate prefixTable)
+        m' = m (\v -> (Just hash, (maybe 0 id v, hash)))
+    oldNewHashMs <- mapM m' prefixes 
+    let (oldHashMs,newHashMs) = foldl' (\(ax,bx) (a,b) -> (a:ax,b:bx)) ([],[]) oldNewHashMs
+    print' newHashMs
+    print' (count newHashMs)
+    print' oldHashMs
+    print' (count oldHashMs)
+    Prelude.mapM_ updatePathTables (count newHashMs)
+    Prelude.mapM_ withdrawPathTables (count oldHashMs)
+    where
+        withdrawPathTables (0,_) = return ()
+        withdrawPathTables (hash,n) = do
+            newRefCount <- mutate pathTableRefCount hash (f' n) 
+            when (0 == newRefCount)
+                 (do delete pathTable hash
+                     delete pathTableRefCount hash )
+            where
+                    f' m Nothing = error "prefix is not present in ref count table"
+                    f' m (Just refCount) = (Just (refCount-m), refCount-m)
+        updatePathTables (hash,n) = do
+            oldRefCount <- mutate pathTableRefCount hash (f' n) 
+            when (0 == oldRefCount)
+                (insert pathTable hash (pathAttributes,bytes)) where
+                    f' m Nothing = (Just m, 0)
+                    f' m (Just refCount) = (Just (refCount+m), refCount)
+
 
 ribUpdate :: Rib -> ([PathAttribute],B.ByteString) -> Prefix -> IO()
 ribUpdate Rib{..} (pathAttributes,bytes) prefix = do
-    let hash = hash64 bytes
+    let hash = myHash bytes
     oldHashM <- mutate prefixTable prefix (\v -> (Just hash, v))
-    putStrLn ""
     newRefCount <- mutate pathTableRefCount hash f' 
-    putStrLn ""
     when (1 == newRefCount)
         (insert pathTable hash (pathAttributes,bytes))
     where
         f' Nothing = (Just 1, 1)
         f' (Just refCount) = (Just (refCount+1), refCount+1)
 
+ribWithdrawMany :: Rib -> [Prefix] -> IO()
+ribWithdrawMany Rib{..} prefixes = do
+    let
+        m = flip ( mutate prefixTable)
+        m' = m (\v -> (Nothing, maybe 0 id v))
+    oldHashMs <- mapM m' prefixes 
+    Prelude.mapM_ withdrawPathTables (count oldHashMs)
+    where
+        withdrawPathTables (hash,n) = do
+            newRefCount <- mutate pathTableRefCount hash (f' n) 
+            when (0 == newRefCount)
+                (do delete pathTable hash
+                    delete pathTableRefCount hash ) where
+                    f' m Nothing = error "hash is not present in ref count table"
+                    f' m (Just refCount) = (Just (refCount-m), refCount-m)
+
 ribWithdraw :: Rib -> Prefix -> IO()
 ribWithdraw Rib{..} prefix = do
     oldPathHash <- mutate prefixTable prefix (\h -> (Nothing,fromJust h))
     newRefCount <- mutate pathTableRefCount oldPathHash f'
     when (0 == newRefCount)
-        (delete pathTable oldPathHash)
+         (do delete pathTable oldPathHash
+             delete pathTableRefCount oldPathHash )
     where
-        f' Nothing = error "prefix is not present in ref count table"
+        f' Nothing = error "hash is not present in ref count table"
         f' (Just 1) = (Nothing,0)
         f' (Just refCount) = (Just (refCount-1), refCount-1)
