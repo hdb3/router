@@ -35,7 +35,9 @@ data Rib = Rib { prefixTable :: LinearHashTable Prefix Word64
 
 
 print' = return
-myHash x = (hash64 x) .&. 0xfff
+-- diagnotic to shorten the hash field only
+-- myHash x = (hash64 x) .&. 0xfff
+myHash = hash64
 
 display Rib{..} = do
   s1 <- toList prefixTable
