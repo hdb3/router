@@ -15,6 +15,7 @@ import PathAttributes
 import Prefixes
 import BGPparse
 
+type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
         decodedAttributes = (decodeOrFail a :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute]))
@@ -64,9 +65,9 @@ processUpdate a n w v = do
             verbose parsedUpdate
         else
             putChar '.'
-        return True
+        return (Just parsedUpdate)
     else do
         putStr "parsing failed: "
         putStrLn $ parseErrorMesgs parsedResult
         putStrLn $ diagoseResult parsedResult (a,n,w)
-        return False
+        return Nothing
