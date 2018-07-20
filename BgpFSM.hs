@@ -19,9 +19,10 @@ import RFC4271
 import Open
 import Capabilities
 import Collision
+import Update
 import PathAttributes
 import Prefixes
-
+verbose = False
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
 
 data State = StateConnected | StateOpenSent | StateOpenConfirm | ToEstablished | Established | Idle deriving (Show,Eq)
@@ -35,6 +36,7 @@ data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   remote :: BGPMessage,
                                   sock :: Socket,
                                   collisionDetector :: CollisionDetector,
+                                  -- updateProcessor :: UpdateProcessor,
                                   peerName :: SockAddr,
                                   delayOpenTimer :: Int,
                                   exitMVar :: MVar (ThreadId,String)
@@ -176,54 +178,12 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn "established - rcv keepalive"
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
- 
-{-
- -- diagnostic code
-                putStrLn "established - rcv update"
-                let attributesE = decodeOrFail pathAttributes :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])
-                either
-                    (\(_,offset,msg) -> do
-                        snd update
-                        putStrLn $ toHex' pathAttributes
-                        -- putStrLn $ prettyHex' pathAttributes
-                        exit (msg ++ " at position " ++ show offset)
-                    )
-                    (\(_,_,attributes) -> do
-                        putStrLn "attributes"
-                        print attributes
-                    )
-                    attributesE
- -- end diagnostic code
--}
-
--- verbose code....
-{-
-                putStrLn "attributes"
-                let attributes = decode pathAttributes :: [PathAttribute]
-                print attributes
-                putStrLn "nrli"
-                let prefixes = decode nlri :: [Prefix]
-                print prefixes
-                putStrLn "withdrawn"
-                let withdrawn = decode withdrawnRoutes :: [Prefix]
-                print withdrawn
-                putStrLn "---------------------"
-                -- sendToRIB update
--}
-                let parsedAttributes = decode pathAttributes :: [PathAttribute]
-                    prefixes = decode nlri :: [Prefix]
-                    withdrawn = decode withdrawnRoutes :: [Prefix]
-                    valid = (null prefixes && null parsedAttributes) || checkForRequiredPathAttributes parsedAttributes
-                    endOfRIB = null prefixes && null withdrawn
-                if endOfRIB then
-                    putStrLn "End-of-RIB"
-                else if not valid then do
-                    putStrLn "***Invalid Update!!!"
-                    print parsedAttributes
-                    print prefixes
-                    print withdrawn
-                else putChar '.'
-                return (Established,bsock',osm)
+                ok <- processUpdate attributes nlri withdrawn verbose
+                if ok then
+                    return (Established,bsock',osm)
+                else do
+                    snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty
+                    idle "established - Update parse error"
             notify@BGPNotify{} -> do
                 print notify
                 idle "established - rcv notify"

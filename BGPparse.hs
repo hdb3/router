@@ -28,7 +28,7 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
                   | BGPKeepalive
                   | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, errorData :: L.ByteString }
                   -- | BGPNotify { code :: EnumNotificationCode, subCode :: NotificationSubcode, caps :: [ Capability ] }
-                  | BGPUpdate { withdrawnRoutes :: L.ByteString, pathAttributes :: L.ByteString, nlri :: L.ByteString }
+                  | BGPUpdate { withdrawn :: L.ByteString, attributes :: L.ByteString, nlri :: L.ByteString }
                   | BGPTimeout
                   | BGPError String
                   | BGPEndOfStream
