@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Prefixes where
 import Data.Binary
+import Data.Hashable
+import GHC.Generics(Generic)
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
@@ -21,7 +24,9 @@ import Common
 -- addresses IN REVERSE ORDER !!!
 -- Therefore conversions between our Prefix type and HostAddress require byteSwap32
 
-newtype Prefix = Prefix (Word8,Word32) deriving (Eq)
+newtype Prefix = Prefix (Word8,Word32) deriving (Eq,Generic)
+
+instance Hashable Prefix
 instance Show Prefix where
     show = show.toAddrRange
 
