@@ -32,6 +32,7 @@ data Rib = Rib { prefixTable :: LinearHashTable Prefix Word64
                  , pathTable :: LinearHashTable Word64 ([PathAttribute],B.ByteString)
                  , pathTableRefCount :: LinearHashTable Word64 Word32
                  , as4 :: Bool }
+instance Show Rib where show Rib{..} = if as4 then "AS4 Rib" else "AS2 Rib" 
 
 
 print' = return

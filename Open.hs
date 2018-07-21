@@ -11,6 +11,7 @@ import Capabilities(Capability,eq_)
 import BGPparse
 import Collision
 import Common
+import Rib
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -59,10 +60,14 @@ import Common
 -- which is reported is determined by the orser of checks in the getResponse function
 --
 -- note: zero values are used to denote unenforced constraints in the 'required' section...
-data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: BGPMessage} deriving Show
+data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage
+                                         , remoteOffer :: Maybe BGPMessage
+                                         , required :: BGPMessage
+                                         , adjRibIn :: Rib
+                                         } deriving Show
 
 makeOpenStateMachine :: BGPMessage -> BGPMessage -> OpenStateMachine
-makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required
+makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required undefined
 
 updateOpenStateMachine :: OpenStateMachine -> BGPMessage -> OpenStateMachine
 updateOpenStateMachine osm remoteOpen | isOpen remoteOpen = osm { remoteOffer = Just remoteOpen }
