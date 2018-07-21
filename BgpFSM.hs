@@ -178,8 +178,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn "established - rcv keepalive"
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
-                ok <- processUpdate attributes nlri withdrawn verbose
-                if ok then
+                parsedUpdate <- processUpdate attributes nlri withdrawn verbose
+                if isJust parsedUpdate then
                     return (Established,bsock',osm)
                 else do
                     snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty
