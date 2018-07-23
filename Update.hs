@@ -64,7 +64,8 @@ processUpdate a n w v = do
         else if v then
             verbose parsedUpdate
         else
-            putChar '.'
+            -- putChar '.'
+            return ()
         return (Just parsedUpdate)
     else do
         putStr "parsing failed: "

@@ -5,6 +5,7 @@ import Data.HashTable.IO
 import Control.Monad(when)
 import Data.Word
 import Data.Bits
+import Data.IORef
 import Data.List(foldl')
 import Data.Maybe(fromJust)
 import qualified Data.ByteString as B
@@ -32,7 +33,10 @@ import Count(count)
 data Rib = Rib { prefixTable :: LinearHashTable Prefix Word64
                  , pathTable :: LinearHashTable Word64 ([PathAttribute],B.ByteString)
                  , pathTableRefCount :: LinearHashTable Word64 Word32
-                 , as4 :: Bool }
+                 , as4 :: Bool
+                 , updates :: IORef Int
+                 , withdraws :: IORef Int
+                }
 instance Show Rib where show Rib{..} = if as4 then "AS4 Rib" else "AS2 Rib" 
 
 
@@ -44,9 +48,14 @@ myHash = hash64
 summary Rib{..} = do
   s1 <- toList prefixTable
   s2 <- toList pathTable
+  uc <- readIORef updates
+  wc <- readIORef withdraws
   return $ unlines [ "prefixTable: " ++ show (length s1)
                    , "pathTable: "  ++ show (length s2)
-                   , "as4: " ++ show as4 ]
+                   , "as4: " ++ show as4
+                   , "updates: " ++ show uc
+                   , "withdraws: " ++ show wc
+                    ]
 
 display Rib{..} = do
   s1 <- toList prefixTable
@@ -63,7 +72,9 @@ newRib = do
     prefixTable <- (newSized 1000000)
     pathTable <- (newSized 100000)
     pathTableRefCount <- (newSized 100000)
-    return $ Rib prefixTable pathTable pathTableRefCount False
+    uc <- newIORef 0
+    wc <- newIORef 0
+    return $ Rib prefixTable pathTable pathTableRefCount False uc wc
 
 newRib2 :: IO Rib
 newRib2 = newRib
@@ -74,6 +85,7 @@ newRib4 = do
 
 ribUpdateMany :: Rib -> ([PathAttribute],L.ByteString)-> [Prefix] -> IO()
 ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
+    modifyIORef' updates (1+)
     oldNewHashMs <- mapM m' prefixes 
     let (oldHashMs,newHashMs) = foldl' (\(ax,bx) (a,b) -> (a:ax,b:bx)) ([],[]) oldNewHashMs
     print' newHashMs
@@ -106,6 +118,7 @@ ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
 
 ribUpdate :: Rib -> ([PathAttribute],L.ByteString) -> Prefix -> IO()
 ribUpdate Rib{..} (pathAttributes,bytes) prefix = do
+    modifyIORef' updates (1+)
     let bytes' = L.toStrict bytes
         hash = myHash bytes'
     oldHashM <- mutate prefixTable prefix (\v -> (Just hash, v))
@@ -118,6 +131,7 @@ ribUpdate Rib{..} (pathAttributes,bytes) prefix = do
 
 ribWithdrawMany :: Rib -> [Prefix] -> IO()
 ribWithdrawMany Rib{..} prefixes = do
+    modifyIORef' withdraws (1+)
     let
         m = flip ( mutate prefixTable)
         m' = m (\v -> (Nothing, maybe 0 id v))
@@ -134,6 +148,7 @@ ribWithdrawMany Rib{..} prefixes = do
 
 ribWithdraw :: Rib -> Prefix -> IO()
 ribWithdraw Rib{..} prefix = do
+    modifyIORef' withdraws (1+)
     oldPathHash <- mutate prefixTable prefix (\h -> (Nothing,fromJust h))
     newRefCount <- mutate pathTableRefCount oldPathHash f'
     when (0 == newRefCount)
