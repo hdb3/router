@@ -186,7 +186,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                ribState <- display (adjRibIn osm)
+                ribState <- summary (adjRibIn osm)
+                -- ribState <- display (adjRibIn osm)
                 putStrLn ribState
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
