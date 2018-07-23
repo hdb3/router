@@ -4,6 +4,7 @@ import System.Environment
 import Control.Exception(finally)
 import Control.Concurrent
 import Network.Socket
+import System.IO(Handle,openBinaryFile,IOMode( WriteMode ))
 
 import Common
 import BgpFSM
@@ -28,7 +29,9 @@ main' (address,local,remote) = do
     peerName <- getPeerName sock
     let delayOpenTimer = 0
     exitMVar <- newEmptyMVar
-    let config = BgpFSMconfig local remote sock collisionDetector peerName delayOpenTimer exitMVar
+    t <- utcSecs
+    handle <- openBinaryFile (show t ++ ".bgp") WriteMode
+    let config = BgpFSMconfig local remote sock collisionDetector peerName delayOpenTimer exitMVar (Just handle)
     finally (bgpFSM config) (close sock) 
     (tid,msg) <- takeMVar exitMVar
     putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg

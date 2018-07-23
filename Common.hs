@@ -10,6 +10,7 @@ import qualified Data.ByteString.Builder.Prim as Prim
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
+import System.Time
 
 -- Debug stuff
 --
@@ -31,6 +32,9 @@ fromLeft a _        = a
 -- application stuff
 --
 
+utcSecs = do
+    (TOD sec psec) <- getClockTime
+    return sec
 -- a basic list inclusion test that you might have expected in Data.List
 --
 included [] _ = True
