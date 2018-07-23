@@ -169,7 +169,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        return (Established,bsock,osm)
+        rib <- if (checkAS4Capability osm) then newRib4 else newRib2
+        -- let osm' = let {adjRibIn = rib} in OpenStateMachine {adjRibIn = rib, ..}
+        let osm' = osm {adjRibIn = rib}
+        return (Established,bsock,osm')
 
     established :: F
     established (bsock,osm) = do
@@ -177,10 +180,14 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         case msg of 
             BGPKeepalive -> do
                 putStrLn "established - rcv keepalive"
+                ribState <- display (adjRibIn osm)
+                putStrLn ribState
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
-                parsedUpdate <- processUpdate attributes nlri withdrawn verbose
-                if isJust parsedUpdate then
+                parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
+                if isJust parsedUpdate then do
+                    ribUpdateMany (adjRibIn osm) (parsedAttributes,attributes) parsedNlri
+                    ribWithdrawMany (adjRibIn osm) parsedWithdrawn
                     return (Established,bsock',osm)
                 else do
                     snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty

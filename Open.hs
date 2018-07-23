@@ -7,7 +7,7 @@ import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
 import Data.IP(fromHostAddress)
 
 import RFC4271
-import Capabilities(Capability,eq_)
+import Capabilities(Capability(..),eq_)
 import BGPparse
 import Collision
 import Common
@@ -78,6 +78,13 @@ getNegotiatedHoldTime' OpenStateMachine {..} | isJust remoteOffer = min ( holdTi
 
 getKeepAliveTimer :: OpenStateMachine -> Int
 getKeepAliveTimer osm = 1 + fromIntegral (getNegotiatedHoldTime osm) `div` 3
+
+checkAS4Capability :: OpenStateMachine -> Bool
+checkAS4Capability OpenStateMachine {..} = hasAS4 (caps remoteOffer') && hasAS4 (caps localOffer)
+    where
+    remoteOffer' = fromJust remoteOffer
+    -- ugly - better done in Capabilities.hs
+    hasAS4 = any (eq_ (CapAS4 0))
 
 -- getResponse should not be called before an OPEN message has been received
 

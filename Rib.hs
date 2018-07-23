@@ -8,6 +8,7 @@ import Data.Bits
 import Data.List(foldl')
 import Data.Maybe(fromJust)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 
 import Prefixes
 import PathAttributes
@@ -64,11 +65,8 @@ newRib4 = do
     rib <- newRib
     return $ rib { as4 = True }
 
-ribUpdateMany :: Rib -> ([PathAttribute],B.ByteString)-> [Prefix] -> IO()
+ribUpdateMany :: Rib -> ([PathAttribute],L.ByteString)-> [Prefix] -> IO()
 ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
-    let hash = myHash bytes
-        m = flip ( mutate prefixTable)
-        m' = m (\v -> (Just hash, (maybe 0 id v, hash)))
     oldNewHashMs <- mapM m' prefixes 
     let (oldHashMs,newHashMs) = foldl' (\(ax,bx) (a,b) -> (a:ax,b:bx)) ([],[]) oldNewHashMs
     print' newHashMs
@@ -78,6 +76,10 @@ ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
     Prelude.mapM_ updatePathTables (count newHashMs)
     Prelude.mapM_ withdrawPathTables (count oldHashMs)
     where
+        bytes' = L.toStrict bytes
+        hash = myHash bytes'
+        m = flip ( mutate prefixTable)
+        m' = m (\v -> (Just hash, (maybe 0 id v, hash)))
         withdrawPathTables (0,_) = return ()
         withdrawPathTables (hash,n) = do
             newRefCount <- mutate pathTableRefCount hash (f' n) 
@@ -90,18 +92,19 @@ ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
         updatePathTables (hash,n) = do
             oldRefCount <- mutate pathTableRefCount hash (f' n) 
             when (0 == oldRefCount)
-                (insert pathTable hash (pathAttributes,bytes)) where
+                (insert pathTable hash (pathAttributes,bytes')) where
                     f' m Nothing = (Just m, 0)
                     f' m (Just refCount) = (Just (refCount+m), refCount)
 
 
-ribUpdate :: Rib -> ([PathAttribute],B.ByteString) -> Prefix -> IO()
+ribUpdate :: Rib -> ([PathAttribute],L.ByteString) -> Prefix -> IO()
 ribUpdate Rib{..} (pathAttributes,bytes) prefix = do
-    let hash = myHash bytes
+    let bytes' = L.toStrict bytes
+        hash = myHash bytes'
     oldHashM <- mutate prefixTable prefix (\v -> (Just hash, v))
     newRefCount <- mutate pathTableRefCount hash f' 
     when (1 == newRefCount)
-        (insert pathTable hash (pathAttributes,bytes))
+        (insert pathTable hash (pathAttributes,bytes'))
     where
         f' Nothing = (Just 1, 1)
         f' (Just refCount) = (Just (refCount+1), refCount+1)
