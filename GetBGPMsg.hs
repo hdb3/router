@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances,BangPatterns,RecordWildCards #-}
-module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,logFlush,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
+module GetBGPMsg where
+-- module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,logFlush,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
@@ -115,6 +116,11 @@ instance Binary BGPByteString where
         bs <- getLazyByteString (fromIntegral len)
         return (BGPByteString $ Right bs)
 
+getBGPByteString :: Get BGPByteString
+getBGPByteString = get
+
+getBGPByteStrings :: Get [BGPByteString]
+getBGPByteStrings = get
 
 instance {-# OVERLAPPING #-} Binary [BGPByteString] where
     put = putn
