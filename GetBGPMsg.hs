@@ -3,12 +3,14 @@ module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,rcvStatus,g
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
+import System.IO(Handle,openBinaryFile,hClose,IOMode( WriteMode ))
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
 import Data.Either(isLeft)
+import Data.Maybe(isJust)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import Network.Socket(Socket)
@@ -23,8 +25,11 @@ data BGPByteString = BGPByteString (Either RcvStatus L.ByteString)
 
 rcvStatus (BGPByteString (Left status)) = status
 
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString}
-newBufferedSocket sock = BufferedSocket sock L.empty (BGPByteString $ Right L.empty)
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
+newBufferedSocket sock = BufferedSocket sock L.empty (BGPByteString $ Right L.empty) Nothing
+logInputOn :: BufferedSocket -> FilePath -> IO BufferedSocket
+logInputOn bsock path = do handle <- openBinaryFile path WriteMode
+                           return $ bsock { inputFile = Just handle }
 
 -- convenince functions...
 -- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
@@ -52,14 +57,14 @@ getNext b = catchIOError (getNext' b)
                                    return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
+getNext' bs@(BufferedSocket sock buffer (BGPByteString result) handle)
                                           -- possibly should not have this check at all...
                                           -- if the application wants to try again?
                                           | isLeft result && result /= Left Timeout = ignore
                                           | bufferLength < 19 = getMore
                                           | bufferLength < len = getMore
                                           | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
-                                          | otherwise = return $ BufferedSocket sock newBuffer (BGPByteString $ Right newMsg)
+                                          | otherwise = return $ BufferedSocket sock newBuffer (BGPByteString $ Right newMsg) handle
                                           where
     bufferLength = L.length buffer
     marker = L.take 16 buffer
@@ -70,9 +75,17 @@ getNext' bs@(BufferedSocket sock buffer (BGPByteString result))
                 return bs
     getMore = do
         more <- L.recv sock 4096
-        if L.null more then
+        if L.null more then do
+            maybe
+                (return () )
+                hClose
+                handle
             return $  bs {result= BGPByteString $ Left EndOfStream }
-        else
+        else do
+            maybe
+                (return () )
+                (\h -> L.hPut h more)
+                handle
             getNext' $ bs {buf = buffer `L.append` more}
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
