@@ -2,7 +2,7 @@
 module Rib where
 import FarmHash(hash64)
 import Data.HashTable.IO
-import Control.Monad(when)
+import Control.Monad(when,unless)
 import Data.Word
 import Data.Bits
 import Data.IORef
@@ -85,7 +85,8 @@ newRib4 = do
 
 ribUpdateMany :: Rib -> ([PathAttribute],L.ByteString)-> [Prefix] -> IO()
 ribUpdateMany Rib{..} (pathAttributes,bytes) prefixes = do
-    modifyIORef' updates (1+)
+    unless (null prefixes)
+           (modifyIORef' updates (1+))
     oldNewHashMs <- mapM m' prefixes 
     let (oldHashMs,newHashMs) = foldl' (\(ax,bx) (a,b) -> (a:ax,b:bx)) ([],[]) oldNewHashMs
     print' newHashMs
@@ -131,7 +132,8 @@ ribUpdate Rib{..} (pathAttributes,bytes) prefix = do
 
 ribWithdrawMany :: Rib -> [Prefix] -> IO()
 ribWithdrawMany Rib{..} prefixes = do
-    modifyIORef' withdraws (1+)
+    unless (null prefixes)
+           (modifyIORef' withdraws (1+))
     let
         m = flip ( mutate prefixTable)
         m' = m (\v -> (Nothing, maybe 0 id v))
