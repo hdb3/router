@@ -1,1 +1,1 @@
-cabal install farmhash hashtables iproute pretty-hex base16-bytestring hashable hashtables farmhash
+cabal install farmhash hashtables iproute pretty-hex base16-bytestring hashable hashtables farmhash old-time
