@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Common(module Data.IP, module Common) where
+module Common(module Data.IP, module Common, module Hexdump) where
 import Data.List(delete)
 import Data.IP
 import Network.Socket (PortNumber)

@@ -23,7 +23,7 @@ import Common
 
 data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
-data BGPByteString = BGPByteString (Either RcvStatus L.ByteString)
+data BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
 
 rcvStatus (BGPByteString (Left status)) = status
 

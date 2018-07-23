@@ -80,6 +80,9 @@ putCap = put
 getCap :: Get Capability
 getCap = get
 
+capsEncode :: [Capability] -> L.ByteString
+capsEncode = encode
+
 instance {-# OVERLAPPING #-} Binary [Capability] where
 
     put = putn
