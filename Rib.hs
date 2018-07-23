@@ -41,14 +41,21 @@ print' = return
 -- myHash x = (hash64 x) .&. 0xfff
 myHash = hash64
 
+summary Rib{..} = do
+  s1 <- toList prefixTable
+  s2 <- toList pathTable
+  return $ unlines [ "prefixTable: " ++ show (length s1)
+                   , "pathTable: "  ++ show (length s2)
+                   , "as4: " ++ show as4 ]
+
 display Rib{..} = do
   s1 <- toList prefixTable
   s2 <- toList pathTable
-  s3 <- toList pathTableRefCount
+  -- s3 <- toList pathTableRefCount
   return $ unlines [ "prefixTable", unlines $ map show s1
                    , "pathTable", unlines $ map show (map kv1 s2)
-                   , "pathTableRefCount", unlines $ map show s3
-                   , "as4", show $ as4 ]
+                   -- , "pathTableRefCount", unlines $ map show s3
+                   , "as4: " ++ show as4 ]
   where kv1 (k,(v1,v2)) = (k,v1)
 
 newRib :: IO Rib
