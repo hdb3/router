@@ -33,6 +33,7 @@ verbose = True
 
 main = do
     args <- getArgs
+    let n = if 1 < length args then read (args !! 1) :: Int else 0
     if (null args) then
          putStrLn "no filename specified"
     else do
@@ -40,7 +41,8 @@ main = do
         stream <- L.hGetContents handle
         rib <- newRib2
         let msgs = runGet getBGPByteStrings stream
-        mapM_ (processMsg rib) msgs
+        let msgs' = if n > 0 then take n msgs else msgs
+        mapM_ (processMsg rib) msgs'
 
 processMsg rib msg = do
     let msg' = decodeBGPByteString msg
