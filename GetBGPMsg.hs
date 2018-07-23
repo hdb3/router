@@ -1,9 +1,10 @@
-{-# LANGUAGE FlexibleInstances,BangPatterns #-}
-module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
+{-# LANGUAGE FlexibleInstances,BangPatterns,RecordWildCards #-}
+module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,logFlush,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
-import System.IO(Handle,openBinaryFile,hClose,IOMode( WriteMode ))
+-- import System.IO(Handle,openBinaryFile,hClose,IOMode( WriteMode ))
+import System.IO(Handle,hClose,hFlush)
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
@@ -26,10 +27,13 @@ data BGPByteString = BGPByteString (Either RcvStatus L.ByteString)
 rcvStatus (BGPByteString (Left status)) = status
 
 data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
-newBufferedSocket sock = BufferedSocket sock L.empty (BGPByteString $ Right L.empty) Nothing
-logInputOn :: BufferedSocket -> FilePath -> IO BufferedSocket
-logInputOn bsock path = do handle <- openBinaryFile path WriteMode
-                           return $ bsock { inputFile = Just handle }
+newBufferedSocket ::  Socket -> Maybe Handle -> BufferedSocket
+newBufferedSocket sock h = BufferedSocket sock L.empty (BGPByteString $ Right L.empty) h
+logFlush :: BufferedSocket -> IO()
+logFlush BufferedSocket{..} = maybe
+                                  (return())
+                                  hFlush
+                                  inputFile
 
 -- convenince functions...
 -- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)

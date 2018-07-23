@@ -2,6 +2,7 @@
 module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import System.IO.Error(catchIOError)
+import System.IO(Handle)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode,decodeOrFail)
@@ -41,6 +42,7 @@ data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   peerName :: SockAddr,
                                   delayOpenTimer :: Int,
                                   exitMVar :: MVar (ThreadId,String)
+                                  , logFile :: Maybe Handle
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
@@ -48,11 +50,12 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                              catch
                                  (fsm (StateConnected,bsock0,osm) )
                                  (\(FSMException s) -> do
+                                     logFlush bsock0
                                      deregister cd
                                      putMVar exitMVar (threadId,s)
                                      putStrLn $ "Thread " ++ show threadId ++ " exiting"
                                  ) where
-    bsock0 = newBufferedSocket sock
+    bsock0 = newBufferedSocket sock logFile
     exit s = throw $ FSMException s
     initialHoldTimer = 120
     cd = collisionDetector
@@ -66,7 +69,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                  return (next, decodeBGPByteString bytes )
 
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
-    fsm (s,b,o) | s == Idle = putStrLn $ "FSM exiting" ++  show ( rcvStatus $ result b)
+    fsm (s,b,o) | s == Idle = do
+                                logFlush bsock0
+                                putStrLn $ "FSM exiting" ++  show ( rcvStatus $ result b)
                 | otherwise = do
         -- putStrLn $ "FSM executing " ++ show s
         (s',b',o') <- (f s) (b,o)
@@ -78,7 +83,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             f Established = established
 
     idle s = do putStrLn $ "IDLE - reason: " ++ s
-                return (Idle,newBufferedSocket undefined,undefined)
+                return (Idle,newBufferedSocket undefined undefined,undefined)
     stateConnected :: F
     stateConnected (bsock,osm) = do
         (bsock',msg) <- get bsock delayOpenTimer
@@ -179,6 +184,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
+                logFlush bsock0
                 putStrLn "established - rcv keepalive"
                 ribState <- display (adjRibIn osm)
                 putStrLn ribState
