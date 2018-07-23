@@ -113,7 +113,7 @@ instance Binary BGPByteString where
         marker <- getLazyByteString 16
         unless ( marker == lBGPMarker ) (fail "BGP marker synchronisation error")
         len <- getWord16be
-        bs <- getLazyByteString (fromIntegral len)
+        bs <- getLazyByteString (fromIntegral (len-18))
         return (BGPByteString $ Right bs)
 
 getBGPByteString :: Get BGPByteString
