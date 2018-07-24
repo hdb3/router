@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(processUpdate) where
+module Update(processUpdate,getUpdateP) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -14,6 +14,8 @@ import Capabilities
 import PathAttributes
 import Prefixes
 import BGPparse
+
+data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix] } deriving Show
 
 type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
@@ -49,6 +51,9 @@ verbose (a,n,w) = do
     putStrLn "withdrawn"
     print w
     putStrLn "---------------------"
+
+getUpdateP :: BGPMessage -> BGPUpdateP
+getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w  } where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
 
 processUpdate a n w v = do
 -- 'v' is the verbose flag

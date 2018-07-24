@@ -1,35 +1,22 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 import System.Environment
--- import Network.Socket
--- import System.IO.Error(catchIOError)
 import System.IO(Handle,openBinaryFile,IOMode(..))
--- import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
--- import Data.Binary.Strict
--- import Data.Binary(encode,decode,decodeOrFail)
 import Data.Binary(Binary(..))
 import Data.Binary.Get(runGet)
--- import Control.Concurrent
--- import Control.Exception
 import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust)
--- import Data.Either(either)
--- import Data.Int(Int64)
 
 import Common
 import BGPparse
 import GetBGPMsg
--- import RFC4271
--- import Open
--- import Capabilities
--- import Collision
 import Update
 import PathAttributes
 import Prefixes
 import Rib
 
-verbose = True 
+verbose = False
 
 main = do
     args <- getArgs
@@ -41,12 +28,24 @@ main = do
         stream <- L.hGetContents handle
         rib <- newRib2
         let msgs = runGet getBGPByteStrings stream
-        let msgs' = if n > 0 then take n msgs else msgs
-        mapM_ (processMsg rib) msgs'
+            parsedMsgs = map decodeBGPByteString msgs
+            updateMsgs = (map getUpdateP) $ getUpdatesFrom parsedMsgs
+            list  :: (Show t) => [t] -> String
+            list = unlines . (map show)
+            limit = if n > 0 then take n else id
+        putStrLn $ list $ limit updateMsgs
+        -- summary rib >>= putStrLn
+
+getUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
+                          keepOnlyUpdates a@(BGPUpdate{}) ax = a:ax
+                          keepOnlyUpdates _ ax = ax
+
+dropUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
+                          keepOnlyUpdates a@(BGPUpdate{}) ax = ax
+                          keepOnlyUpdates a ax = a:ax
 
 processMsg rib msg = do
-    let msg' = decodeBGPByteString msg
-    case msg' of 
+    case msg of 
         BGPTimeout -> do
             putStrLn "BGPTimeout"
         open@BGPOpen{} -> do
@@ -64,6 +63,9 @@ processMsg rib msg = do
             if isJust parsedUpdate then do
                 ribUpdateMany rib (parsedAttributes,attributes) parsedNlri
                 ribWithdrawMany rib parsedWithdrawn
+                unless (L.null withdrawn)
+                    ( summary rib >>= putStrLn )
+                return ()
             else do
                 putStrLn "Update parse error"
                 print update

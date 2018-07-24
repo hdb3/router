@@ -6,6 +6,7 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
+import Data.List(foldl')
 import qualified Data.ByteString as B
 import Control.Monad
 
@@ -29,6 +30,10 @@ type ASPath2 = ASPath Word16
 type ASPath4 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
 data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
+
+asPathLength ( ASPath asPath) = foldl' addSegLength 0 asPath where
+    addSegLength acc (ASSet _ ) = acc + 1
+    addSegLength acc (ASSequence ax ) = acc + length ax
 
 instance {-# OVERLAPPING #-}(ASNumber asn) =>  Binary [ASSegment asn] where
     put = putn

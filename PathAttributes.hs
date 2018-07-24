@@ -5,6 +5,7 @@ import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
+import Data.List(find)
 import Data.IP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -17,6 +18,15 @@ import ASPath
 
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
 type LargeCommunity = (Word32,Word32,Word32)
+
+getPathAttribute :: PathAttributeTypeCode -> [PathAttribute] -> Maybe PathAttribute
+getPathAttribute code pas = find ((code ==) . identify) pas
+
+getASPAthLength :: [PathAttribute] -> Maybe Int
+getASPAthLength pas = maybe
+                      Nothing
+                      (\(PathAttributeASPath asPath) -> Just $ asPathLength asPath)
+                      (getPathAttribute TypeCodePathAttributeASPath pas)
 
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
