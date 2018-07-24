@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(processUpdate,getUpdateP) where
+-- module Update where
+module Update(processUpdate,getUpdateP,BGPUpdateP(..),fromRaw') where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -15,17 +16,18 @@ import PathAttributes
 import Prefixes
 import BGPparse
 
-data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix] } deriving Show
+data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix], rawAttributes :: RawAttributes } deriving Show
+
+newtype RawAttributes = RawAttributes B.ByteString deriving Eq
+instance Show RawAttributes where
+    show (RawAttributes raw) = "RawAttributes [" ++ ( show $ B.length raw ) ++ "]"
 
 type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
         decodedAttributes = (decodeOrFail a :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute]))
-        -- ::  Either String [PathAttribute]
         decodedNlri = (decodeOrFail n :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix]))
-        -- ::  Either String [Prefix]
         decodedWithdrawn = (decodeOrFail w :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix]))
-        -- ::  Either String [Prefix]
 
 parseSuccess (a,n,w) = isRight a && isRight n && isRight w
 parseErrorMesgs (a,n,w) = concat [getMsgA a,getMsgP n,getMsgP w]
@@ -53,7 +55,12 @@ verbose (a,n,w) = do
     putStrLn "---------------------"
 
 getUpdateP :: BGPMessage -> BGPUpdateP
-getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w  } where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
+getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w, rawAttributes = RawAttributes (L.toStrict attributes)  }
+                               where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
+getRaw :: BGPUpdateP -> B.ByteString
+getRaw BGPUpdateP{..} = fromRaw rawAttributes
+fromRaw (RawAttributes raw) = raw
+fromRaw' = L.fromStrict . fromRaw
 
 processUpdate a n w v = do
 -- 'v' is the verbose flag

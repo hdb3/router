@@ -7,6 +7,8 @@ import Data.Binary(Binary(..))
 import Data.Binary.Get(runGet)
 import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust)
+import Data.Word
+import Data.Bits
 
 import Common
 import BGPparse
@@ -26,15 +28,26 @@ main = do
     else do
         handle <- openBinaryFile (args !! 0) ReadMode
         stream <- L.hGetContents handle
-        rib <- newRib2
         let msgs = runGet getBGPByteStrings stream
             parsedMsgs = map decodeBGPByteString msgs
             updateMsgs = (map getUpdateP) $ getUpdatesFrom parsedMsgs
-            list  :: (Show t) => [t] -> String
-            list = unlines . (map show)
             limit = if n > 0 then take n else id
-        putStrLn $ list $ limit updateMsgs
-        -- summary rib >>= putStrLn
+        processUpdates ( limit updateMsgs )
+
+processUpdates updates = do
+        rib <- newRib2
+        -- putStrLn $ list updates
+        mapM analyse updates
+        -- mapM_ (updateRib rib) updates
+        summary rib >>= putStrLn
+
+analyse BGPUpdateP{..} = do
+   putStrLn $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPAthLength attributesP) ++ " = pathlength "
+list  :: (Show t) => [t] -> String
+list = unlines . (map show)
+
+csum :: L.ByteString -> Word8
+csum = L.foldl' xor 0
 
 getUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
                           keepOnlyUpdates a@(BGPUpdate{}) ax = a:ax
@@ -44,28 +57,6 @@ dropUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
                           keepOnlyUpdates a@(BGPUpdate{}) ax = ax
                           keepOnlyUpdates a ax = a:ax
 
-processMsg rib msg = do
-    case msg of 
-        BGPTimeout -> do
-            putStrLn "BGPTimeout"
-        open@BGPOpen{} -> do
-            putStrLn "BGPOpen"
-            print open
-        notify@BGPNotify{} -> do
-           putStrLn "BGPNotify"
-           print notify
-
-        BGPKeepalive -> do
-            putStrLn "BGPKeepalive"
-
-        update@BGPUpdate{..} -> do
-            parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
-            if isJust parsedUpdate then do
-                ribUpdateMany rib (parsedAttributes,attributes) parsedNlri
-                ribWithdrawMany rib parsedWithdrawn
-                unless (L.null withdrawn)
-                    ( summary rib >>= putStrLn )
-                return ()
-            else do
-                putStrLn "Update parse error"
-                print update
+updateRib rib BGPUpdateP{..} = do
+                ribUpdateMany rib (attributesP,fromRaw' rawAttributes) nlriP
+                ribWithdrawMany rib withdrawnP
