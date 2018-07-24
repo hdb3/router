@@ -22,10 +22,10 @@ type LargeCommunity = (Word32,Word32,Word32)
 getPathAttribute :: PathAttributeTypeCode -> [PathAttribute] -> Maybe PathAttribute
 getPathAttribute code pas = find ((code ==) . identify) pas
 
-getASPAthLength :: [PathAttribute] -> Maybe Int
+getASPAthLength :: [PathAttribute] -> Int
 getASPAthLength pas = maybe
-                      Nothing
-                      (\(PathAttributeASPath asPath) -> Just $ asPathLength asPath)
+                      0
+                      (\(PathAttributeASPath asPath) -> asPathLength asPath)
                       (getPathAttribute TypeCodePathAttributeASPath pas)
 
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
