@@ -38,11 +38,11 @@ processUpdates updates = do
         rib <- newRib2
         -- putStrLn $ list updates
         mapM analyse updates
-        -- mapM_ (updateRib rib) updates
+        mapM_ (updateRib rib) updates
         summary rib >>= putStrLn
 
 analyse BGPUpdateP{..} = do
-   putStrLn $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPAthLength attributesP) ++ " = pathlength "
+   putStrLn $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPathLength attributesP) ++ " = pathlength "
 list  :: (Show t) => [t] -> String
 list = unlines . (map show)
 
