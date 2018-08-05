@@ -34,8 +34,8 @@ updatePathAttribute t f = map f' where
     f' a | t == identify a = f a
          | otherwise = a
 
-getASPAthLength :: [PathAttribute] -> Int
-getASPAthLength pas = maybe
+getASPathLength :: [PathAttribute] -> Int
+getASPathLength pas = maybe
                       0
                       (\(PathAttributeASPath asPath) -> asPathLength asPath)
                       (getPathAttribute TypeCodePathAttributeASPath pas)
