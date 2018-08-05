@@ -22,6 +22,18 @@ type LargeCommunity = (Word32,Word32,Word32)
 getPathAttribute :: PathAttributeTypeCode -> [PathAttribute] -> Maybe PathAttribute
 getPathAttribute code pas = find ((code ==) . identify) pas
 
+substitutePathAttribute :: PathAttribute -> [PathAttribute] -> [PathAttribute]
+-- note silently ignores request if attribute is missing :-(
+substitutePathAttribute attr = map (f attr) where
+    f a b = if sameSort a b then a else b
+    sameSort a b = identify a == identify b
+
+updatePathAttribute :: PathAttributeTypeCode -> (PathAttribute -> PathAttribute) -> [PathAttribute] -> [PathAttribute]
+-- note silently ignores request if attribute is missing :-(
+updatePathAttribute t f = map f' where
+    f' a | t == identify a = f a
+         | otherwise = a
+
 getASPAthLength :: [PathAttribute] -> Int
 getASPAthLength pas = maybe
                       0
