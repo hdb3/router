@@ -31,6 +31,19 @@ type ASPath4 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
 data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
 
+asPrePend :: ASNumber a => a -> ASPath a -> ASPath a
+-- asPrePend _ all@(ASPath []) = all
+-- asPrePend asn (ASPath (all@([(ASSet {}):_]))) = ASPath ((ASSequence [asn]) : all)
+asPrePend  asn (ASPath segments) = ASPath (asPrePend' asn segments)
+asPrePend' asn [] = [ASSequence [asn]]
+asPrePend' asn (ASSet sets : segs) = ASSequence [asn] : ASSet sets : segs
+asPrePend' asn (ASSequence seqs : segs) | length seqs < 255 = ASSequence (asn:seqs) : segs
+                                        | otherwise         = ASSequence [asn] : ASSequence seqs : segs
+-- asPrePend asn (ASPath [(ASSequence asSeq):sx]) = ASPath ( (ASSequence asn : asSeq) : sx)
+
+-- asPrePend _ p = p
+
+asPathLength :: ASPath a -> Int
 asPathLength ( ASPath asPath) = foldl' addSegLength 0 asPath where
     addSegLength acc (ASSet _ ) = acc + 1
     addSegLength acc (ASSequence ax ) = acc + length ax

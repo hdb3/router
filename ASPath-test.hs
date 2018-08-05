@@ -26,13 +26,22 @@ main = do
     -- test ( ASPath [ seg0, seg0] :: ASPath2)
     mapM_ test2 [path0,path1,path2,path3]
     let path40 = ASPath [] :: ASPath4
-        path41 = ASPath [seg0] :: ASPath4
-        path42 = ASPath [seg1] :: ASPath4
-        path43 = ASPath [seg1,seg2] :: ASPath4
-        seg0  = asSequence4 []
-        seg1  = asSet4 [1,2,3]
-        seg2  = asSequence4 [6,5,4]
-    mapM_ test4 [path40,path41,path42,path43]
+        path41 = ASPath [seg4a] :: ASPath4
+        path42 = ASPath [seg4b] :: ASPath4
+        path43 = ASPath [seg4c] :: ASPath4
+        path44 = ASPath [seg4b,seg4c] :: ASPath4
+        seg4a  = asSequence4 []
+        seg4b  = asSet4 [1,2,3]
+        seg4c  = asSequence4 [6,5,4]
+    mapM_ test4 [path40,path41,path42,path43,path44]
+    let path42' = asPrePend 42 path42
+        path2'  = asPrePend 42 path2
+        path43' = asPrePend 42 path43
+        path3'  = asPrePend 42 path3
+    print path42'
+    print path2'
+    print path43'
+    print path3'
 
 -- encDecSeq :: ASNumber asn => ASSegment asn -> IO ()
 encDecSeq seq = do
