@@ -33,7 +33,11 @@ updatePathAttribute :: PathAttributeTypeCode -> (PathAttribute -> PathAttribute)
 updatePathAttribute t f = map f' where
     f' a | t == identify a = f a
          | otherwise = a
-
+{-
+prePendAS :: ASNumber a => a -> [PathAttribute] -> [PathAttribute]
+prePendAS asn = updatePathAttribute TypeCodePathAttributeASPath (asPrePend' asn) where
+    asPrePend' asn ( PathAttributeASPath p) = PathAttributeASPath (asPrePend asn p)
+-}
 getASPathLength :: [PathAttribute] -> Int
 getASPathLength pas = maybe
                       0
@@ -44,7 +48,7 @@ checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
-                     PathAttributeASPath ASPath2 |
+                     PathAttributeASPath ASPath42  |
                      PathAttributeNextHop IPv4 |
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
@@ -54,7 +58,7 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeMPREachNLRI B.ByteString |
                      PathAttributeMPUnreachNLRI B.ByteString |
                      PathAttributeExtendedCommunities [Word64] |
-                     PathAttributeAS4Path ASPath4 |
+                     PathAttributeAS4Path (ASPath Word32) |
                      PathAttributeAS4Aggregator (Word32,Word32) |
                      PathAttributeConnector B.ByteString |
                      PathAttributeASPathlimit B.ByteString |

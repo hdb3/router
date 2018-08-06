@@ -8,6 +8,7 @@ import Data.Binary.Put
 import Data.Word
 import Data.List(foldl')
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Control.Monad
 
 import RFC4271
@@ -26,27 +27,33 @@ import Common
 -- note: 4 byte AS numbers may be used inthe AS PATH as well as in the AS4_PATH
 -- therefore decoding AS_PATH requires to know whether 2 or 4 byte AS numbers are in use.
 
+data ASPath42 = ASPath2 ASPath2| ASPath4 ASPath4 deriving (Show,Eq)
+-- data ASPath42 = ASPath2 ( ASPath Word16 ) | ASPath4 (ASPath Word32) deriving (Show,Eq)
 type ASPath2 = ASPath Word16
 type ASPath4 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
 data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
 
 asPrePend :: ASNumber a => a -> ASPath a -> ASPath a
--- asPrePend _ all@(ASPath []) = all
--- asPrePend asn (ASPath (all@([(ASSet {}):_]))) = ASPath ((ASSequence [asn]) : all)
 asPrePend  asn (ASPath segments) = ASPath (asPrePend' asn segments)
 asPrePend' asn [] = [ASSequence [asn]]
 asPrePend' asn (ASSet sets : segs) = ASSequence [asn] : ASSet sets : segs
 asPrePend' asn (ASSequence seqs : segs) | length seqs < 255 = ASSequence (asn:seqs) : segs
                                         | otherwise         = ASSequence [asn] : ASSequence seqs : segs
--- asPrePend asn (ASPath [(ASSequence asSeq):sx]) = ASPath ( (ASSequence asn : asSeq) : sx)
-
--- asPrePend _ p = p
-
+{-
 asPathLength :: ASPath a -> Int
 asPathLength ( ASPath asPath) = foldl' addSegLength 0 asPath where
     addSegLength acc (ASSet _ ) = acc + 1
     addSegLength acc (ASSequence ax ) = acc + length ax
+-}
+
+asPathLength' :: ASPath a -> Int
+asPathLength' ( ASPath asPath) = foldl' addSegLength 0 asPath where
+    addSegLength acc (ASSet _ ) = acc + 1
+    addSegLength acc (ASSequence ax ) = acc + length ax
+asPathLength :: ASPath42 -> Int
+asPathLength (ASPath2 asp) = asPathLength' asp
+asPathLength (ASPath4 asp) = asPathLength' asp
 
 instance {-# OVERLAPPING #-}(ASNumber asn) =>  Binary [ASSegment asn] where
     put = putn
@@ -64,6 +71,19 @@ as2list = map fromIntegral
 instance ASNumber Word32 where
 as4list :: Integral a => [a] -> [Word32]
 as4list = map fromIntegral
+
+instance Binary ASPath42 where
+    get = undefined
+    put (ASPath2 asp) = put asp
+    put (ASPath4 asp) = put asp
+
+decodeAsASPath2 :: L.ByteString -> ASPath42
+-- decodeAsASPath2 _ = ASPath2 (ASPath [])
+decodeAsASPath2 bytes = ASPath2 (decode bytes)
+
+decodeAsASPath4 :: L.ByteString -> ASPath42
+decodeAsASPath4 bytes = ASPath4 (decode bytes)
+-- decodeAsASPath4 _ = ASPath4 (ASPath [])
 
 instance (ASNumber asn) => Binary (ASPath asn) where 
     get = label "ASPath" $ do
