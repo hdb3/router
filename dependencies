@@ -1,1 +1,2 @@
 cabal install farmhash hashtables iproute pretty-hex base16-bytestring hashable hashtables farmhash old-time
+cabal install attoparsec attoparsec-binary either
