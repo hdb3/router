@@ -69,7 +69,11 @@ as4list :: Integral a => [a] -> [Word32]
 as4list = map fromIntegral
 
 instance Binary ASPath42 where
-    get = undefined
+    -- get = undefined
+    get = do
+        bytes <- getRemainingLazyByteString
+        return $ decodeAS4 bytes
+
     put (ASPath2 asp) = put asp
     put (ASPath4 asp) = put asp
 
@@ -109,7 +113,7 @@ instance (ASNumber asn) => Binary (ASSegment asn) where
 
 
 
-decodeAS4 = fromRight' . parseOnly (path <* endOfInput) . L.toStrict 
+decodeAS4 = fromRight' . parseOnly path . L.toStrict 
 type ASSegment2 = ASSegment Word16
 type ASSegment4 = ASSegment Word32
 
