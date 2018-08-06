@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstrainedClassMethods #-}
 module ASPath where
 import Data.Binary
 import Data.Binary.Get
@@ -31,14 +32,20 @@ import Common
 -- note: 4 byte AS numbers may be used inthe AS PATH as well as in the AS4_PATH
 -- therefore decoding AS_PATH requires to know whether 2 or 4 byte AS numbers are in use.
 
-data ASPath42 = ASPath2 ASPath16| ASPath4 ASPath32 deriving (Show,Eq)
+data ASPath42 = ASPath2 ASPath16 | ASPath4 ASPath32 deriving (Show,Eq)
+-- lift :: ASNumber a => (ASPath a -> ASPath a) -> (ASPath42 -> ASPath42)
+-- lift f (a :: Word16) = ASPath2 (f a)
+-- lift f (a :: Word32) = ASPath4 (f a)
+
+
 type ASPath16 = ASPath Word16
 type ASPath32 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
 data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
 
-asPrePend :: ASNumber a => a -> ASPath a -> ASPath a
-asPrePend  asn (ASPath segments) = ASPath (asPrePend' asn segments)
+asPrePend asn = raise ( _asPrePend asn )
+_asPrePend :: ASNumber a => a -> ASPath a -> ASPath a
+_asPrePend  asn (ASPath segments) = ASPath (asPrePend' asn segments)
 asPrePend' asn [] = [ASSequence [asn]]
 asPrePend' asn (ASSet sets : segs) = ASSequence [asn] : ASSet sets : segs
 asPrePend' asn (ASSequence seqs : segs) | length seqs < 255 = ASSequence (asn:seqs) : segs
@@ -56,15 +63,27 @@ instance {-# OVERLAPPING #-}(ASNumber asn) =>  Binary [ASSegment asn] where
     get = getn
 
 class (Eq a, Num a, Show a, Read a, Binary a) => ASNumber a where
+    lift :: ASNumber a => ASPath a -> ASPath42
+    unLift :: ASNumber a => ASPath42 -> ASPath a
     putASSegmentElement :: ASSegmentElementTypeCode -> [a] -> Put
     putASSegmentElement code asns = do putWord8 (encode8 code)
                                        putWord8 (fromIntegral $ length asns)
                                        putn asns
+
+raise :: (ASNumber a) =>  (ASPath a -> ASPath a) -> ASPath42 -> ASPath42
+raise f = lift . f . unLift
+
 instance ASNumber Word16 where
+     lift = ASPath2
+     unLift (ASPath2 x) = x
+
 as2list :: Integral a => [a] -> [Word16]
 as2list = map fromIntegral
 
 instance ASNumber Word32 where
+     lift = ASPath4
+     unLift (ASPath4 x) = x
+
 as4list :: Integral a => [a] -> [Word32]
 as4list = map fromIntegral
 
