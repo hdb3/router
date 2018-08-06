@@ -33,8 +33,6 @@ updatePathAttribute :: PathAttributeTypeCode -> (PathAttribute -> PathAttribute)
 updatePathAttribute t f = map f' where
     f' a | t == identify a = f a
          | otherwise = a
--- paPrePend :: ASNumber a => a -> PathAttribute -> PathAttribute
--- paPrePend asn (PathAttributeASPath path) = PathAttributeASPath (asPrePend asn path)
 
 prePendAS :: ASNumber a => a -> [PathAttribute] -> [PathAttribute]
 prePendAS asn = updatePathAttribute TypeCodePathAttributeASPath (asPrePend' asn) where
