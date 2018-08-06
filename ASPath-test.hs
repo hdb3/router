@@ -4,8 +4,7 @@ import Data.Binary
 import qualified Data.ByteString.Lazy as L
 
 import Common
-import ASPath
-import qualified ASPath4 as AS4
+import ASPath (asPrePend,ASPath42(..),ASPath32,ASPath16,decodeAS4,decodeAsASPath4,decodeAsASPath2,ASPath(..),ASSegment(..),as4list,as2list)
 
 asSequence2 = ASSequence . as2list
 asSet2 = ASSet . as2list
@@ -53,7 +52,7 @@ test42 isAS4 path = do
                let enc = encode path
                    -- dec = decode enc :: ASPath2
                    dec = if isAS4 then decodeAsASPath4 enc else decodeAsASPath2 enc
-                   dec' = AS4.decode enc
+                   dec' = decodeAS4 enc
                print path
                putStrLn ""
                putStrLn $ "encoded: " ++ simpleHex' enc
@@ -66,7 +65,7 @@ test2 path = do
                putStrLn ""
                let enc = encode path
                    dec = decode enc :: ASPath16
-                   dec' = AS4.decode enc
+                   dec' = decodeAS4 enc
                print path
                putStrLn ""
                putStrLn $ "encoded: " ++ simpleHex' enc
@@ -79,7 +78,7 @@ test4 path = do
                putStrLn ""
                let enc = encode path
                    dec = decode enc :: ASPath32
-                   dec' = AS4.decode enc
+                   dec' = decodeAS4 enc
                print path
                putStrLn ""
                putStrLn $ "encoded: " ++ simpleHex' enc
