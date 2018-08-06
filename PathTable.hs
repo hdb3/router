@@ -25,24 +25,19 @@ instance Ord Cost where
       | otherwise = compare peer1 peer2
  
 data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteCost :: Cost, pteNewPath [PathAttribute] }
-newtype PathTable = PathTable { map :: IntMap PathTableEntry } -- ignoring cost function
+newtype PathTable = PathTable { map :: IntMap PathTableEntry, updateFunction :: UpdatePathFunction } -- ignoring cost function
 type UpdatePathFunction = ([PathAttribute] -> [PathAttribute])
-makeSimpleUpdatePathFunction :: Word32 -> ASPath2  -> UpdatePathFunction -- TODO - support AS2 and AS4.....
-makeSimpleUpdatePathFunction nextHop addAS = (updateNextHop nextHop) (addAS newAS) 
--- newtype PathTable = PathTable { map :: IntMap PathTableEntry, costFunction :: CostFunction
--- type CostFunction = [PathAttribute] -> Cost
--- makeCostFunction :: ([PathAttribute] -> Word32) -> Word32 -> CostFunction
--- makeCostFunction prefFunction peerBGPID = f where
---     f path = 
-
-{- PathTable insert: provide the prefix count so ref count can be maintained.
- -  This also updates the ref count for the dereferenced paths.
- -  Unreferenced paths are removed.  A path table reference is returned.
--}
+makeSimpleUpdatePathFunction :: Word32 -> ASNumber -> UpdatePathFunction -- TODO - support AS2 and AS4.....
+makeSimpleUpdatePathFunction nextHop newAS = (updateNextHop nextHop) (prePendAS newAS) 
 
 pathTableInsert :: PathTable -> ([PathAttribute],B.ByteString) -> Int -> (Int,PathTable)
 -- in this simple version we are not going to bother about removing old path entries and managing reference counts....
 --
 pathTableInsert pt (route,bytes) pfxCount = (hash,pt') where
     hash = hash64 bytes
-    pt' = 
+    oldMap = map pt
+    cost = Cost 0 (getASPathLength route) 0 True 0)
+    newPath = (updateFunction pt) route
+    pte = PathTableEntry route cost newPath
+    newMap = insert hash pte oldMap
+    pt' = pt { map = newMap }
