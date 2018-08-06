@@ -28,7 +28,6 @@ import Common
 -- therefore decoding AS_PATH requires to know whether 2 or 4 byte AS numbers are in use.
 
 data ASPath42 = ASPath2 ASPath16| ASPath4 ASPath32 deriving (Show,Eq)
--- data ASPath42 = ASPath2 ( ASPath Word16 ) | ASPath4 (ASPath Word32) deriving (Show,Eq)
 type ASPath16 = ASPath Word16
 type ASPath32 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
@@ -40,13 +39,6 @@ asPrePend' asn [] = [ASSequence [asn]]
 asPrePend' asn (ASSet sets : segs) = ASSequence [asn] : ASSet sets : segs
 asPrePend' asn (ASSequence seqs : segs) | length seqs < 255 = ASSequence (asn:seqs) : segs
                                         | otherwise         = ASSequence [asn] : ASSequence seqs : segs
-{-
-asPathLength :: ASPath a -> Int
-asPathLength ( ASPath asPath) = foldl' addSegLength 0 asPath where
-    addSegLength acc (ASSet _ ) = acc + 1
-    addSegLength acc (ASSequence ax ) = acc + length ax
--}
-
 asPathLength' :: ASPath a -> Int
 asPathLength' ( ASPath asPath) = foldl' addSegLength 0 asPath where
     addSegLength acc (ASSet _ ) = acc + 1
@@ -78,12 +70,10 @@ instance Binary ASPath42 where
     put (ASPath4 asp) = put asp
 
 decodeAsASPath2 :: L.ByteString -> ASPath42
--- decodeAsASPath2 _ = ASPath2 (ASPath [])
 decodeAsASPath2 bytes = ASPath2 (decode bytes)
 
 decodeAsASPath4 :: L.ByteString -> ASPath42
 decodeAsASPath4 bytes = ASPath4 (decode bytes)
--- decodeAsASPath4 _ = ASPath4 (ASPath [])
 
 instance (ASNumber asn) => Binary (ASPath asn) where 
     get = label "ASPath" $ do
@@ -111,19 +101,3 @@ instance (ASNumber asn) => Binary (ASSegment asn) where
                         | otherwise = do asn <- get
                                          asns <- getNasns (n-1)
                                          return (asn:asns)
-
--- ----------------------------------------
--- candidate for Codes.hs
--- ----------------------------------------
---
-
-data ASSegmentElementTypeCode = EnumASSet | EnumASSequence deriving (Show,Eq)
-
-instance EnumWord8 ASSegmentElementTypeCode where
-instance Enum ASSegmentElementTypeCode where
-
-    toEnum n   | n == 1 = EnumASSet
-               | n == 2 = EnumASSequence
-
-    fromEnum e | e == EnumASSet = 1
-               | e == EnumASSequence = 2

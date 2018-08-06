@@ -93,3 +93,23 @@ instance Enum PathAttributeTypeCode where
                | e == TypeCodePathAttributeASPathlimit = 21
                | e == TypeCodePathAttributeLargeCommunity = 32
                | e == TypeCodePathAttributeAttrSet = 128
+
+-- ----------------------------------------
+-- for ASPath?.hs
+-- ----------------------------------------
+--
+
+data ASSegmentElementTypeCode = EnumASSet | EnumASSequence deriving (Show,Eq)
+
+instance EnumWord8 ASSegmentElementTypeCode where
+instance Enum ASSegmentElementTypeCode where
+
+    toEnum n   | n == 1 = EnumASSet
+               | n == 2 = EnumASSequence
+
+    fromEnum e | e == EnumASSet = 1
+               | e == EnumASSequence = 2
+
+
+enumASSet = 1 :: Word8
+enumASSequence = 2 :: Word8
