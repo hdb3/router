@@ -27,10 +27,10 @@ import Common
 -- note: 4 byte AS numbers may be used inthe AS PATH as well as in the AS4_PATH
 -- therefore decoding AS_PATH requires to know whether 2 or 4 byte AS numbers are in use.
 
-data ASPath42 = ASPath2 ASPath2| ASPath4 ASPath4 deriving (Show,Eq)
+data ASPath42 = ASPath2 ASPath16| ASPath4 ASPath32 deriving (Show,Eq)
 -- data ASPath42 = ASPath2 ( ASPath Word16 ) | ASPath4 (ASPath Word32) deriving (Show,Eq)
-type ASPath2 = ASPath Word16
-type ASPath4 = ASPath Word32
+type ASPath16 = ASPath Word16
+type ASPath32 = ASPath Word32
 newtype ASPath asn = ASPath [ASSegment asn] deriving (Show,Eq)
 data ASSegment asn = ASSet [asn] | ASSequence [asn] deriving (Show,Eq) 
 
