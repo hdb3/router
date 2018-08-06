@@ -3,8 +3,6 @@
 {-# LANGUAGE DataKinds #-}
 module ASPath4 where
 import Data.Binary
--- import Data.Binary.Get
--- import Data.Binary.Put
 import Data.Word
 import Data.List(foldl')
 import qualified Data.ByteString as B
@@ -53,27 +51,3 @@ asSetOrSeq4 = do
     rvals <- count (fromIntegral asCount) anyWord32be
     return $ if segType == enumASSet then ASSet rvals else ASSequence rvals where
         isSetOrSeq b = b == enumASSet || b == enumASSequence
-
-{-
-segments2 :: Parser ASPath16
-segments2 = do
-    -- segs <- many' segment2
-    segs <- many' asSetOrSeq2
-    return $ ASPath segs
-segment2 :: Parser ASSegment2
-segment2 = asSet2 <|> asSeq2
-
-asSeq2 :: Parser ASSegment2
-asSeq2 = do
-    word8 enumASSequence
-    asCount <- anyWord8
-    rvals <- count (fromIntegral asCount) anyWord16be
-    return $ ASSequence rvals
-
-asSet2 :: Parser ASSegment2
-asSet2 = do
-    word8 enumASSet
-    asCount <- anyWord8
-    rvals <- count (fromIntegral asCount) anyWord16be
-    return $ ASSet rvals
--}
