@@ -1,21 +1,20 @@
-module PathTable where
+module PrefixTable where
 
-{- The path table holds everything about a route we could care about
+{- A single prefix table holds everything about a prefix we could care about
+ - but, this is merely the prefix itself, and the associated path
  -
- - the contents are the actual route itself, (parsed form and the bytestring hash actually required),
- - a hash, for uniquness checking (Assume that hashing the whole bytestring is valid....)
- - a refernce count,
- - and an opaque record for other data, e.g calculated cost
+ - for IPv4 the prefix including length fits in a 64 bit word, so can be the actual key
+ - though it might be that a simple scarmable operation would make a better key for a tree...
+ - Note also that the pathtable key is also a 64 bit word, so a map of Ints is all that is required....
+ -
+ - However, the LocRIB needs to access every prefix table when performing selection
 -}
 
 import Data.IntMap.Strict
-import PathAttributes
-import FarmHash(hash64)
-
-import BGPData
+import Data.SortedList
 
 data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteData :: RouteData, refCount :: Int }
-newtype PathTable = PathTable IntMap PathTableEntry
+newtype PrefixTable = PrefixTable IntMap Int
 
 pathTableDelete :: PathTable -> Int -> Int -> PathTable
 pathTableDelete pt hash count = update f pt hash where
