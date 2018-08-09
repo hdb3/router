@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE BangPatterns #-}
 module Prefixes where
+-- import GHC.Exts
 import Data.Binary
 import Data.Hashable
 import GHC.Generics(Generic)
@@ -23,8 +26,15 @@ import Common
 -- The 'HostAddress' type from Network.Socket, via Data.IP, is a 32 bit word holding IPv4
 -- addresses IN REVERSE ORDER !!!
 -- Therefore conversions between our Prefix type and HostAddress require byteSwap32
+--
+-- representation of prefixes as 64 bit words: this mapping allows prefixes to be treated as Ints where useful
 
-newtype Prefix = Prefix (Word8,Word32) deriving (Eq,Generic)
+data Prefix = Prefix !(Word8,Word32) deriving (Eq,Generic)
+newtype IPrefix = IPrefix Int
+toPrefix :: IPrefix -> Prefix
+toPrefix (IPrefix w64) = Prefix (fromIntegral $ unsafeShiftR w64 32, fromIntegral $ 0xffffffff .&. w64)
+fromPrefix :: Prefix -> IPrefix
+fromPrefix (Prefix (!l,!v)) = IPrefix $ fromIntegral $! (unsafeShiftL (fromIntegral l) 32) .|. v
 
 instance Hashable Prefix
 instance Show Prefix where
@@ -35,13 +45,6 @@ subnet (Prefix (s,_)) = s
 
 ip :: Prefix -> Word32
 ip (Prefix (_,i)) = i
-{-
- - -- removed as untested and not obviously useful
-canonicalPrefix :: Prefix -> Prefix
-canonicalPrefix (Prefix (subnet,ip)) | subnet < 33 = Prefix (subnet,canonicalise ip) where
-    canonicalise = (`unsafeShiftR` (fromIntegral $ 32 - subnet)) .
-                   (`unsafeShiftL` (fromIntegral $ 32 - subnet))
--}
  
 toAddrRange :: Prefix -> AddrRange IPv4
 toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress $ byteSwap32 ip) (fromIntegral subnet)
