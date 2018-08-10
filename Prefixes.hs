@@ -35,6 +35,7 @@ toPrefix :: IPrefix -> Prefix
 toPrefix (IPrefix w64) = Prefix (fromIntegral $ unsafeShiftR w64 32, fromIntegral $ 0xffffffff .&. w64)
 fromPrefix :: Prefix -> IPrefix
 fromPrefix (Prefix (!l,!v)) = IPrefix $ fromIntegral $! (unsafeShiftL (fromIntegral l) 32) .|. v
+fromPrefixes = map fromPrefix
 
 instance Hashable Prefix
 instance Show Prefix where

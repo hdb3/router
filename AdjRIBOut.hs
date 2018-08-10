@@ -19,12 +19,14 @@ import qualified Data.Sequence as Seq
 import Prefixes
 import PathTable
 
+-- **** TODO - the filter needs to be applied to A LIST of prefixes, and use the output list, unless empty!!!!
 type AdjRIBOutFilter = Prefix -> PathTableEntry -> Bool
-newtype AdjRIBOut = AdjRIBOut { table ::Seq AdjRIBEntry, filter :: AdjRIBOutFilter }
-newtype AdjRIBEntry = AdjRIBEntry { prefixes :: [IPrefix], route :: RouteId }
-newAdjRIBOut = AdjRIBOut [] (\_ _ -> False)
-insertAdjRIBOut :: AdjRIBOut -> Prefix -> PathTableEntry -> AdjRIBOut
-insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefix pte then aro else (AdjRIBOut (fromPrefixes prefixes : table) filter)
+data AdjRIBOut = AdjRIBOut { table :: Seq.Seq AdjRIBEntry, filter :: AdjRIBOutFilter }
+data AdjRIBEntry = AdjRIBEntry { prefixes :: [IPrefix], route :: RouteId }
+newAdjRIBOut = AdjRIBOut Seq.empty (\_ _ -> False)
+insertAdjRIBOut :: AdjRIBOut -> [Prefix] -> PathTableEntry -> AdjRIBOut
+insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefixes pte then aro else (AdjRIBEntry (fromPrefixes prefixes)  Seq.:< table) filter))
+-- insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefixes pte then aro else (AdjRIBOut (fromPrefixes prefixes Seq.:< (Seq.viewl table) filter))
 isEmptyAdjRIBOut :: AdjRIBOut -> Bool
 isEmptyAdjRIBOut (AdjRIBOut table _) = Seq.null table
 
