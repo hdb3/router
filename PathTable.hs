@@ -11,6 +11,7 @@ module PathTable where
  - and finally the updated route for dissemination (maybe two versions for internal and external peers...)
 -}
 
+import qualified Data.ByteString as B
 import Data.IntMap.Strict
 import PathAttributes
 import FarmHash(hash64)
@@ -18,10 +19,17 @@ import FarmHash(hash64)
 import BGPData
 
 data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteData :: RouteData, refCount :: Int }
-newtype PathTable = PathTable IntMap PathTableEntry
+newtype PathTable = PathTable (IntMap PathTableEntry)
+newtype RouteId = RouteId Int
+
+pathTableGet :: PathTable -> RouteId -> Maybe PathTableEntry
+pathTableGet (PathTable pt) (RouteId routeId) = Data.IntMap.Strict.lookup routeId pt 
+
+pathTableGet_ :: PathTable -> RouteId -> PathTableEntry
+pathTableGet_ (PathTable pt) (RouteId routeId) = pt ! routeId
 
 pathTableDelete :: PathTable -> RouteId -> Int -> PathTable
-pathTableDelete pt routeId count = update f pt routeId where
+pathTableDelete (PathTable pt)(RouteId routeId) count = PathTable $ update f pt routeId where
     f oldPt | refCount oldPt == count = Nothing
             | otherwise = oldPt { refCount = oldCount - count }
  

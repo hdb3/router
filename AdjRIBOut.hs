@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module AdjRIBOut where
 
 {-
@@ -12,5 +14,22 @@ module AdjRIBOut where
  - when an entire route table must be exchanged
 -}
 
-newtype AdjRIBOut = AdjRIBOut [AdjRIBEntry]
-newtype AdjRIBEntry = AdjRIBEntry { prefixes :: [IPrefix], p
+import qualified Data.Sequence as Seq
+
+import Prefixes
+import PathTable
+
+type AdjRIBOutFilter = Prefix -> PathTableEntry -> Bool
+newtype AdjRIBOut = AdjRIBOut { table ::Seq AdjRIBEntry, filter :: AdjRIBOutFilter }
+newtype AdjRIBEntry = AdjRIBEntry { prefixes :: [IPrefix], route :: RouteId }
+newAdjRIBOut = AdjRIBOut [] (\_ _ -> False)
+insertAdjRIBOut :: AdjRIBOut -> Prefix -> PathTableEntry -> AdjRIBOut
+insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefix pte then aro else (AdjRIBOut (fromPrefixes prefixes : table) filter)
+isEmptyAdjRIBOut :: AdjRIBOut -> Bool
+isEmptyAdjRIBOut (AdjRIBOut table _) = Seq.null table
+
+simpleGetAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,Maybe AdjRIBEntry)
+simpleGetAdjRIBOut aro@(AdjRIBOut table filter) | Seq.null table = (aro,Nothing)
+                                                | otherwise = (aro', Just are) where
+                                                  (table' Seq.:> are) = Seq.viewr table
+                                                  aro' = (AdjRIBOut table' filter)
