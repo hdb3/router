@@ -14,24 +14,22 @@ module AdjRIBOut where
  - when an entire route table must be exchanged
 -}
 
-import qualified Data.Sequence as Seq
-
+import Common
 import Prefixes
 import PathTable
 
--- **** TODO - the filter needs to be applied to A LIST of prefixes, and use the output list, unless empty!!!!
-type AdjRIBOutFilter = Prefix -> PathTableEntry -> Bool
-data AdjRIBOut = AdjRIBOut { table :: Seq.Seq AdjRIBEntry, filter :: AdjRIBOutFilter }
-data AdjRIBEntry = AdjRIBEntry { prefixes :: [IPrefix], route :: RouteId }
-newAdjRIBOut = AdjRIBOut Seq.empty (\_ _ -> False)
-insertAdjRIBOut :: AdjRIBOut -> [Prefix] -> PathTableEntry -> AdjRIBOut
-insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefixes pte then aro else (AdjRIBEntry (fromPrefixes prefixes)  Seq.:< table) filter))
--- insertAdjRIBOut aro@(AdjRIBOut table filter) prefixes pte = if filter prefixes pte then aro else (AdjRIBOut (fromPrefixes prefixes Seq.:< (Seq.viewl table) filter))
-isEmptyAdjRIBOut :: AdjRIBOut -> Bool
-isEmptyAdjRIBOut (AdjRIBOut table _) = Seq.null table
+type AdjRIBEntry = ( [IPrefix], RouteId )
+type AdjRIBTable = Fifo AdjRIBEntry
+newtype AdjRIBOut = AdjRIBOut AdjRIBTable
 
-simpleGetAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,Maybe AdjRIBEntry)
-simpleGetAdjRIBOut aro@(AdjRIBOut table filter) | Seq.null table = (aro,Nothing)
-                                                | otherwise = (aro', Just are) where
-                                                  (table' Seq.:> are) = Seq.viewr table
-                                                  aro' = (AdjRIBOut table' filter)
+newAdjRIBOut = AdjRIBOut emptyFifo
+
+insertAdjRIBOut :: AdjRIBOut -> AdjRIBEntry -> AdjRIBOut
+insertAdjRIBOut (AdjRIBOut table) are = AdjRIBOut ( enqueue table are )
+
+isEmptyAdjRIBOut :: AdjRIBOut -> Bool
+isEmptyAdjRIBOut (AdjRIBOut table) = nullFifo table
+
+simpleGetAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
+-- undefined on empty
+simpleGetAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
