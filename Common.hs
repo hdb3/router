@@ -11,6 +11,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
+import qualified Data.Sequence as Seq
 
 -- Debug stuff
 --
@@ -23,12 +24,20 @@ toHex = C8.unpack . Base16.encode
 toHex' = toHex . L.toStrict
 simpleHex' = simpleHex . L.toStrict
 prettyHex' = prettyHex . L.toStrict
+-- 'local prelude'
+--
 
 -- strictly, fromRight' (plain fromRight takes a default value to make it total)
 -- and, not in GHC libs until at leats 8.2....
 
 fromRight' :: Either a b -> b
 fromRight' (Right b ) = b
+
+type Fifo = Seq.Seq
+emptyFifo = Seq.empty
+nullFifo = Seq.null
+enqueue s e = e Seq.<| s
+dequeue s = (s',e) where (s' Seq.:> e) = Seq.viewr s
 
 -- application stuff
 --
