@@ -12,9 +12,11 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Monad
 import Control.Applicative
-import Data.Attoparsec.ByteString
-import Data.Attoparsec.Binary
-import Data.Either.Combinators
+import Data.Attoparsec.ByteString -- from package attoparsec
+import Data.Attoparsec.Binary -- from package attoparsec-binary
+-- follwoing package pulls in a mountain of dependencies considering that all we want is 'fromRight'
+-- hence defined in Common.hs too.....
+-- import qualified Data.Either.Combinators -- from package either
 
 import RFC4271
 import Codes

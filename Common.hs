@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Common(module Data.IP, module Common, module Hexdump) where
 import Data.List(delete)
-import Data.IP
-import Network.Socket (PortNumber)
+import Data.IP -- from package iproute
+import Network.Socket (PortNumber) -- from package network
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
@@ -10,12 +10,12 @@ import qualified Data.ByteString.Builder.Prim as Prim
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
-import System.Time
+import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 
 -- Debug stuff
 --
-import qualified Data.ByteString.Base16 as Base16
-import Hexdump
+import qualified Data.ByteString.Base16 as Base16 -- from package base16-bytestring
+import Hexdump -- from package pretty-hex
 
 fromHex = fst . Base16.decode
 fromHex' = L.fromStrict . fst . Base16.decode
@@ -24,10 +24,11 @@ toHex' = toHex . L.toStrict
 simpleHex' = simpleHex . L.toStrict
 prettyHex' = prettyHex . L.toStrict
 
--- not in GHC libs until at leats 8.2....
-fromLeft :: a -> Either a b -> a
-fromLeft _ (Left a) = a
-fromLeft a _        = a
+-- strictly, fromRight' (plain fromRight takes a default value to make it total)
+-- and, not in GHC libs until at leats 8.2....
+
+fromRight' :: Either a b -> b
+fromRight' (Right b ) = b
 
 -- application stuff
 --
