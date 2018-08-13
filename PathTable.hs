@@ -14,7 +14,7 @@ module PathTable where
 import qualified Data.ByteString as B
 import Data.IntMap.Strict
 import PathAttributes
-import FarmHash(hash64)
+import FarmHash(hash64) -- from package farmhash
 
 import BGPData
 
