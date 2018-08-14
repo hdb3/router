@@ -12,6 +12,7 @@ import Data.Binary.Put
 import Data.Word
 import Data.Bits
 import Data.IP
+import Data.String(IsString,fromString)
 
 import Common
 
@@ -30,7 +31,7 @@ import Common
 -- representation of prefixes as 64 bit words: this mapping allows prefixes to be treated as Ints where useful
 
 data Prefix = Prefix !(Word8,Word32) deriving (Eq,Generic)
-newtype IPrefix = IPrefix Int
+newtype IPrefix = IPrefix Int deriving Eq
 toPrefix :: IPrefix -> Prefix
 toPrefix (IPrefix w64) = Prefix (fromIntegral $ unsafeShiftR w64 32, fromIntegral $ 0xffffffff .&. w64)
 fromPrefix :: Prefix -> IPrefix
@@ -38,6 +39,20 @@ fromPrefix (Prefix (!l,!v)) = let l' = fromIntegral l :: Int
                                   v' = fromIntegral v :: Int
                               in IPrefix $! unsafeShiftL l' 32 .|. v'
 fromPrefixes = map fromPrefix
+
+instance IsString Prefix where
+    fromString = read
+
+instance IsString IPrefix where
+    fromString = read
+
+instance Read IPrefix where
+    readsPrec _ = readSipfx where
+        readSipfx s = let (a,s') = head $ readsPrec 0 s in [(fromPrefix $ fromAddrRange a,s')]
+
+instance Read Prefix where
+    readsPrec _ = readSipfx where
+        readSipfx s = let (a,s') = head $ readsPrec 0 s in [(fromAddrRange a,s')]
 
 instance Hashable Prefix
 instance Show Prefix where
