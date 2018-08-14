@@ -23,6 +23,11 @@ class Enum e => EnumWord8 e where
          Finite State Machine Error 5          Section 6.6
          Cease                      6          Section 6.7
 -}
+
+_BGP_ORIGIN_IGP = 0 :: Word8
+_BGP_ORIGIN_EGP = 1 :: Word8
+_BGP_ORIGIN_INCOMPLETE = 2 :: Word8
+
 data EnumNotificationCode = InvalidNotificationError |
                             NotificationMessageHeaderError |
                             NotificationOPENMessageError |
