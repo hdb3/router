@@ -22,26 +22,6 @@ import BGPData(RouteData)
 import Prefixes (IPrefix(..))
 import PrefixTable
 import BGPDataTestData
-{- 
-type PrefixTableEntry = SL.SortedList RouteData 
-type PrefixTable = IntMap PrefixTableEntry
-
-newPrefixTable = Data.IntMap.Strict.empty
-
-updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
-updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
-    head sl = x where
-        Just (x,_) = SL.uncons sl
-    updatePrefixTableEntry :: PrefixTableEntry -> PrefixTableEntry -> PrefixTableEntry
-    updatePrefixTableEntry routes singletonRoute = SL.insert (head singletonRoute) routes
-    newSingletonPrefixTableEntry = SL.singleton route
-    f key new_value old_value = f' new_value old_value
-    f' new_value old_value = updatePrefixTableEntry new_value old_value
-    (maybeOldPrefixTableEntry, newPrefixTable) = insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt
-    newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( f' newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
-    newBestRoute = head newPrefixTableEntry
-    isNewBestRoute = newBestRoute == route
--}
 
 prefixList1 = 
         ["1.2.3.4/32"
@@ -56,7 +36,9 @@ prefixList1 =
         , "10.1.2.3/8"
         ] :: [IPrefix]
 
-main = do
+main = withdrawTest
+
+updateTest = do
    putStrLn "PrefixTable-test"
    let pt = newPrefixTable
        update_ pfx rte t = fst $ updatePrefixTable t pfx rte
@@ -67,15 +49,20 @@ main = do
              $ ( update_ "192.168.12.0/24" route12 )
              $ ( update_ "192.168.13.0/24" route12 )
              $ newPrefixTable
-       -- (pt',p') = updatePrefixTable pt "192.168.1.99/24" route11
-       -- (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
-       -- (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
-   -- print pt'
-   -- print pt''
-   -- putStrLn $ showPrefixTable pt''
    putStrLn $ showPrefixTable rib
    putStrLn $ showPrefixTableByRoute rib
    let (resPT,resPFX) = PrefixTable.update newPrefixTable prefixList1 route11
    print resPFX
    putStrLn $ showPrefixTableByRoute resPT
 
+withdrawTest = do
+   let l1 = ["1.2.3.4/32" ,"1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"]
+       l1_1 = ["1.2.3.4/32" ]
+       (pt,_) = PrefixTable.update newPrefixTable l1 gd1Peer1Route1
+   putStrLn $ showPrefixTableByRoute pt
+
+   putStrLn "\nWithdraw\n"
+
+   let (pt',pfxs) = withdraw pt l1_1 gd1Peer1
+   print pfxs
+   putStrLn $ showPrefixTableByRoute pt'
