@@ -45,6 +45,8 @@ route11 = RouteData { peerData = gd1Peer1
                    , med = 0
                    , fromEBGP = True
                    }
+gd1Peer1Route1 = route11
+gd1Peer1Route2 = gd1Peer1Route1 { pathLength = 11 }
 
 route12 = route11 { peerData = gd1Peer2 }
 route21 = route11 { peerData = gd2Peer1 }

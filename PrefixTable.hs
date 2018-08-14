@@ -13,11 +13,11 @@ module PrefixTable where
  - hence a fast implementation is essential
 -}
 
-import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList)
+import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
-import BGPData(RouteData)
+import BGPData(RouteData,PeerData,peerData)
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
@@ -57,3 +57,23 @@ showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
     showRoute groups = unlines $ ( show $ snd $ head groups ) : -- this is the route, same for all of the follwoing prefixes
                        map (show . IPrefix .fst) groups
 
+-- ###########################################################
+
+
+withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
+withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
+    (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
+    f :: Int -> PrefixTableEntry -> Maybe PrefixTableEntry
+    f _ routes = let routes' = SL.filter (hasPeer peer) routes in
+         if null routes' then Nothing else Just routes'
+    hasPeer :: PeerData -> RouteData -> Bool
+    hasPeer pd rd = pd == ( peerData rd ) 
+    head sl = x where
+        Just (x,_) = SL.uncons sl
+    oldBestRoute = head oldRouteList
+    wasBestRoute = (peerData oldBestRoute) == peer
+
+withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
+withdraw rib prefixes peer = Data.List.foldl' f (rib,[]) prefixes where
+    f (pt,withdrawn) pfx = if p then (pt',pfx:withdrawn) else (pt',withdrawn) where
+        (pt',p) = withdrawPrefixTable pt pfx peer
