@@ -75,3 +75,7 @@ main = do
    -- putStrLn $ showPrefixTable pt''
    putStrLn $ showPrefixTable rib
    putStrLn $ showPrefixTableByRoute rib
+   let (resPT,resPFX) = PrefixTable.update newPrefixTable prefixList1 route11
+   print resPFX
+   putStrLn $ showPrefixTableByRoute resPT
+
