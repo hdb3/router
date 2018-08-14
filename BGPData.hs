@@ -37,7 +37,7 @@ instance Show GlobalData where
     show gd = " router: " ++ show ( myBGPid gd )
 
 instance Show PeerData where
-    show pd = " peer-AS=" ++ show (peerAS pd) ++ " nexthop=" ++ show (peerIPv4 pd) ++ show (globalData pd)
+    show pd = " peer-AS=" ++ show (peerAS pd) ++ " nexthop=" ++ show (peerIPv4 pd) --  ++ show (globalData pd)
 
 instance Show RouteData where
     show rd = "pathlength=" ++ show (pathLength rd) ++ show (peerData rd)

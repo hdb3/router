@@ -43,3 +43,12 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 showPrefixTable :: PrefixTable -> String
 showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
     showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
+
+showPrefixTableByRoute :: PrefixTable -> String
+showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
+    prefixes = toList pt
+    groupedByRoutePrefixes = Data.List.groupBy sameRoute prefixes
+    sameRoute (_,a) (_,b) = a == b
+    showRoute groups = unlines $ ( show $ snd $ head groups ) : -- this is the route, same for all of the follwoing prefixes
+                       map (show . IPrefix .fst) groups
+
