@@ -7,7 +7,11 @@ module BGPData where
 import Data.Word
 import Data.IP(IPv4)
 
-data GlobalData = GlobalData { myAS :: Word32 , myBGPid :: IPv4 } deriving (Show,Eq)
+data GlobalData = GlobalData { myAS :: Word32 
+                             , myBGPid :: IPv4
+                             }
+                            deriving Eq
+                             -- deriving (Show,Eq)
 
 data PeerData = PeerData { globalData :: GlobalData
                          ,  isExternal :: Bool
@@ -16,16 +20,27 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  peerIPv4 :: IPv4
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
-                         } deriving (Show,Eq)
+                         }
+                            deriving Eq
+                         -- deriving (Show,Eq)
 
 data RouteData =  RouteData { peerData :: PeerData
                             , pathLength :: Word8
                             , origin :: Word8
                             , med :: Word32
                             , fromEBGP :: Bool
-                            } deriving (Show,Eq)
+                            }
+                            deriving Eq
+                            -- deriving (Show,Eq)
 
+instance Show GlobalData where
+    show gd = " router: " ++ show ( myBGPid gd )
 
+instance Show PeerData where
+    show pd = " peer-AS=" ++ show (peerAS pd) ++ " nexthop=" ++ show (peerIPv4 pd) ++ show (globalData pd)
+
+instance Show RouteData where
+    show rd = "pathlength=" ++ show (pathLength rd) ++ show (peerData rd)
 
 instance Ord RouteData where
 

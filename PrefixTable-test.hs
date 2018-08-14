@@ -1,4 +1,5 @@
-module PrefixTable where
+{-#LANGUAGE OverloadedStrings #-}
+module Main where
 
 {- A single prefix table holds everything about a prefix we could care about
  - but, this is merely the prefix itself, and the associated path
@@ -13,17 +14,18 @@ module PrefixTable where
  - hence a fast implementation is essential
 -}
 
-import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList)
+import Data.IntMap.Strict
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
 import BGPData(RouteData)
 import Prefixes (IPrefix(..))
-
+import PrefixTable
+import BGPDataTestData
+{- 
 type PrefixTableEntry = SL.SortedList RouteData 
 type PrefixTable = IntMap PrefixTableEntry
 
-newPrefixTable :: PrefixTable
 newPrefixTable = Data.IntMap.Strict.empty
 
 updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
@@ -39,7 +41,26 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
     newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( f' newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
     newBestRoute = head newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
+-}
 
-showPrefixTable :: PrefixTable -> String
-showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
-    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
+prefixList1 = 
+        ["1.2.3.4/32"
+        ,"1.2.3.4/24"
+        ,"1.2.3.4/16"
+        ,"1.2.3.4/8"
+        , "0.0.0.0/0"
+        , "192.168.1.99/24"
+        , "129.129.0.0/16"
+        , "172.16.0.77/12"
+        , "169.254.108.17/32"
+        , "10.1.2.3/8"
+        ] :: [IPrefix]
+
+main = do
+   putStrLn "PrefixTable-test"
+   let pt = newPrefixTable
+       (pt',p') = updatePrefixTable pt "192.168.1.99/24" route11
+       (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
+   -- print pt'
+   -- print pt''
+   putStrLn $ showPrefixTable pt''
