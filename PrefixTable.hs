@@ -8,24 +8,31 @@ module PrefixTable where
  - Note also that the pathtable key is also a 64 bit word, so a map of Ints is all that is required....
  -
  - However, the LocRIB needs to access every prefix table when performing selection
+ -
+ - Note: the route selection algorithm is at the heart of this system, and is performed for every prefix inserted
+ - hence a fast implementation is essential
 -}
 
 import Data.IntMap.Strict
-import Data.SortedList
+import qualified Data.SortedList as SL -- package sorted-list
+import qualified Data.List
 
-data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteData :: RouteData, refCount :: Int }
-newtype PrefixTable = PrefixTable IntMap Int
+import BGPData(RouteData)
+import Prefixes (IPrefix(..))
 
-pathTableDelete :: PathTable -> Int -> Int -> PathTable
-pathTableDelete pt hash count = update f pt hash where
-    f oldPt | refCount oldPt == count = Nothing
-            | otherwise = oldPt { refCount = oldCount - count }
- 
-pathTableInsert :: PathTable -> ([PathAttribute],B.ByteString) -> Int -> RouteData -> (Int,PathTable)
+type PrefixTableEntry = SL.SortedList RouteData 
+type PrefixTable = IntMap PrefixTableEntry
 
-pathTableInsert (PathTable pt) (route,bytes) pfxCount routeData = (hash,pt') where
-    hash = hash64 bytes
-    pte = PathTableEntry route pathData pfxCount
-    pt' = PathTable (alter f hash pt) where
-       f = maybe (Just ( PathTableEntry route routeData pfxCount))
-                 (\oldPt -> Just ( oldPt { refCount = oldCount + count }))
+updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
+updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
+    head sl = x where
+        Just (x,_) = SL.uncons sl
+    updatePrefixTableEntry :: PrefixTableEntry -> PrefixTableEntry -> PrefixTableEntry
+    updatePrefixTableEntry routes singletonRoute = SL.insert (head singletonRoute) routes
+    newSingletonPrefixTableEntry = SL.singleton route
+    f key new_value old_value = f' new_value old_value
+    f' new_value old_value = updatePrefixTableEntry new_value old_value
+    (maybeOldPrefixTableEntry, newPrefixTable) = insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt
+    newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( f' newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
+    newBestRoute = head newPrefixTableEntry
+    isNewBestRoute = newBestRoute == route
