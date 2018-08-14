@@ -5,31 +5,32 @@ module BGPData where
 -}
 
 import Data.Word
+import Data.IP(IPv4)
 
--- import RouteSelection
-
-data GlobalData = GlobalData { myAS :: Word32 } deriving Eq
+data GlobalData = GlobalData { myAS :: Word32 , myBGPid :: IPv4 } deriving (Show,Eq)
 
 data PeerData = PeerData { globalData :: GlobalData
                          ,  isExternal :: Bool
-                         ,  bgpID :: Word32
-                         ,  interfaceAddress :: Word32
+                         ,  peerAS :: Word32
+                         ,  peerBGPid :: IPv4
+                         ,  peerIPv4 :: IPv4
+                         ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
-                         } deriving Eq
+                         } deriving (Show,Eq)
 
 data RouteData =  RouteData { peerData :: PeerData
                             , pathLength :: Word8
                             , origin :: Word8
                             , med :: Word32
                             , fromEBGP :: Bool
-                            } deriving Eq
+                            } deriving (Show,Eq)
 
 
 
 instance Ord RouteData where
 
-  compare rd1 rd2 = compare (localPref (peerData rd1), pathLength rd1, origin rd1, med rd1, not $ fromEBGP rd1, bgpID (peerData rd1), interfaceAddress (peerData rd1))
-                            (localPref (peerData rd2), pathLength rd2, origin rd2, med rd2, not $ fromEBGP rd2, bgpID (peerData rd2), interfaceAddress (peerData rd2))
+  compare rd1 rd2 = compare (localPref (peerData rd1), pathLength rd1, origin rd1, med rd1, not $ fromEBGP rd1, peerBGPid (peerData rd1), peerIPv4 (peerData rd1))
+                            (localPref (peerData rd2), pathLength rd2, origin rd2, med rd2, not $ fromEBGP rd2, peerBGPid (peerData rd2), peerIPv4 (peerData rd2))
 {-
 data Cost = Cost { preference :: Word32, pathLength :: Word8, med :: Word32, fromEBGP :: Bool, peerBGPID :: Word32 } deriving Eq
       | pr1 /= pr2 = compare pr1 pr2
