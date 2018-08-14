@@ -34,12 +34,17 @@ newtype IPrefix = IPrefix Int
 toPrefix :: IPrefix -> Prefix
 toPrefix (IPrefix w64) = Prefix (fromIntegral $ unsafeShiftR w64 32, fromIntegral $ 0xffffffff .&. w64)
 fromPrefix :: Prefix -> IPrefix
-fromPrefix (Prefix (!l,!v)) = IPrefix $ fromIntegral $! (unsafeShiftL (fromIntegral l) 32) .|. v
+fromPrefix (Prefix (!l,!v)) = let l' = fromIntegral l :: Int
+                                  v' = fromIntegral v :: Int
+                              in IPrefix $! unsafeShiftL l' 32 .|. v'
 fromPrefixes = map fromPrefix
 
 instance Hashable Prefix
 instance Show Prefix where
     show = show.toAddrRange
+
+instance Show IPrefix where
+    show = show.toAddrRange.toPrefix
 
 subnet :: Prefix -> Word8
 subnet (Prefix (s,_)) = s
