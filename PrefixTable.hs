@@ -13,7 +13,7 @@ module PrefixTable where
  - hence a fast implementation is essential
 -}
 
-import Data.IntMap.Strict
+import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
@@ -22,6 +22,9 @@ import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
 type PrefixTable = IntMap PrefixTableEntry
+
+newPrefixTable :: PrefixTable
+newPrefixTable = Data.IntMap.Strict.empty
 
 updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
 updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
@@ -36,3 +39,7 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
     newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( f' newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
     newBestRoute = head newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
+
+showPrefixTable :: PrefixTable -> String
+showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
+    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
