@@ -26,6 +26,11 @@ type PrefixTable = IntMap PrefixTableEntry
 newPrefixTable :: PrefixTable
 newPrefixTable = Data.IntMap.Strict.empty
 
+update:: PrefixTable -> [IPrefix] -> RouteData -> (PrefixTable,[IPrefix])
+update pt pfxs route = Data.List.foldl' f (pt,[]) pfxs where
+    f (pt_,updated) pfx = if p then (pt__,pfx:updated) else (pt__,updated) where
+        (pt__,p) = updatePrefixTable pt_ pfx route
+
 updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
 updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
     head sl = x where
