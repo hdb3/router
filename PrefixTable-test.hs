@@ -59,8 +59,19 @@ prefixList1 =
 main = do
    putStrLn "PrefixTable-test"
    let pt = newPrefixTable
-       (pt',p') = updatePrefixTable pt "192.168.1.99/24" route11
-       (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
+       update_ pfx rte t = fst $ updatePrefixTable t pfx rte
+       rib =   ( update_ "192.168.1.0/24" route11 )
+             $ ( update_ "192.168.2.0/24" route11 )
+             $ ( update_ "192.168.3.0/24" route11 )
+             $ ( update_ "192.168.11.0/24" route12 )
+             $ ( update_ "192.168.12.0/24" route12 )
+             $ ( update_ "192.168.13.0/24" route12 )
+             $ newPrefixTable
+       -- (pt',p') = updatePrefixTable pt "192.168.1.99/24" route11
+       -- (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
+       -- (pt'',p'') = updatePrefixTable pt' "192.168.1.77/24" route12
    -- print pt'
    -- print pt''
-   putStrLn $ showPrefixTable pt''
+   -- putStrLn $ showPrefixTable pt''
+   putStrLn $ showPrefixTable rib
+   putStrLn $ showPrefixTableByRoute rib
