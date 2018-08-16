@@ -17,7 +17,7 @@ import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookup
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
-import BGPData(RouteData,PeerData,peerData,peerIPv4)
+import BGPData(RouteData,PeerData,peerData,peerIPv4,pathLength)
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
@@ -48,7 +48,7 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 showPrefixTable :: PrefixTable -> String
 showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
     -- this below version show the next hop only - this should be in the route itself but for now uses the source peers IPv4 as the next hop....
-    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ ( show.peerIPv4.peerData) route ) (SL.fromSortedList v)
+    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ ( show.peerIPv4.peerData) route ++ " (" ++ (show.pathLength) route ++ ")" ) (SL.fromSortedList v)
 
     -- this below version show the 'whole' linked route
     -- showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
