@@ -36,7 +36,9 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
     head sl = x where
         Just (x,_) = SL.uncons sl
     updatePrefixTableEntry :: PrefixTableEntry -> PrefixTableEntry -> PrefixTableEntry
-    updatePrefixTableEntry routes singletonRoute = SL.insert (head singletonRoute) routes
+    updatePrefixTableEntry routes singletonRoute = let newRoute = head singletonRoute
+                                                       pIsNotOldRoute r = (peerData r) /= (peerData newRoute)
+                                                   in SL.insert newRoute $ SL.filter pIsNotOldRoute routes
     newSingletonPrefixTableEntry = SL.singleton route
     f key new_value old_value = f' new_value old_value
     f' new_value old_value = updatePrefixTableEntry new_value old_value
