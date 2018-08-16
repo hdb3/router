@@ -39,7 +39,7 @@ prefixList1 =
 main = withdrawTest
 
 updateTest = do
-   putStrLn "PrefixTable-test"
+   putStrLn "updateTest"
    let pt = newPrefixTable
        update_ pfx rte t = fst $ updatePrefixTable t pfx rte
        rib =   ( update_ "192.168.1.0/24" route11 )
@@ -56,13 +56,33 @@ updateTest = do
    putStrLn $ showPrefixTableByRoute resPT
 
 withdrawTest = do
+   putStrLn "\nWithdraw test\n"
    let l1 = ["1.2.3.4/32" ,"1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"]
+       l2 = ["2.2.3.4/32" ,"2.2.3.4/24" ,"2.2.3.4/16" ,"2.2.3.4/8"]
        l1_1 = ["1.2.3.4/32" ]
-       (pt,_) = PrefixTable.update newPrefixTable l1 gd1Peer1Route1
-   putStrLn $ showPrefixTableByRoute pt
+       l1_2_4 = ["1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"]
+       (pt0,_) = PrefixTable.update newPrefixTable l1 gd1Peer1Route1
+       (pt1,_) = PrefixTable.update pt0 l2 gd1Peer1Route2
+   tell' "pt1" pt1
 
-   putStrLn "\nWithdraw\n"
+   let pt2 = fst $ withdraw pt1 l1_1 gd1Peer1
+   tell' "pt2" pt2
 
-   let (pt',pfxs) = withdraw pt l1_1 gd1Peer1
-   print pfxs
-   putStrLn $ showPrefixTableByRoute pt'
+   let pt3 = fst $ withdraw pt2 l1_2_4 gd1Peer1
+   tell' "pt3" pt3
+
+   let pt4 = fst $ withdraw pt3 l2 gd1Peer1
+   tell' "pt4" pt4
+
+   -- putStrLn "\ndebug\n"
+   -- putStrLn $ showPrefixTableByRoute $ fst (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
+   -- putStrLn $ show $ snd (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
+tell' s pt = do
+    putStrLn $ s ++ ": "
+    putStrLn $ showPrefixTableByRoute pt
+    putStrLn "==========================\n"
+
+tell (pt,pfxs) = do
+    putStr $ showPrefixTableByRoute pt
+    putStr " -- "
+    print pfxs
