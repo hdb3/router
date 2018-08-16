@@ -36,7 +36,7 @@ prefixList1 =
         , "10.1.2.3/8"
         ] :: [IPrefix]
 
-main = withdrawTest
+main = selectTest
 showRib = showPrefixTable
 -- showRib = showPrefixTableByRoute
 
@@ -76,9 +76,19 @@ withdrawTest = do
    let pt4 = fst $ withdraw pt3 l2 gd1Peer1
    tell' "pt4" pt4
 
-   -- putStrLn "\ndebug\n"
-   -- putStrLn $ showRib $ fst (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
-   -- putStrLn $ show $ snd (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
+selectTest = do
+   putStrLn "\nselectTest\n"
+   let l1 = ["1.2.3.4/32" ,"1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"]
+       l2 = ["2.2.3.4/32" ,"2.2.3.4/24" ,"2.2.3.4/16" ,"2.2.3.4/8"]
+       l1_1 = ["1.2.3.4/32" ]
+       l1_2_4 = ["1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"]
+       (pt0,_) = PrefixTable.update newPrefixTable l1 gd1Peer1Route1
+       (pt1,_) = PrefixTable.update pt0 l1 gd1Peer2Route1
+       (pt2,_) = PrefixTable.update pt1 l1 gd1Peer1Route2
+   tell' "pt0" pt0
+   tell' "pt1" pt1
+   tell' "pt2" pt2
+
 tell' s pt = do
     putStrLn $ s ++ ": "
     putStrLn $ showRib pt
