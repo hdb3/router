@@ -37,6 +37,8 @@ prefixList1 =
         ] :: [IPrefix]
 
 main = withdrawTest
+showRib = showPrefixTable
+-- showRib = showPrefixTableByRoute
 
 updateTest = do
    putStrLn "updateTest"
@@ -50,10 +52,10 @@ updateTest = do
              $ ( update_ "192.168.13.0/24" route12 )
              $ newPrefixTable
    putStrLn $ showPrefixTable rib
-   putStrLn $ showPrefixTableByRoute rib
+   putStrLn $ showRib rib
    let (resPT,resPFX) = PrefixTable.update newPrefixTable prefixList1 route11
    print resPFX
-   putStrLn $ showPrefixTableByRoute resPT
+   putStrLn $ showRib resPT
 
 withdrawTest = do
    putStrLn "\nWithdraw test\n"
@@ -75,14 +77,14 @@ withdrawTest = do
    tell' "pt4" pt4
 
    -- putStrLn "\ndebug\n"
-   -- putStrLn $ showPrefixTableByRoute $ fst (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
+   -- putStrLn $ showRib $ fst (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
    -- putStrLn $ show $ snd (withdrawPrefixTable pt "1.2.3.4/32" gd1Peer1)
 tell' s pt = do
     putStrLn $ s ++ ": "
-    putStrLn $ showPrefixTableByRoute pt
+    putStrLn $ showRib pt
     putStrLn "==========================\n"
 
 tell (pt,pfxs) = do
-    putStr $ showPrefixTableByRoute pt
+    putStr $ showRib pt
     putStr " -- "
     print pfxs
