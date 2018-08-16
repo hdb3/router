@@ -51,7 +51,7 @@ showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
 
 showPrefixTableByRoute :: PrefixTable -> String
 showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
-    prefixes = toList pt
+    prefixes = Data.List.sortOn (snd) $ toList pt
     groupedByRoutePrefixes = Data.List.groupBy sameRoute prefixes
     sameRoute (_,a) (_,b) = a == b
     showRoute groups = unlines $ ( show $ snd $ head groups ) : -- this is the route, same for all of the follwoing prefixes
