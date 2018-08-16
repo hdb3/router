@@ -17,7 +17,7 @@ import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookup
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
-import BGPData(RouteData,PeerData,peerData)
+import BGPData(RouteData,PeerData,peerData,peerIPv4)
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
@@ -47,7 +47,11 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 
 showPrefixTable :: PrefixTable -> String
 showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
-    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
+    -- this below version show the next hop only - this should be in the route itself but for now uses the source peers IPv4 as the next hop....
+    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ ( show.peerIPv4.peerData) route ) (SL.fromSortedList v)
+
+    -- this below version show the 'whole' linked route
+    -- showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
 
 showPrefixTableByRoute :: PrefixTable -> String
 showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
@@ -55,7 +59,12 @@ showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
     groupedByRoutePrefixes = Data.List.groupBy sameRoute prefixes
     sameRoute (_,a) (_,b) = a == b
     showRoute groups = unlines $ ( show $ snd $ head groups ) : -- this is the route, same for all of the follwoing prefixes
-                       map (show . IPrefix .fst) groups
+                       showBest (head groups) :
+                       map showOther ( tail groups)
+                       where
+                           showBest pfx = "*  " ++ show' pfx
+                           showOther pfx = "   " ++ show' pfx
+                           show'  = show . IPrefix . fst
 
 -- ###########################################################
 
