@@ -54,8 +54,8 @@ up12 = update_ l route12
 up13 = update_ l route13
 up21 = update_ l route21
 up22 = update_ l route22
-wd1 = withdraw_ l gd1Peer1
-wd2 = withdraw_ l gd1Peer2
+wd1 = withdraw_ l peer1
+wd2 = withdraw_ l peer2
 ap [] pt = pt
 ap (up:ups) pt = ap ups (up pt) 
 ap' ups = ap ups np
@@ -102,7 +102,6 @@ updateTestK = do
    putStrLn $ showPrefixTableByRoute rib
    putStrLn $ showPrefixTable rib
    putStrLn $ show rib
-   putStrLn $ spt rib
 
 withdrawTest = do
    putStrLn "\nWithdraw test\n"
@@ -111,13 +110,13 @@ withdrawTest = do
        (pt1,_) = PrefixTable.update pt0 l2 route12
    tell' "pt1" pt1
 
-   let pt2 = fst $ withdraw pt1 l1_1 gd1Peer1
+   let pt2 = fst $ withdraw pt1 l1_1 peer1
    tell' "pt2" pt2
 
-   let pt3 = fst $ withdraw pt2 l1_2_4 gd1Peer1
+   let pt3 = fst $ withdraw pt2 l1_2_4 peer1
    tell' "pt3" pt3
 
-   let pt4 = fst $ withdraw pt3 l2 gd1Peer1
+   let pt4 = fst $ withdraw pt3 l2 peer1
    tell' "pt4" pt4
 
 selectTest1 = do
@@ -169,9 +168,9 @@ selectTestN = do
        (pt1,_) = PrefixTable.update pt0            l1     route22
        (pt2,_) = PrefixTable.update pt1            l1_2_4 route11
        (pt3,_) = PrefixTable.update pt2            l1_2_4 route21
-       (pt4,_) = PrefixTable.withdraw pt3          l1_1   gd1Peer1
-       (pt5,_) = PrefixTable.withdraw pt4          l1     gd1Peer2
-       (pt6,_) = PrefixTable.withdraw pt5          l1     gd1Peer1
+       (pt4,_) = PrefixTable.withdraw pt3          l1_1   peer1
+       (pt5,_) = PrefixTable.withdraw pt4          l1     peer2
+       (pt6,_) = PrefixTable.withdraw pt5          l1     peer1
    tell' "pt0" pt0
    tell' "pt1" pt1
    tell' "pt2" pt2
@@ -182,7 +181,6 @@ selectTestN = do
 
 tell' s pt = do
     putStrLn $ s ++ ": "
-    -- putStrLn $ spt pt
     putStrLn $ showRib pt
     putStrLn "==========================\n"
 
@@ -190,10 +188,3 @@ tell (pt,pfxs) = do
     putStr $ showRib pt
     putStr " -- "
     print pfxs
-
-
--- #######################################################################
-
-spt :: PrefixTable -> String
-spt pt = unlines $ Data.List.map spti (toList pt) where
-    spti (k,v) = unlines $ ("prefix: " ++ show (IPrefix k) ++ "#: " ++ show (length v)) : Data.List.map show (SL.fromSortedList v)
