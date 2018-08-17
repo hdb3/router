@@ -108,19 +108,40 @@ selectTest2 = do
 selectTestM = do
    putStrLn "\nselectTestM\n"
    let
-       pt0 = update_ l1 gd1Peer1Route2 $ update_ l1 gd1Peer2Route2 newPrefixTable
-       pt1 = update_ l1 gd1Peer1Route1 pt0
-       -- (pt0,_) = PrefixTable.update newPrefixTable l1     gd1Peer1Route2
-       -- (pt1,_) = PrefixTable.update pt0            l1     gd1Peer2Route2
-       -- (pt2,_) = PrefixTable.update pt1            l1_2_4 gd1Peer1Route1
-       -- (pt3,_) = PrefixTable.update pt2            l1_2_4 gd1Peer2Route1
-       -- (pt4,_) = PrefixTable.withdraw pt3          l1_1   gd1Peer1
-       -- (pt5,_) = PrefixTable.withdraw pt4          l1     gd1Peer2
-       -- (pt6,_) = PrefixTable.withdraw pt5          l1     gd1Peer1
-   tell' "pt0" pt0
-   tell' "pt1" pt1
+       l = l1
+       -- pt0 = update_ l1 gd1Peer1Route1 newPrefixTable
+       -- pt1 = update_ l1 gd1Peer1Route2 newPrefixTable
+       -- pt2 = update_ l1 gd1Peer2Route1 newPrefixTable
+       -- pt3 = update_ l1 gd1Peer2Route2 newPrefixTable
+
+       np   = newPrefixTable
+       up11 = update_ l gd1Peer1Route1
+       up12 = update_ l gd1Peer1Route2
+       up21 = update_ l gd1Peer2Route1
+       up22 = update_ l gd1Peer2Route2
+       up = [ up11 , up12 , up21 , up22 ]
+
+       ap [] pt = pt
+       ap (up:ups) pt = ap ups (up pt) 
+       ap' ups = ap ups np
+
+   -- tell' "[]" $ ap' []
+   -- tell' "[up11]" $ ap' [up11]
+   -- tell' "[up11,up12]" $ ap' [up11,up12]
+   -- tell' "[up12,up11]" $ ap' [up12,up11]
+   -- tell' "[up12,up21,up11]" $ ap' [up12,up21,up11]
+   -- tell' "[up12,up11,up21]" $ ap' [up12,up11,up21]
+   tell' "[up22,up12]" $ ap' [up22,up12]
+   tell' "[up22,up12,up12]" $ ap' [up22,up12,up12]
+   tell' "[up22,up12,up11]" $ ap' [up22,up12,up11]
+   tell' "[up12,up11]" $ ap' [up12,up11]
+   tell' "[up11,up12]" $ ap' [up11,up12]
+
+   -- tell' "pt0" pt0
+   -- tell' "pt1" pt1
    -- tell' "pt2" pt2
    -- tell' "pt3" pt3
+
    -- tell' "pt4" pt4
    -- tell' "pt5" pt5
    -- tell' "pt6" pt6
