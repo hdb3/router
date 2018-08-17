@@ -47,11 +47,26 @@ update_ pfxs rte t = fst $ PrefixTable.update t pfxs rte
 update__ pfx rte t = fst $ PrefixTable.updatePrefixTable t pfx rte
 withdraw_ pfxs peer t = fst $ PrefixTable.withdraw t pfxs peer
 
+l = l0
+np   = newPrefixTable
+up11 = update_ l route11
+up12 = update_ l route12
+up13 = update_ l route13
+up21 = update_ l route21
+up22 = update_ l route22
+wd1 = withdraw_ l gd1Peer1
+wd2 = withdraw_ l gd1Peer2
+ap [] pt = pt
+ap (up:ups) pt = ap ups (up pt) 
+ap' ups = ap ups np
+
+
 main = do
     -- selectTest1
     -- selectTest2
-    selectTestM
+    -- selectTestM
     -- updateTestK
+    withdrawSelectTestJ
 
 showRib = showPrefixTable
 -- showRib = showPrefixTableByRoute
@@ -88,15 +103,12 @@ updateTestK = do
    putStrLn $ showPrefixTable rib
    putStrLn $ show rib
    putStrLn $ spt rib
-   -- tell' "pt1" pt1
-   -- tell' "pt2" pt2
-   -- tell' "pt3" pt3
 
 withdrawTest = do
    putStrLn "\nWithdraw test\n"
    let
-       (pt0,_) = PrefixTable.update newPrefixTable l1 gd1Peer1Route1
-       (pt1,_) = PrefixTable.update pt0 l2 gd1Peer1Route2
+       (pt0,_) = PrefixTable.update newPrefixTable l1 route11
+       (pt1,_) = PrefixTable.update pt0 l2 route12
    tell' "pt1" pt1
 
    let pt2 = fst $ withdraw pt1 l1_1 gd1Peer1
@@ -111,49 +123,36 @@ withdrawTest = do
 selectTest1 = do
    putStrLn "\nselectTest1\n"
    let
-       (pt0,_) = PrefixTable.update newPrefixTable l0 gd1Peer1Route1
-       (pt1,_) = PrefixTable.update pt0 l0 gd1Peer1Route2
+       (pt0,_) = PrefixTable.update newPrefixTable l0 route11
+       (pt1,_) = PrefixTable.update pt0 l0 route12
    tell' "pt0" pt0
    assert (pt0 == pt1) $ tell' "pt1" pt1
 
 selectTest2 = do
    putStrLn "\nselectTest2\n"
    let
-       (pt0,_) = PrefixTable.update newPrefixTable l0 gd1Peer1Route2
-       (pt1,_) = PrefixTable.update newPrefixTable l0 gd1Peer1Route1
-       (pt2,_) = PrefixTable.update newPrefixTable l0 gd1Peer1Route1
+       (pt0,_) = PrefixTable.update newPrefixTable l0 route12
+       (pt1,_) = PrefixTable.update newPrefixTable l0 route11
+       (pt2,_) = PrefixTable.update newPrefixTable l0 route11
    tell' "pt0" pt0
    tell' "pt1" pt1
    tell' "pt2" pt2
    assert (pt1 == pt2) $ putStrLn "OK"
 
+withdrawSelectTestJ = do
+   putStrLn "\nwithdrawSelectTestJ\n"
+
+   tell' "[up11,wd1]" $ ap' [up11,wd1]
+   tell' "[up21,wd2]" $ ap' [up21,wd2]
+   tell' "[up11,wd1,up21,wd2]" $ ap' [up11,wd1,up21,wd2]
+   tell' "[up12,wd1,up22]" $ ap' [up12,wd1,up22]
+   -- tell' "[up11,up12,up13,up21,up22,up11,up21,wd1,wd2]" $ ap' [up11,up12,up13,up21,up22,up11,up21,wd1,wd2]
+   -- tell' "[up11,up12,up13,up21,up22,up11,up21,wd1,wd3]" $ ap' [up11,up12,up13,up21,up22,up11,up21,wd1,wd3]
+   -- tell' "[up11,up12,up13,up21,up22,up11,up21,wd1,wd2,wd3]" $ ap' [up11,up12,up13,up21,up22,up11,up21,wd1,wd2,wd3]
+
 selectTestM = do
    putStrLn "\nselectTestM\n"
-   let
-       l = l0
-       -- pt0 = update_ l1 gd1Peer1Route1 newPrefixTable
-       -- pt1 = update_ l1 gd1Peer1Route2 newPrefixTable
-       -- pt2 = update_ l1 gd1Peer2Route1 newPrefixTable
-       -- pt3 = update_ l1 gd1Peer2Route2 newPrefixTable
 
-       np   = newPrefixTable
-       up11 = update_ l gd1Peer1Route1
-       up12 = update_ l gd1Peer1Route2
-       up13 = update_ l gd1Peer1Route3
-       up21 = update_ l gd1Peer2Route1
-       up22 = update_ l gd1Peer2Route2
-       up = [ up11 , up12 , up21 , up22 ]
-
-       ap [] pt = pt
-       ap (up:ups) pt = ap ups (up pt) 
-       ap' ups = ap ups np
-
-   -- tell' "[]" $ ap' []
-   -- tell' "[up11]" $ ap' [up11]
-   -- tell' "[up11,up12]" $ ap' [up11,up12]
-   -- tell' "[up12,up11]" $ ap' [up12,up11]
-   -- tell' "[up12,up21,up11]" $ ap' [up12,up21,up11]
-   -- tell' "[up12,up11,up21]" $ ap' [up12,up11,up21]
    tell' "[up11,up11,up11,up11]" $ ap' [up11,up11,up11,up11]
    tell' "[up22,up12]" $ ap' [up22,up12]
    tell' "[up12,up22]" $ ap' [up12,up22]
@@ -163,22 +162,13 @@ selectTestM = do
    tell' "[up11,up12]" $ ap' [up11,up12]
    tell' "[up11,up12,up13,up21,up22,up11,up21]" $ ap' [up11,up12,up13,up21,up22,up11,up21]
 
-   -- tell' "pt0" pt0
-   -- tell' "pt1" pt1
-   -- tell' "pt2" pt2
-   -- tell' "pt3" pt3
-
-   -- tell' "pt4" pt4
-   -- tell' "pt5" pt5
-   -- tell' "pt6" pt6
-
 selectTestN = do
    putStrLn "\nselectTestN\n"
    let
-       (pt0,_) = PrefixTable.update newPrefixTable l1     gd1Peer1Route2
-       (pt1,_) = PrefixTable.update pt0            l1     gd1Peer2Route2
-       (pt2,_) = PrefixTable.update pt1            l1_2_4 gd1Peer1Route1
-       (pt3,_) = PrefixTable.update pt2            l1_2_4 gd1Peer2Route1
+       (pt0,_) = PrefixTable.update newPrefixTable l1     route12
+       (pt1,_) = PrefixTable.update pt0            l1     route22
+       (pt2,_) = PrefixTable.update pt1            l1_2_4 route11
+       (pt3,_) = PrefixTable.update pt2            l1_2_4 route21
        (pt4,_) = PrefixTable.withdraw pt3          l1_1   gd1Peer1
        (pt5,_) = PrefixTable.withdraw pt4          l1     gd1Peer2
        (pt6,_) = PrefixTable.withdraw pt5          l1     gd1Peer1

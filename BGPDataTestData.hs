@@ -44,21 +44,25 @@ gd2Peer2 = gd2Peer1 { peerAS  = 65522
                     }
 
 
-route11 = RouteData { peerData = gd1Peer1
+gd1Peer1Route1 = RouteData { peerData = gd1Peer1
                    , pathLength = 10
                    , origin = _BGP_ORIGIN_IGP
                    , med = 0
                    , fromEBGP = True
                    }
-gd1Peer1Route1 = route11
-gd1Peer2Route1 = gd1Peer1Route1 { peerData = gd2Peer2 }
-gd1Peer1Route2 = gd1Peer1Route1 { pathLength = 11 }
-gd1Peer1Route3 = gd1Peer1Route1 { pathLength = 12 }
-gd1Peer2Route2 = gd1Peer1Route2 { peerData = gd2Peer2 }
+-- gd1Peer2Route1 = gd1Peer1Route1 { peerData = gd2Peer2 }
+-- gd1Peer1Route2 = gd1Peer1Route1 { pathLength = 11 }
+-- gd1Peer1Route3 = gd1Peer1Route1 { pathLength = 12 }
+-- gd1Peer2Route2 = gd1Peer1Route2 { peerData = gd2Peer2 }
 
-route12 = route11 { peerData = gd1Peer2 }
-route13 = route11 { peerData = gd1Peer3 }
-route21 = route11 { peerData = gd2Peer1 }
-route22 = route11 { peerData = gd2Peer2 }
+route11 = gd1Peer1Route1
+route12 = gd1Peer1Route1 { pathLength = 11 }
+route13 = gd1Peer1Route1 { pathLength = 12 }
+route21 = route11 { peerData = gd1Peer2 }
+route22 = route12 { peerData = gd1Peer2 }
+route23 = route13 { peerData = gd1Peer2 }
+route31 = route11 { peerData = gd1Peer3 }
+route32 = route12 { peerData = gd1Peer3 }
+route33 = route13 { peerData = gd1Peer3 }
 
 route peer pl = route11 { peerData = peer, pathLength = pl }
