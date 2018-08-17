@@ -44,12 +44,14 @@ l1_1 = ["1.2.3.4/32" ] :: [IPrefix]
 l1_2_4 = ["1.2.3.4/24" ,"1.2.3.4/16" ,"1.2.3.4/8"] :: [IPrefix]
 
 update_ pfxs rte t = fst $ PrefixTable.update t pfxs rte
+update__ pfx rte t = fst $ PrefixTable.updatePrefixTable t pfx rte
 withdraw_ pfxs peer t = fst $ PrefixTable.withdraw t pfxs peer
 
 main = do
     -- selectTest1
     -- selectTest2
     selectTestM
+    -- updateTestK
 
 showRib = showPrefixTable
 -- showRib = showPrefixTableByRoute
@@ -69,6 +71,26 @@ updateTest = do
    let (resPT,resPFX) = PrefixTable.update newPrefixTable prefixList1 route11
    print resPFX
    putStrLn $ showRib resPT
+
+updateTestK = do
+   putStrLn "updateTestK"
+   let pt = newPrefixTable
+       pt1 = update__ "192.168.1.0/24" route11 pt
+       pt2 = update__ "192.168.1.0/24" route11 pt1
+       pt3 = update__ "192.168.1.0/24" route11 pt2
+       rib =   ( update__ "192.168.1.0/24" route11 )
+             $ ( update__ "192.168.1.0/24" route11 )
+             $ ( update__ "192.168.1.0/24" route11 )
+             $ ( update__ "192.168.1.0/24" route12 )
+             $ ( update__ "192.168.1.0/24" route13 )
+             $ newPrefixTable
+   putStrLn $ showPrefixTableByRoute rib
+   putStrLn $ showPrefixTable rib
+   putStrLn $ show rib
+   putStrLn $ spt rib
+   -- tell' "pt1" pt1
+   -- tell' "pt2" pt2
+   -- tell' "pt3" pt3
 
 withdrawTest = do
    putStrLn "\nWithdraw test\n"
@@ -108,7 +130,7 @@ selectTest2 = do
 selectTestM = do
    putStrLn "\nselectTestM\n"
    let
-       l = l1
+       l = l0
        -- pt0 = update_ l1 gd1Peer1Route1 newPrefixTable
        -- pt1 = update_ l1 gd1Peer1Route2 newPrefixTable
        -- pt2 = update_ l1 gd1Peer2Route1 newPrefixTable
@@ -117,6 +139,7 @@ selectTestM = do
        np   = newPrefixTable
        up11 = update_ l gd1Peer1Route1
        up12 = update_ l gd1Peer1Route2
+       up13 = update_ l gd1Peer1Route3
        up21 = update_ l gd1Peer2Route1
        up22 = update_ l gd1Peer2Route2
        up = [ up11 , up12 , up21 , up22 ]
@@ -131,11 +154,14 @@ selectTestM = do
    -- tell' "[up12,up11]" $ ap' [up12,up11]
    -- tell' "[up12,up21,up11]" $ ap' [up12,up21,up11]
    -- tell' "[up12,up11,up21]" $ ap' [up12,up11,up21]
+   tell' "[up11,up11,up11,up11]" $ ap' [up11,up11,up11,up11]
    tell' "[up22,up12]" $ ap' [up22,up12]
+   tell' "[up12,up22]" $ ap' [up12,up22]
    tell' "[up22,up12,up12]" $ ap' [up22,up12,up12]
    tell' "[up22,up12,up11]" $ ap' [up22,up12,up11]
    tell' "[up12,up11]" $ ap' [up12,up11]
    tell' "[up11,up12]" $ ap' [up11,up12]
+   tell' "[up11,up12,up13,up21,up22,up11,up21]" $ ap' [up11,up12,up13,up21,up22,up11,up21]
 
    -- tell' "pt0" pt0
    -- tell' "pt1" pt1
@@ -166,6 +192,7 @@ selectTestN = do
 
 tell' s pt = do
     putStrLn $ s ++ ": "
+    -- putStrLn $ spt pt
     putStrLn $ showRib pt
     putStrLn "==========================\n"
 
@@ -173,3 +200,10 @@ tell (pt,pfxs) = do
     putStr $ showRib pt
     putStr " -- "
     print pfxs
+
+
+-- #######################################################################
+
+spt :: PrefixTable -> String
+spt pt = unlines $ Data.List.map spti (toList pt) where
+    spti (k,v) = unlines $ ("prefix: " ++ show (IPrefix k) ++ "#: " ++ show (length v)) : Data.List.map show (SL.fromSortedList v)
