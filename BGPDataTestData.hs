@@ -55,6 +55,9 @@ gd1Peer1Route1 = RouteData { peerData = gd1Peer1
 -- gd1Peer1Route3 = gd1Peer1Route1 { pathLength = 12 }
 -- gd1Peer2Route2 = gd1Peer1Route2 { peerData = gd2Peer2 }
 
+peer1 = gd1Peer1
+peer2 = gd1Peer2
+peer3 = gd1Peer3
 route11 = gd1Peer1Route1
 route12 = gd1Peer1Route1 { pathLength = 11 }
 route13 = gd1Peer1Route1 { pathLength = 12 }
