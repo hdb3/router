@@ -26,6 +26,9 @@ type PrefixTable = IntMap PrefixTableEntry
 newPrefixTable :: PrefixTable
 newPrefixTable = Data.IntMap.Strict.empty
 
+slHead sl = x where
+    Just (x,_) = SL.uncons sl
+
 update:: PrefixTable -> [IPrefix] -> RouteData -> (PrefixTable,[IPrefix])
 update pt pfxs route = Data.List.foldl' f (pt,[]) pfxs where
     f (pt_,updated) pfx = if p then (pt__,pfx:updated) else (pt__,updated) where
@@ -33,18 +36,16 @@ update pt pfxs route = Data.List.foldl' f (pt,[]) pfxs where
 
 updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
 updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
-    head sl = x where
-        Just (x,_) = SL.uncons sl
     updatePrefixTableEntry :: PrefixTableEntry -> PrefixTableEntry -> PrefixTableEntry
-    updatePrefixTableEntry routes singletonRoute = let newRoute = head singletonRoute
+    updatePrefixTableEntry singletonRoute routes = let newRoute = slHead singletonRoute
                                                        pIsNotOldRoute r = (peerData r) /= (peerData newRoute)
                                                    in SL.insert newRoute $ SL.filter pIsNotOldRoute routes
+
     newSingletonPrefixTableEntry = SL.singleton route
-    f key new_value old_value = f' new_value old_value
-    f' new_value old_value = updatePrefixTableEntry new_value old_value
-    (maybeOldPrefixTableEntry, newPrefixTable) = insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt
-    newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( f' newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
-    newBestRoute = head newPrefixTableEntry
+    (maybeOldPrefixTableEntry, newPrefixTable) = insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt where
+        f _ = updatePrefixTableEntry
+    newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( updatePrefixTableEntry newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
+    newBestRoute = slHead newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
 
 showPrefixTable :: PrefixTable -> String
@@ -68,9 +69,6 @@ showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
                            showOther pfx = "   " ++ show' pfx
                            show'  = show . IPrefix . fst
 
--- ###########################################################
-
-
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
     (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
@@ -79,9 +77,7 @@ withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
          if null routes' then Nothing else Just routes'
     notPeer :: PeerData -> RouteData -> Bool
     notPeer pd rd = pd /= ( peerData rd ) 
-    head sl = x where
-        Just (x,_) = SL.uncons sl
-    oldBestRoute = head oldRouteList
+    oldBestRoute = slHead oldRouteList
     wasBestRoute = (peerData oldBestRoute) == peer
 
 withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
