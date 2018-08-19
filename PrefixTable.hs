@@ -1,3 +1,5 @@
+{-- LANGUAGE FlexibleInstances #-}
+{-- LANGUAGE DeriveGeneric #-}
 module PrefixTable where
 
 {- A single prefix table holds everything about a prefix we could care about
@@ -16,11 +18,18 @@ module PrefixTable where
 import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
+import qualified Data.Tuple as Data.Tuple
+import Data.IP
+-- import Data.Hashable
+-- import GHC.Generics(Generic)
 
-import BGPData(RouteData,PeerData,peerData,peerIPv4,pathLength)
+import Common
+import BGPData
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
+--instance Hashable (SL.SortedList RouteData) where
+--instance Generic (SL.SortedList RouteData) where
 type PrefixTable = IntMap PrefixTableEntry
 
 newPrefixTable :: PrefixTable
@@ -47,27 +56,6 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
     newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( updatePrefixTableEntry newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
     newBestRoute = slHead newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
-
-showPrefixTable :: PrefixTable -> String
-showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
-    -- this below version show the next hop only - this should be in the route itself but for now uses the source peers IPv4 as the next hop....
-    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ ( show.peerIPv4.peerData) route ++ " (" ++ (show.pathLength) route ++ ")" ) (SL.fromSortedList v)
-
-    -- this below version show the 'whole' linked route
-    -- showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
-
-showPrefixTableByRoute :: PrefixTable -> String
-showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
-    prefixes = Data.List.sortOn (snd) $ toList pt
-    groupedByRoutePrefixes = Data.List.groupBy sameRoute prefixes
-    sameRoute (_,a) (_,b) = a == b
-    showRoute groups = unlines $ ( show $ snd $ head groups ) : -- this is the route, same for all of the follwoing prefixes
-                       showBest (head groups) :
-                       map showOther ( tail groups)
-                       where
-                           showBest pfx = "*  " ++ show' pfx
-                           showOther pfx = "   " ++ show' pfx
-                           show'  = show . IPrefix . fst
 
 -- - TODO - if we want to support a seprate pathtable then withdraw has to hand back delete route entries.
 -- __BUT__ it is not clear now what role the path table has!!!
