@@ -23,6 +23,9 @@ data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteData :: Ro
 newtype PathTable = PathTable (IntMap PathTableEntry)
 newtype RouteId = RouteId Int
 
+newPathTable :: PathTable
+newPathTable = PathTable Data.IntMap.Strict.empty
+
 pathTableGet :: PathTable -> RouteId -> Maybe PathTableEntry
 pathTableGet (PathTable pt) (RouteId routeId) = Data.IntMap.Strict.lookup routeId pt 
 

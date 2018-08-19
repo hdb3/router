@@ -44,6 +44,12 @@ getASPathLength pas = maybe
                       (\(PathAttributeASPath asPath) -> asPathLength asPath)
                       (getPathAttribute TypeCodePathAttributeASPath pas)
 
+getMED :: [PathAttribute] -> Word32
+getMED pas = maybe 0 (\(PathAttributeMultiExitDisc med) -> med) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
+
+getOrigin :: [PathAttribute] -> Word8
+getOrigin pas = maybe 0 (\(PathAttributeOrigin origin) -> origin ) (getPathAttribute TypeCodePathAttributeOrigin pas)
+
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
 
