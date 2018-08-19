@@ -8,6 +8,8 @@ module BGPData where
 import Data.Word
 import Data.IP(IPv4)
 
+import PathAttributes(PathAttribute)
+
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
                              }
@@ -24,12 +26,13 @@ data PeerData = PeerData { globalData :: GlobalData
                             deriving Eq
 
 data RouteData =  RouteData { peerData :: PeerData
+                            , pathAttributes :: [PathAttribute]
+                            , routeId :: Int
                             , pathLength :: Int
                             , origin :: Word8
                             , med :: Word32
                             , fromEBGP :: Bool
                             }
-                            deriving Eq
 
 defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0
 defaultGlobalData = GlobalData 64512 "127.0.0.1"
@@ -42,6 +45,9 @@ instance Show PeerData where
 
 instance Show RouteData where
     show rd = "pathlength=" ++ show (pathLength rd) ++ show (peerData rd)
+
+instance Eq RouteData where
+    a == b = routeId a == routeId b
 
 instance Ord RouteData where
 

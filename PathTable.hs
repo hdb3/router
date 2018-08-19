@@ -18,7 +18,7 @@ import FarmHash(hash64) -- from package farmhash
 
 import BGPData
 
-data PathTableEntry = PathTableEntry { ptePath :: [PathAttribute], pteData :: RouteData, refCount :: Int }
+data PathTableEntry = PathTableEntry { pteData :: RouteData, refCount :: Int }
 
 newtype PathTable = PathTable (IntMap PathTableEntry)
 newtype RouteId = RouteId Int
@@ -37,6 +37,17 @@ pathTableDelete (PathTable pt)(RouteId routeId) count = PathTable $ update f rou
     f oldPt | refCount oldPt == count = Nothing
             | otherwise = Just $ oldPt { refCount = (refCount oldPt) - count }
  
+-- pathTableInsert - build the path table using the key which is already calculated in the RouteData, called routeId
+
+pathTableInsert :: PathTable -> Int -> RouteData -> PathTable
+
+pathTableInsert (PathTable pt) pfxCount routeData = PathTable pt' where
+    -- hash = fromIntegral $ hash64 bytes
+    pt' = alter f (routeId routeData) pt where
+       f = maybe (Just ( PathTableEntry routeData pfxCount))
+                 (\oldPte -> Just ( oldPte { refCount = (refCount oldPte) + pfxCount }))
+ 
+{-
 pathTableInsert :: PathTable -> ([PathAttribute],B.ByteString) -> Int -> RouteData -> (RouteId,PathTable)
 
 pathTableInsert (PathTable pt) (route,bytes) pfxCount routeData = (RouteId hash,pt') where
@@ -45,3 +56,4 @@ pathTableInsert (PathTable pt) (route,bytes) pfxCount routeData = (RouteId hash,
     pt' = PathTable (alter f hash pt) where -- alter  CAN do an insert - (tho it connot report whether it did or not...)
        f = maybe (Just ( PathTableEntry route routeData pfxCount))
                  (\oldPte -> Just ( oldPte { refCount = (refCount oldPte) + pfxCount }))
+-}

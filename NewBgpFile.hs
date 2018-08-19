@@ -16,7 +16,8 @@ import GetBGPMsg
 import Update
 import PathAttributes
 import Prefixes
-import Rib
+import NewRib
+import BGPData
 
 verbose = False
 
@@ -35,7 +36,7 @@ main = do
         processUpdates ( limit updateMsgs )
 
 processUpdates updates = do
-        rib <- newRib2
+        rib <- newRib
         -- putStrLn $ list updates
         mapM analyse updates
         mapM_ (updateRib rib) updates
@@ -58,5 +59,5 @@ dropUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
                           keepOnlyUpdates a ax = a:ax
 
 updateRib rib BGPUpdateP{..} = do
-                ribUpdateMany rib (attributesP,fromRaw' rawAttributes) nlriP
+                ribUpdateMany rib attributesP hashP nlriP
                 ribWithdrawMany rib withdrawnP
