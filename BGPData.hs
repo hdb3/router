@@ -1,3 +1,4 @@
+{-#LANGUAGE OverloadedStrings #-}
 module BGPData where
 
 {- peer data holds persistent/static data about a BGP session peer
@@ -23,12 +24,15 @@ data PeerData = PeerData { globalData :: GlobalData
                             deriving Eq
 
 data RouteData =  RouteData { peerData :: PeerData
-                            , pathLength :: Word8
+                            , pathLength :: Int
                             , origin :: Word8
                             , med :: Word32
                             , fromEBGP :: Bool
                             }
                             deriving Eq
+
+defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0
+defaultGlobalData = GlobalData 64512 "127.0.0.1"
 
 instance Show GlobalData where
     show gd = " router: " ++ show ( myBGPid gd )
