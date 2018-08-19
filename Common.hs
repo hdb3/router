@@ -12,6 +12,8 @@ import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 import qualified Data.Sequence as Seq
+import qualified Data.HashMap.Strict as Data.HashMap.Strict
+import Data.Hashable
 
 -- Debug stuff
 --
@@ -26,6 +28,9 @@ simpleHex' = simpleHex . L.toStrict
 prettyHex' = prettyHex . L.toStrict
 -- 'local prelude'
 --
+
+groupBy_ :: (Eq k,Hashable k) => [(k, a)] -> [(k, [a])]
+groupBy_ t = Data.HashMap.Strict.toList $ Data.HashMap.Strict.fromListWith (++) $ Prelude.map (\(a,b) -> (a,[b])) t
 
 -- strictly, fromRight' (plain fromRight takes a default value to make it total)
 -- and, not in GHC libs until at leats 8.2....

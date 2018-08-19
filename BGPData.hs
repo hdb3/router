@@ -7,6 +7,7 @@ module BGPData where
 
 import Data.Word
 import Data.IP(IPv4)
+import Data.Hashable
 
 import PathAttributes(PathAttribute)
 
@@ -29,10 +30,14 @@ data RouteData =  RouteData { peerData :: PeerData
                             , pathAttributes :: [PathAttribute]
                             , routeId :: Int
                             , pathLength :: Int
+                            , nextHop :: IPv4
                             , origin :: Word8
                             , med :: Word32
                             , fromEBGP :: Bool
                             }
+
+instance Hashable RouteData where
+    hashWithSalt _ = routeId
 
 defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0
 defaultGlobalData = GlobalData 64512 "127.0.0.1"
@@ -41,7 +46,7 @@ instance Show GlobalData where
     show gd = " router: " ++ show ( myBGPid gd )
 
 instance Show PeerData where
-    show pd = " peer-AS=" ++ show (peerAS pd) ++ " nexthop=" ++ show (peerIPv4 pd) --  ++ show (globalData pd)
+    show pd = " peer-AS=" ++ show (peerAS pd) ++ " peer-IP=" ++ show (peerIPv4 pd) --  ++ show (globalData pd)
 
 instance Show RouteData where
     show rd = "pathlength=" ++ show (pathLength rd) ++ show (peerData rd)

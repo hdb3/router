@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 import System.Environment
-import System.IO(Handle,openBinaryFile,IOMode(..))
+import System.IO
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(Binary(..))
 import Data.Binary.Get(runGet)
@@ -18,6 +18,8 @@ import PathAttributes
 import Prefixes
 import NewRib
 import BGPData
+import PrefixTable
+import PrefixTableUtils
 
 verbose = False
 
@@ -25,7 +27,7 @@ main = do
     args <- getArgs
     let n = if 1 < length args then read (args !! 1) :: Int else 0
     if (null args) then
-         putStrLn "no filename specified"
+         hPutStrLn stderr $ "no filename specified"
     else do
         handle <- openBinaryFile (args !! 0) ReadMode
         stream <- L.hGetContents handle
@@ -38,12 +40,20 @@ main = do
 processUpdates updates = do
         rib <- newRib
         -- putStrLn $ list updates
-        mapM analyse updates
+        -- mapM analyse updates
         mapM_ (updateRib rib) updates
-        summary rib >>= putStrLn
+        -- summary rib >>= putStrLn
+        -- summary rib >>= hPutStrLn stderr
+        rib' <- getRib rib
+        let fib = getFIB rib'
+            ribOut = getAdjRIBOut rib'
+            locRib = getRIB rib'
+        -- hPutStrLn stderr $ "got " ++ show (length fib) ++ " prefixes"
+        -- hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
+        hPutStrLn stderr $ "locRib size = " ++ show (length locRib)
 
 analyse BGPUpdateP{..} = do
-   putStrLn $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPathLength attributesP) ++ " = pathlength "
+   hPutStrLn stderr $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPathLength attributesP) ++ " = pathlength "
 list  :: (Show t) => [t] -> String
 list = unlines . (map show)
 

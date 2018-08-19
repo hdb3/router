@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-#LANGUAGE OverloadedStrings #-}
 module PathAttributes (module Codes, module PathAttributes, module ASPath) where
 import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
@@ -45,10 +46,13 @@ getASPathLength pas = maybe
                       (getPathAttribute TypeCodePathAttributeASPath pas)
 
 getMED :: [PathAttribute] -> Word32
-getMED pas = maybe 0 (\(PathAttributeMultiExitDisc med) -> med) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
+getMED pas = maybe 0 (\(PathAttributeMultiExitDisc x) -> x) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
 
 getOrigin :: [PathAttribute] -> Word8
-getOrigin pas = maybe 0 (\(PathAttributeOrigin origin) -> origin ) (getPathAttribute TypeCodePathAttributeOrigin pas)
+getOrigin pas = maybe 0 (\(PathAttributeOrigin x) -> x ) (getPathAttribute TypeCodePathAttributeOrigin pas)
+
+getNextHop :: [PathAttribute] -> IPv4
+getNextHop pas = maybe "0.0.0.0" (\(PathAttributeNextHop x) -> x ) (getPathAttribute TypeCodePathAttributeNextHop pas)
 
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
