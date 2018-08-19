@@ -69,6 +69,8 @@ showPrefixTableByRoute pt = unlines $ map showRoute groupedByRoutePrefixes where
                            showOther pfx = "   " ++ show' pfx
                            show'  = show . IPrefix . fst
 
+-- - TODO - if we want to support a seprate pathtable then withdraw has to hand back delete route entries.
+-- __BUT__ it is not clear now what role the path table has!!!
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
     (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
