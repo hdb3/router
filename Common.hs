@@ -14,6 +14,7 @@ import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 import qualified Data.Sequence as Seq
 import qualified Data.HashMap.Strict as Data.HashMap.Strict
 import Data.Hashable
+import Data.Foldable(toList)
 
 -- Debug stuff
 --
@@ -43,6 +44,8 @@ emptyFifo = Seq.empty
 nullFifo = Seq.null
 enqueue s e = e Seq.<| s
 dequeue s = (s',e) where (s' Seq.:> e) = Seq.viewr s
+dequeueAll s = ( Seq.empty , Data.Foldable.toList s )
+peekAll s = Data.Foldable.toList s
 
 -- application stuff
 --

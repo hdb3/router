@@ -43,7 +43,8 @@ processUpdates updates = do
         rib <- newRib
         mapM_ (updateRib rib) updates
         rib' <- getRib rib
-        report rib'
+        adjrib <- getARO rib
+        report (rib',adjrib)
 
 analyse BGPUpdateP{..} = do
    hPutStrLn stderr $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPathLength attributesP) ++ " = pathlength "

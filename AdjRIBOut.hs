@@ -14,18 +14,20 @@ module AdjRIBOut where
  - when an entire route table must be exchanged
 -}
 
+import qualified Data.IntMap.Strict as Data.IntMap.Strict
+import qualified Data.Tuple as Data.Tuple
+
 import Common
 import Prefixes
-import PathTable
 
-type AdjRIBEntry = ( [IPrefix], RouteId )
+type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
 newtype AdjRIBOut = AdjRIBOut AdjRIBTable
 
 newAdjRIBOut = AdjRIBOut emptyFifo
 
-insertAdjRIBOut :: AdjRIBOut -> AdjRIBEntry -> AdjRIBOut
-insertAdjRIBOut (AdjRIBOut table) are = AdjRIBOut ( enqueue table are )
+insertAdjRIBOut :: AdjRIBEntry -> AdjRIBOut -> AdjRIBOut
+insertAdjRIBOut are (AdjRIBOut table) = AdjRIBOut ( enqueue table are )
 
 isEmptyAdjRIBOut :: AdjRIBOut -> Bool
 isEmptyAdjRIBOut (AdjRIBOut table) = nullFifo table
@@ -33,3 +35,12 @@ isEmptyAdjRIBOut (AdjRIBOut table) = nullFifo table
 simpleGetAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
 -- undefined on empty
 simpleGetAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
+
+getAllAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,[AdjRIBEntry])
+getAllAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , ares ) where (table' , ares) = dequeueAll table
+
+peekAllAdjRIBOut :: AdjRIBOut -> [AdjRIBEntry]
+peekAllAdjRIBOut (AdjRIBOut table) = peekAll table
+
+groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
+groomAdjRIBList = (map Data.Tuple.swap) . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . (map Data.Tuple.swap) 
