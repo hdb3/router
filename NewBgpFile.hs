@@ -19,7 +19,8 @@ import Prefixes
 import NewRib
 import BGPData
 import PrefixTable
-import PrefixTableUtils
+--import PrefixTableUtils
+import Report
 
 verbose = False
 
@@ -38,20 +39,11 @@ main = do
         processUpdates ( limit updateMsgs )
 
 processUpdates updates = do
+        hPutStrLn stderr $ "read " ++ show (length updates) ++ " updates"
         rib <- newRib
-        -- putStrLn $ list updates
-        -- mapM analyse updates
         mapM_ (updateRib rib) updates
-        -- summary rib >>= putStrLn
-        -- summary rib >>= hPutStrLn stderr
         rib' <- getRib rib
-        let fib = getFIB rib'
-            ribOut = getAdjRIBOut rib'
-            locRib = getRIB rib'
-        hPutStrLn stderr $ "got " ++ show (length updates) ++ " updates"
-        hPutStrLn stderr $ "got " ++ show (length fib) ++ " prefixes"
-        hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
-        hPutStrLn stderr $ "locRib size = " ++ show (length locRib)
+        report rib'
 
 analyse BGPUpdateP{..} = do
    hPutStrLn stderr $ (show $ length nlriP) ++ " prefixes " ++ (show $ length withdrawnP) ++ " withdrawn " ++ (show $ getASPathLength attributesP) ++ " = pathlength "
