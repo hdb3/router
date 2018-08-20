@@ -41,7 +41,9 @@ main = do
 processUpdates updates = do
         hPutStrLn stderr $ "read " ++ show (length updates) ++ " updates"
         rib <- newRib
-        mapM_ (updateRib rib) updates
+        -- addPeer rib defaultPeerData
+        mapM_ (updateRib defaultPeerData rib) updates
+        addPeer rib defaultPeerData
         rib' <- getRib rib
         adjrib <- getARO defaultPeerData rib
         report (rib',adjrib)
@@ -62,6 +64,6 @@ dropUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
                           keepOnlyUpdates a@(BGPUpdate{}) ax = ax
                           keepOnlyUpdates a ax = a:ax
 
-updateRib rib BGPUpdateP{..} = do
-                ribUpdateMany rib attributesP hashP nlriP
-                ribWithdrawMany rib withdrawnP
+updateRib peer rib BGPUpdateP{..} = do
+                ribUpdateMany rib peer attributesP hashP nlriP
+                ribWithdrawMany rib peer withdrawnP

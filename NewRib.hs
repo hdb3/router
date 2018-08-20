@@ -5,6 +5,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.Map as Data.Map
 import Data.Maybe(fromJust)
 
+import Common
 import BGPData
 import Prefixes
 import PrefixTable
@@ -14,15 +15,26 @@ import AdjRIBOut
 
 type Rib = IORef Rib'
 type AdjRIB = Data.Map.Map PeerData AdjRIBOut
-data Rib' = Rib' { peer :: PeerData
-                 , prefixTable :: PrefixTable
+data Rib' = Rib' { 
+                   prefixTable :: PrefixTable
                  , adjRib:: AdjRIB
                  }
 
 newRib :: IO Rib
 newRib = newIORef newRib'
 newRib' :: Rib'
-newRib' = Rib' defaultPeerData newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBOut ) 
+newRib' = Rib' newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBOut ) 
+
+addPeer :: Rib -> PeerData -> IO ()
+addPeer rib peer = modifyIORef' rib ( addPeer' peer )
+
+addPeer' ::  PeerData -> Rib' -> Rib'
+-- addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer newAdjRIBOut adjRib in Rib' prefixTable adjRib'
+addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
+                              aro = AdjRIBOut $ fifo $ map f $ getAdjRIBOut prefixTable
+                              -- aro = newAdjRIBOut
+                              f (rd,ipfxs) = (ipfxs , routeId rd)
+                           in Rib' prefixTable adjRib'
 
 getARO :: PeerData -> Rib -> IO [AdjRIBEntry]
 getARO peer rib = do
@@ -37,10 +49,10 @@ getRib rib = do
 updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
 updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBOut are )
 
-ribUpdateMany :: Rib -> [PathAttribute] -> Int -> [Prefix] -> IO()
-ribUpdateMany rib attrs hash pfxs = modifyIORef' rib (ribUpdateMany' attrs hash pfxs)
-ribUpdateMany' :: [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
-ribUpdateMany' attrs hash pfxs (Rib' peerData prefixTable adjRibOutTables ) = let
+ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
+ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
+ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
+ribUpdateMany' peerData attrs hash pfxs (Rib' prefixTable adjRibOutTables ) = let
     ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
     routeData = RouteData peerData attrs hash pathLength nextHop origin med fromEBGP
     fromEBGP = isExternal peerData
@@ -49,11 +61,11 @@ ribUpdateMany' attrs hash pfxs (Rib' peerData prefixTable adjRibOutTables ) = le
     nextHop = getNextHop attrs
     origin = getOrigin attrs
     adjRibOutTables' = updateAdjRibOutTables (updates,hash) adjRibOutTables
-    in Rib' peerData prefixTable' adjRibOutTables'
+    in Rib' prefixTable' adjRibOutTables'
 
-ribWithdrawMany rib p = modifyIORef' rib (ribWithdrawMany' p)
-ribWithdrawMany' :: [Prefix] -> Rib' -> Rib'
-ribWithdrawMany' pfxs (Rib' peerData prefixTable  adjRibOutTables) = let
+ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)
+ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
+ribWithdrawMany' peerData pfxs (Rib' prefixTable adjRibOutTables) = let
     ( prefixTable' , updates ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
     adjRibOutTables' = updateAdjRibOutTables (updates,0) adjRibOutTables
-    in Rib' peerData prefixTable' adjRibOutTables
+    in Rib' prefixTable' adjRibOutTables
