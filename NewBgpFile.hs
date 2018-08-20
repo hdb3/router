@@ -48,8 +48,9 @@ processUpdates updates = do
         let fib = getFIB rib'
             ribOut = getAdjRIBOut rib'
             locRib = getRIB rib'
-        -- hPutStrLn stderr $ "got " ++ show (length fib) ++ " prefixes"
-        -- hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
+        hPutStrLn stderr $ "got " ++ show (length updates) ++ " updates"
+        hPutStrLn stderr $ "got " ++ show (length fib) ++ " prefixes"
+        hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
         hPutStrLn stderr $ "locRib size = " ++ show (length locRib)
 
 analyse BGPUpdateP{..} = do
