@@ -42,6 +42,7 @@ fromRight' (Right b ) = b
 type Fifo = Seq.Seq
 emptyFifo = Seq.empty
 nullFifo = Seq.null
+fifo = Seq.fromList
 enqueue s e = e Seq.<| s
 dequeue s = (s',e) where (s' Seq.:> e) = Seq.viewr s
 dequeueAll s = ( Seq.empty , Data.Foldable.toList s )
