@@ -1,5 +1,3 @@
-{-- LANGUAGE FlexibleInstances #-}
-{-- LANGUAGE DeriveGeneric #-}
 module PrefixTable where
 
 {- A single prefix table holds everything about a prefix we could care about
@@ -20,16 +18,12 @@ import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 import qualified Data.Tuple as Data.Tuple
 import Data.IP
--- import Data.Hashable
--- import GHC.Generics(Generic)
 
 import Common
 import BGPData
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
---instance Hashable (SL.SortedList RouteData) where
---instance Generic (SL.SortedList RouteData) where
 type PrefixTable = IntMap PrefixTableEntry
 
 newPrefixTable :: PrefixTable
@@ -57,8 +51,6 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
     newBestRoute = slHead newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
 
--- - TODO - if we want to support a seprate pathtable then withdraw has to hand back delete route entries.
--- __BUT__ it is not clear now what role the path table has!!!
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
     (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
