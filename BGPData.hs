@@ -24,7 +24,6 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
                          }
-                            deriving Eq
 
 data RouteData =  RouteData { peerData :: PeerData
                             , pathAttributes :: [PathAttribute]
@@ -46,13 +45,19 @@ instance Show GlobalData where
     show gd = " router: " ++ show ( myBGPid gd )
 
 instance Show PeerData where
-    show pd = " peer-AS=" ++ show (peerAS pd) ++ " peer-IP=" ++ show (peerIPv4 pd) --  ++ show (globalData pd)
+    show pd = " peer-AS=" ++ show (peerAS pd) ++ " peer-IP=" ++ show (peerBGPid pd)
 
 instance Show RouteData where
     show rd = "pathlength=" ++ show (pathLength rd) ++ show (peerData rd)
 
 instance Eq RouteData where
     a == b = routeId a == routeId b
+
+instance Eq PeerData where
+    p1 == p2 = peerBGPid p1 == peerBGPid p2
+
+instance Ord PeerData where
+    compare p1 p2 = compare (peerBGPid p1) (peerBGPid p2)
 
 instance Ord RouteData where
 

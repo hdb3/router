@@ -43,7 +43,7 @@ processUpdates updates = do
         rib <- newRib
         mapM_ (updateRib rib) updates
         rib' <- getRib rib
-        adjrib <- getARO rib
+        adjrib <- getARO defaultPeerData rib
         report (rib',adjrib)
 
 analyse BGPUpdateP{..} = do
