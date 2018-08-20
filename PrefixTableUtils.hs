@@ -30,6 +30,10 @@ import PrefixTable(PrefixTable,slHead)
 --
 -- ===================================================
 
+getDB :: PrefixTable -> [(IPrefix,[RouteData])]
+getDB pt = map f (toList pt) where
+    f (pfx,routes) = (IPrefix pfx,SL.fromSortedList routes)
+
 getRIB :: PrefixTable -> [(RouteData,IPrefix)]
 getRIB pt = map f (toList pt) where
     f (pfx,routes) = (slHead routes , IPrefix pfx)
@@ -39,37 +43,16 @@ getFIB pt = map f (getRIB pt) where
     f (route,pfx) = (pfx , nextHop route)
 
 getAdjRIBOut :: PrefixTable -> [(RouteData,[IPrefix])]
--- getAdjRIBOut _ = []
 getAdjRIBOut = groupBy_ . getRIB
-    -- f (routes,pfxs) = (slHead routes, map IPrefix pfxs)
-
 
 showPrefixTable :: PrefixTable -> String
-showPrefixTable pt = unlines $ map showPrefixTableItem (toList pt) where
-    -- this below version show the next hop only - this should be in the route itself but for now uses the source peers IPv4 as the next hop....
-    showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ ( show.peerIPv4.peerData) route ++ " (" ++ (show.pathLength) route ++ ")" ) (SL.fromSortedList v)
-
-    -- this below version show the 'whole' linked route
-    -- showPrefixTableItem (k,v) = unlines $ map (\route -> show (IPrefix k) ++ " " ++ show route) (SL.fromSortedList v)
-{-
-groupedByRoutePrefixes :: PrefixTable -> [(PrefixTableEntry,[Int])]
-groupedByRoutePrefixes = groupBy_ . ( map Data.Tuple.swap ) . toList
-
--- groupedByRoutePrefixes' :: PrefixTable -> [[(Int,PrefixTableEntry)]]
--- groupedByRoutePrefixes' pt = Data.List.groupBy sameRoute prefixes where
---     prefixes = Data.List.sortOn (fst) $ map Data.Tuple.swap $ toList pt
---     sameRoute (a,_) (b,_) = a == b
+showPrefixTable pt = unlines $ map showPrefixTableItem (getDB pt) where
+    showPrefixTableItem (k,v) = show k ++ " [" ++ Data.List.intercalate " , " (showRoutes v) ++ "]"
+    showRoutes = map (\route -> ( show.nextHop) route ++ " (" ++ (show.pathLength) route ++ ")" ) 
 
 showPrefixTableByRoute :: PrefixTable -> String
-showPrefixTableByRoute pt = unlines $ map showRoute (groupedByRoutePrefixes pt) where
+showPrefixTableByRoute pt = unlines $ map showRoute (getAdjRIBOut pt) where
     showRoute (r,pfxs) = unlines $ ( show r ) :
-                       showBest (head pfxs) :
-                       map showOther ( tail pfxs)
+                       map showOther pfxs
                        where
-                           showBest pfx = "*  " ++ show' pfx
-                           showOther pfx = "   " ++ show' pfx
-                           show'  = show . IPrefix
-
--}
-showPrefixTableByRoute :: PrefixTable -> String
-showPrefixTableByRoute _ = ""
+                           showOther pfx = "   " ++ show pfx

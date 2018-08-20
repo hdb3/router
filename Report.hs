@@ -20,3 +20,6 @@ report rib = do
         hPutStrLn stderr $ "got " ++ show (length fib) ++ " prefixes"
         hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
         hPutStrLn stderr $ "locRib size = " ++ show (length locRib)
+        putStrLn $ showPrefixTable rib
+        putStrLn "\n #############################\n"
+        putStrLn $ showPrefixTableByRoute rib
