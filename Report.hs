@@ -24,6 +24,6 @@ report (rib,adjrib) = do
         hPutStrLn stderr $ "got " ++ show (length groomedAdjRib) ++ " groomed updates for peer"
         hPutStrLn stderr $ "got " ++ show (length ribOut) ++ " routes"
         hPutStrLn stderr $ "locRib size = " ++ show (length locRib)
-        putStrLn $ showPrefixTable rib
-        putStrLn "\n #############################\n"
-        putStrLn $ showPrefixTableByRoute rib
+        -- putStrLn $ showPrefixTable rib
+        -- putStrLn "\n #############################\n"
+        -- putStrLn $ showPrefixTableByRoute rib

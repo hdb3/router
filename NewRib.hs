@@ -2,6 +2,8 @@
 module NewRib where
 import Data.IORef
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Map as Data.Map
+import Data.Maybe(fromJust)
 
 import BGPData
 import Prefixes
@@ -11,32 +13,29 @@ import PathAttributes
 import AdjRIBOut
 
 type Rib = IORef Rib'
+type AdjRIB = Data.Map.Map PeerData AdjRIBOut
 data Rib' = Rib' { peer :: PeerData
                  , prefixTable :: PrefixTable
-                 , adjRibOuts  :: [AdjRIBOut]
+                 , adjRib:: AdjRIB
                  }
 
 newRib :: IO Rib
 newRib = newIORef newRib'
 newRib' :: Rib'
--- test case with multiple peers
--- newRib' = Rib' defaultPeerData newPrefixTable ( replicate 10 newAdjRIBOut )
--- test case with zero peers
--- newRib' = Rib' defaultPeerData newPrefixTable []
-newRib' = Rib' defaultPeerData newPrefixTable [newAdjRIBOut]
+newRib' = Rib' defaultPeerData newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBOut ) 
 
-getARO :: Rib -> IO [AdjRIBEntry]
-getARO rib = do
+getARO :: PeerData -> Rib -> IO [AdjRIBEntry]
+getARO peer rib = do
     rib' <- readIORef rib
-    return ( peekAllAdjRIBOut $ head $ adjRibOuts rib')
+    return $ peekAllAdjRIBOut $ fromJust $ Data.Map.lookup peer (adjRib rib')
 
 getRib :: Rib -> IO PrefixTable
 getRib rib = do
     rib' <- readIORef rib
     return (prefixTable rib')
 
-updateAdjRibOutTables :: AdjRIBEntry -> [AdjRIBOut] -> [AdjRIBOut]
-updateAdjRibOutTables are = map ( insertAdjRIBOut are )
+updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
+updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBOut are )
 
 ribUpdateMany :: Rib -> [PathAttribute] -> Int -> [Prefix] -> IO()
 ribUpdateMany rib attrs hash pfxs = modifyIORef' rib (ribUpdateMany' attrs hash pfxs)
