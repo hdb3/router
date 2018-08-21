@@ -25,7 +25,8 @@ data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
 data BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
 
-rcvStatus (BGPByteString (Left status)) = status
+rcvStatus (BGPByteString (Left status)) = show status
+rcvStatus (BGPByteString (Right bs)) = toHex' bs
 
 data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
 newBufferedSocket ::  Socket -> Maybe Handle -> BufferedSocket

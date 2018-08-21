@@ -14,6 +14,7 @@ import Data.Int(Int64)
 
 import Common
 import BGPparse
+import BGPData
 import GetBGPMsg
 import BgpFSM
 import Capabilities
@@ -26,7 +27,7 @@ main = do config <- getConfig
                  main'
                  config
 
-main' (address,local,remote) = do
+main' (address,local,remote,peerData) = do
     putStrLn "Passive starting"
     print (address,local,remote)
     sock <- socket AF_INET Stream defaultProtocol 
@@ -36,7 +37,7 @@ main' (address,local,remote) = do
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
     forkIO $ reaper exitMVar
-    let config = BgpFSMconfig local remote undefined collisionDetector undefined delayOpenTimer exitMVar
+    let config = BgpFSMconfig local remote undefined collisionDetector undefined delayOpenTimer exitMVar Nothing peerData
     E.finally (loop sock config) (close sock)
   where
     delayOpenTimer = 10

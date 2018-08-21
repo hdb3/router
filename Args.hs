@@ -8,8 +8,9 @@ import Common
 import BgpFSM
 import BGPparse
 import Capabilities
+import BGPData
 
-type Args = (SockAddr, BGPMessage, BGPMessage)
+type Args = (SockAddr, BGPMessage, BGPMessage, PeerData)
 
 -- here is an example of a valid parameter list:
 -- "192.168.1.2,179" "30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0" "0,0,127.0.0.1"
@@ -36,8 +37,26 @@ getConfig = do
              Right
              eVal
 
+
 getConfig' :: [String] -> Args
-getConfig' args = (address,local,remote) where
+getConfig' args = (address,mkBGPOpen local,mkBGPOpen remote, peerData) where
+    defaultLocalParameters = (65500,40,(read "127.0.0.1"),[ CapAS4 65500,  CapGracefulRestart False 0])
+    defaultRemoteParameters = ( 0,0,(read "0.0.0.0"),[])
+
+    gd = GlobalData myAS myBGPid
+    pd = PeerData gd isExternal peerAS peerBGPid peerIPv4 localIPv4 localPref offerCapabilies requireCapabilies
+    isExternal = peerBGPid /= myBGPid
+    myAS = fromIntegral $ asn local
+    myBGPid = ipV4 local
+    peerAS = fromIntegral $ asn remote
+    peerBGPid = ipV4 remote
+    localIPv4 = undefined
+    peerIPv4 = undefined
+    offerCapabilies = caps local
+    requireCapabilies = caps remote
+    localPref = 0
+    peerData = defaultPeerData
+    mkBGPOpen (asn,holdTime,ipV4,caps) = BGPOpen asn holdTime ipV4 caps
     address =
         if length args > 0
         then
@@ -50,22 +69,26 @@ getConfig' args = (address,local,remote) where
         then
             parseParams $ args !! 1
         else
-            BGPOpen 65500 40 (read "127.0.0.1") [ CapAS4 65500,  CapGracefulRestart False 0]
+            defaultLocalParameters
 
     remote =
         if length args > 2
         then
             parseParams $ args !! 2
         else
-            BGPOpen 0 0 (read "0.0.0.0") []
+            defaultRemoteParameters
 
     parseAddress :: String -> SockAddr
     parseAddress ps = SockAddrInet (read $ ws !! 1) (toHostAddress ip) where
                       ip = read $ ws !! 0
                       ws = myWords ps
 
-    parseParams ps = BGPOpen (read $ ws !! 0) (read $ ws !! 1) (read $ ws !! 2) (parseCapabilities (drop 3 ws)) where
+    parseParams ps = ((read $ ws !! 0),(read $ ws !! 1),(read $ ws !! 2),(parseCapabilities (drop 3 ws))) where
         ws = myWords ps
+    asn (asn,holdTime,ipV4,caps) = asn
+    holdTime (asn,holdTime,ipV4,caps) = holdTime
+    ipV4 (asn,holdTime,ipV4,caps) = ipV4
+    caps (asn,holdTime,ipV4,caps) = caps
 
     parseCapabilities [] = []
     parseCapabilities ("CapAS4":as:cx) = CapAS4 (read as) : parseCapabilities cx

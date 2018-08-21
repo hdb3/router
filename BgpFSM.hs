@@ -15,6 +15,7 @@ import Data.Int(Int64)
 
 import Common
 import BGPparse
+import BGPData
 import GetBGPMsg
 import RFC4271
 import Open
@@ -43,6 +44,7 @@ data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
                                   delayOpenTimer :: Int,
                                   exitMVar :: MVar (ThreadId,String)
                                   , logFile :: Maybe Handle
+                                  , peerData :: PeerData
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
@@ -71,7 +73,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
     fsm (s,b,o) | s == Idle = do
                                 logFlush bsock0
-                                putStrLn $ "FSM exiting" ++  show ( rcvStatus $ result b)
+                                putStrLn $ "FSM exiting" ++ rcvStatus (result b)
                 | otherwise = do
         -- putStrLn $ "FSM executing " ++ show s
         (s',b',o') <- (f s) (b,o)

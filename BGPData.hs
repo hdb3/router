@@ -10,6 +10,7 @@ import Data.IP(IPv4)
 import Data.Hashable
 
 import PathAttributes(PathAttribute)
+import Capabilities
 
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
@@ -23,6 +24,8 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  peerIPv4 :: IPv4
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
+                         ,  offerCapabilies :: [ Capability ]
+                         ,  requireCapabilies :: [ Capability ]
                          }
 
 data RouteData =  RouteData { peerData :: PeerData
@@ -38,7 +41,9 @@ data RouteData =  RouteData { peerData :: PeerData
 instance Hashable RouteData where
     hashWithSalt _ = routeId
 
-defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0
+defaultPeerData :: PeerData
+defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 [] []
+defaultGlobalData :: GlobalData
 defaultGlobalData = GlobalData 64512 "127.0.0.1"
 
 instance Show GlobalData where
