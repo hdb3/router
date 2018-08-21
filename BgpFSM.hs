@@ -82,7 +82,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                 putStrLn $ "FSM exiting" ++ rcvStatus (result b)
                 | otherwise = do
         -- putStrLn $ "FSM executing " ++ show s
-        (s',b',o') <- (f s) (b,o)
+        (s',b',o') <- f s (b,o)
         fsm (s',b',o') where
             f StateConnected = stateConnected
             f StateOpenSent = stateOpenSent
@@ -182,7 +182,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        rib <- if (checkAS4Capability osm) then newRib4 else newRib2
+        rib <- if checkAS4Capability osm then newRib4 else newRib2
         -- let osm' = let {adjRibIn = rib} in OpenStateMachine {adjRibIn = rib, ..}
         let osm' = osm {adjRibIn = rib}
         addPeer newRib peerData -- shoudl update it with the received parameters!!!!

@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE BangPatterns #-}
 module Prefixes where
 -- import GHC.Exts

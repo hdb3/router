@@ -41,8 +41,8 @@ getConfig = do
 
 getConfig' :: [String] -> Args
 getConfig' args = (address,pd) where
-    defaultLocalParameters = (65500,40,(read "127.0.0.1"),[ CapAS4 65500,  CapGracefulRestart False 0])
-    defaultRemoteParameters = ( 0,0,(read "0.0.0.0"),[])
+    defaultLocalParameters = (65500,40,read "127.0.0.1",[ CapAS4 65500,  CapGracefulRestart False 0])
+    defaultRemoteParameters = (0,0,read "0.0.0.0",[])
 
     gd = GlobalData myAS myBGPid
     pd = PeerData gd isExternal peerAS peerBGPid peerIPv4 localIPv4 localPref (holdTime local) (holdTime remote) offerCapabilies requireCapabilies
@@ -83,7 +83,7 @@ getConfig' args = (address,pd) where
                       ip = read $ ws !! 0
                       ws = myWords ps
 
-    parseParams ps = ((read $ ws !! 0),(read $ ws !! 1),(read $ ws !! 2),(parseCapabilities (drop 3 ws))) where
+    parseParams ps = (read $ ws !! 0,read $ ws !! 1,read $ ws !! 2,parseCapabilities (drop 3 ws)) where
         ws = myWords ps
     asn (asn,holdTime,ipV4,caps) = asn
     holdTime (asn,holdTime,ipV4,caps) = holdTime

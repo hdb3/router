@@ -1,10 +1,8 @@
 {-# LANGUAGE FlexibleInstances,BangPatterns,RecordWildCards #-}
 module GetBGPMsg where
--- module GetBGPMsg (RcvStatus(..),BufferedSocket(..),newBufferedSocket,logFlush,rcvStatus,getMsg,getNext,sndBgpMessage,BGPByteString(..)) where
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
--- import System.IO(Handle,openBinaryFile,hClose,IOMode( WriteMode ))
 import System.IO(Handle,hClose,hFlush)
 import Data.Bits
 import Data.Binary
@@ -23,7 +21,7 @@ import Common
 
 data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
-data BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
+newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
 
 rcvStatus (BGPByteString (Left status)) = show status
 rcvStatus (BGPByteString (Right bs)) = toHex' bs

@@ -16,7 +16,7 @@ module PrefixTable where
 import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
-import qualified Data.Tuple as Data.Tuple
+import qualified Data.Tuple
 import Data.IP
 
 import Common
@@ -41,7 +41,7 @@ updatePrefixTable :: PrefixTable -> IPrefix -> RouteData -> (PrefixTable,Bool)
 updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) where 
     updatePrefixTableEntry :: PrefixTableEntry -> PrefixTableEntry -> PrefixTableEntry
     updatePrefixTableEntry singletonRoute routes = let newRoute = slHead singletonRoute
-                                                       pIsNotOldRoute r = (peerData r) /= (peerData newRoute)
+                                                       pIsNotOldRoute r = peerData r /= peerData newRoute
                                                    in SL.insert newRoute $ SL.filter pIsNotOldRoute routes
 
     newSingletonPrefixTableEntry = SL.singleton route
@@ -58,9 +58,9 @@ withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
     f _ routes = let routes' = SL.filter (notPeer peer) routes in
          if null routes' then Nothing else Just routes'
     notPeer :: PeerData -> RouteData -> Bool
-    notPeer pd rd = pd /= ( peerData rd ) 
+    notPeer pd rd = pd /= peerData rd 
     oldBestRoute = slHead oldRouteList
-    wasBestRoute = (peerData oldBestRoute) == peer
+    wasBestRoute = peerData oldBestRoute == peer
 
 withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
 withdraw rib prefixes peer = Data.List.foldl' f (rib,[]) prefixes where

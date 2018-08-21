@@ -22,14 +22,14 @@ data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix]
 
 newtype RawAttributes = RawAttributes B.ByteString deriving Eq
 instance Show RawAttributes where
-    show (RawAttributes raw) = "RawAttributes [" ++ ( show $ B.length raw ) ++ "]"
+    show (RawAttributes raw) = "RawAttributes [" ++ show (B.length raw ) ++ "]"
 
 type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
-        decodedAttributes = (decodeOrFail a :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute]))
-        decodedNlri = (decodeOrFail n :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix]))
-        decodedWithdrawn = (decodeOrFail w :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix]))
+        decodedAttributes = decodeOrFail a :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])
+        decodedNlri = decodeOrFail n :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix])
+        decodedWithdrawn = decodeOrFail w :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [Prefix])
 
 parseSuccess (a,n,w) = isRight a && isRight n && isRight w
 parseErrorMesgs (a,n,w) = concat [getMsgA a,getMsgP n,getMsgP w]
@@ -41,9 +41,9 @@ validResult (a,n,w) = (f a,f n, f w) where f = (\(Right(_,_,x)) ->x)
 validAttributes (a,n,w) = (null n && null a) || checkForRequiredPathAttributes a
 endOfRIB (a,n,w) = null a && null n && null w
 
-diagoseResult (a',n',w') (a,n,w) = (diagnose "attributes" a' a) ++
-                                   (diagnose "NLRI" n' n) ++
-                                   (diagnose "withdrawn" w' w) where
+diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
+                                   diagnose "NLRI" n' n ++
+                                   diagnose "withdrawn" w' w where
     diagnose _ (Right _) _ = ""
     diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
