@@ -15,7 +15,7 @@ import Capabilities
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
                              }
-                            deriving Eq
+                            deriving (Show,Eq)
 
 data PeerData = PeerData { globalData :: GlobalData
                          ,  isExternal :: Bool
@@ -24,6 +24,8 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  peerIPv4 :: IPv4
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
+                         ,  propHoldTime :: Word16
+                         ,  reqHoldTime :: Word16
                          ,  offerCapabilies :: [ Capability ]
                          ,  requireCapabilies :: [ Capability ]
                          }
@@ -42,12 +44,12 @@ instance Hashable RouteData where
     hashWithSalt _ = routeId
 
 defaultPeerData :: PeerData
-defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 [] []
+defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 100 0 [] []
 defaultGlobalData :: GlobalData
 defaultGlobalData = GlobalData 64512 "127.0.0.1"
 
-instance Show GlobalData where
-    show gd = " router: " ++ show ( myBGPid gd )
+--instance Show GlobalData where
+--    show gd = " router: " ++ show ( myBGPid gd )
 
 instance Show PeerData where
     show pd = " peer-AS=" ++ show (peerAS pd) ++ " peer-IP=" ++ show (peerBGPid pd)

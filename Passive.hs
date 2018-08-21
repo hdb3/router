@@ -27,9 +27,9 @@ main = do config <- getConfig
                  main'
                  config
 
-main' (address,local,remote,peerData) = do
+main' (address,peerData) = do
     putStrLn "Passive starting"
-    print (address,local,remote)
+    print address
     sock <- socket AF_INET Stream defaultProtocol 
     setSocketOption sock ReuseAddr 1
     bind sock address
@@ -37,7 +37,7 @@ main' (address,local,remote,peerData) = do
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
     forkIO $ reaper exitMVar
-    let config = BgpFSMconfig local remote undefined collisionDetector undefined delayOpenTimer exitMVar Nothing peerData
+    let config = BgpFSMconfig undefined collisionDetector undefined delayOpenTimer exitMVar Nothing peerData
     E.finally (loop sock config) (close sock)
   where
     delayOpenTimer = 10

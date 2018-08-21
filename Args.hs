@@ -10,7 +10,8 @@ import BGPparse
 import Capabilities
 import BGPData
 
-type Args = (SockAddr, BGPMessage, BGPMessage, PeerData)
+type Args = (SockAddr, PeerData)
+-- type Args = (SockAddr, BGPMessage, BGPMessage, PeerData)
 
 -- here is an example of a valid parameter list:
 -- "192.168.1.2,179" "30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0" "0,0,127.0.0.1"
@@ -39,12 +40,12 @@ getConfig = do
 
 
 getConfig' :: [String] -> Args
-getConfig' args = (address,mkBGPOpen local,mkBGPOpen remote, peerData) where
+getConfig' args = (address,pd) where
     defaultLocalParameters = (65500,40,(read "127.0.0.1"),[ CapAS4 65500,  CapGracefulRestart False 0])
     defaultRemoteParameters = ( 0,0,(read "0.0.0.0"),[])
 
     gd = GlobalData myAS myBGPid
-    pd = PeerData gd isExternal peerAS peerBGPid peerIPv4 localIPv4 localPref offerCapabilies requireCapabilies
+    pd = PeerData gd isExternal peerAS peerBGPid peerIPv4 localIPv4 localPref (holdTime local) (holdTime remote) offerCapabilies requireCapabilies
     isExternal = peerBGPid /= myBGPid
     myAS = fromIntegral $ asn local
     myBGPid = ipV4 local
@@ -55,7 +56,6 @@ getConfig' args = (address,mkBGPOpen local,mkBGPOpen remote, peerData) where
     offerCapabilies = caps local
     requireCapabilies = caps remote
     localPref = 0
-    peerData = defaultPeerData
     mkBGPOpen (asn,holdTime,ipV4,caps) = BGPOpen asn holdTime ipV4 caps
     address =
         if length args > 0
