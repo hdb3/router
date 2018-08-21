@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-#LANGUAGE OverloadedStrings #-}
 module PathAttributes (module Codes, module PathAttributes, module ASPath) where
+import Data.Maybe(fromJust)
 import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
@@ -44,6 +45,8 @@ getASPathLength pas = maybe
                       0
                       (\(PathAttributeASPath asPath) -> asPathLength asPath)
                       (getPathAttribute TypeCodePathAttributeASPath pas)
+
+getASPath = fromJust . getPathAttribute TypeCodePathAttributeASPath
 
 getMED :: [PathAttribute] -> Word32
 getMED pas = maybe 0 (\(PathAttributeMultiExitDisc x) -> x) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
