@@ -35,7 +35,7 @@ pathTableGet_ (PathTable pt) (RouteId routeId) = pt ! routeId
 pathTableDelete :: PathTable -> RouteId -> Int -> PathTable
 pathTableDelete (PathTable pt)(RouteId routeId) count = PathTable $ update f routeId pt where -- update cannot insert....
     f oldPt | refCount oldPt == count = Nothing
-            | otherwise = Just $ oldPt { refCount = (refCount oldPt) - count }
+            | otherwise = Just $ oldPt { refCount = refCount oldPt - count }
  
 -- pathTableInsert - build the path table using the key which is already calculated in the RouteData, called routeId
 
@@ -45,7 +45,7 @@ pathTableInsert (PathTable pt) pfxCount routeData = PathTable pt' where
     -- hash = fromIntegral $ hash64 bytes
     pt' = alter f (routeId routeData) pt where
        f = maybe (Just ( PathTableEntry routeData pfxCount))
-                 (\oldPte -> Just ( oldPte { refCount = (refCount oldPte) + pfxCount }))
+                 (\oldPte -> Just ( oldPte { refCount = refCount oldPte + pfxCount }))
  
 {-
 pathTableInsert :: PathTable -> ([PathAttribute],B.ByteString) -> Int -> RouteData -> (RouteId,PathTable)

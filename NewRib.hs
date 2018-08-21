@@ -2,7 +2,7 @@
 module NewRib where
 import Data.IORef
 import qualified Data.ByteString.Lazy as L
-import qualified Data.Map as Data.Map
+import qualified Data.Map
 import Data.Maybe(fromJust)
 
 import Common

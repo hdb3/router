@@ -16,7 +16,7 @@ module PrefixTableUtils where
 import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
-import qualified Data.Tuple as Data.Tuple
+import qualified Data.Tuple
 import Data.IP
 
 import Common
@@ -53,5 +53,4 @@ showPrefixTable pt = unlines $ map showPrefixTableItem (getDB pt) where
 showPrefixTableByRoute :: PrefixTable -> String
 showPrefixTableByRoute = showPrefixTableByRoute' show 
 showPrefixTableByRoute' fr pt = unlines $ map showRoute (getAdjRIBOut pt) where
-    -- showRoute (r,pfxs) = Data.List.intercalate " " $  fr r : ":" : map show pfxs
-    showRoute (r,pfxs) = Data.List.intercalate " " $  fr r : ":" : if length pfxs < 3 then map show pfxs else (map show (take 2 pfxs)) ++ ["..."]
+    showRoute (r,pfxs) = unwords $  fr r : ":" : if length pfxs < 3 then map show pfxs else map show (take 2 pfxs) ++ ["..."]

@@ -12,7 +12,7 @@ import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 import qualified Data.Sequence as Seq
-import qualified Data.HashMap.Strict as Data.HashMap.Strict
+import qualified Data.HashMap.Strict
 import Data.Hashable
 import Data.Foldable(toList)
 

@@ -69,9 +69,9 @@ display Rib{..} = do
 
 newRib :: IO Rib
 newRib = do
-    prefixTable <- (newSized 1000000)
-    pathTable <- (newSized 100000)
-    pathTableRefCount <- (newSized 100000)
+    prefixTable <- newSized 1000000
+    pathTable <- newSized 100000
+    pathTableRefCount <- newSized 100000
     uc <- newIORef 0
     wc <- newIORef 0
     return $ Rib prefixTable pathTable pathTableRefCount False uc wc

@@ -1,5 +1,3 @@
-{-# LANGUAGE ViewPatterns #-}
-
 module AdjRIBOut where
 
 {-
@@ -14,8 +12,8 @@ module AdjRIBOut where
  - when an entire route table must be exchanged
 -}
 
-import qualified Data.IntMap.Strict as Data.IntMap.Strict
-import qualified Data.Tuple as Data.Tuple
+import qualified Data.IntMap.Strict
+import qualified Data.Tuple
 
 import Common
 import Prefixes
@@ -43,4 +41,4 @@ peekAllAdjRIBOut :: AdjRIBOut -> [AdjRIBEntry]
 peekAllAdjRIBOut (AdjRIBOut table) = peekAll table
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
-groomAdjRIBList = (map Data.Tuple.swap) . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . (map Data.Tuple.swap) 
+groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap 
