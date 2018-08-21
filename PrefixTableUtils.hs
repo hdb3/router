@@ -51,8 +51,7 @@ showPrefixTable pt = unlines $ map showPrefixTableItem (getDB pt) where
     showRoutes = map (\route -> ( show.nextHop) route ++ " (" ++ (show.pathLength) route ++ ")" ) 
 
 showPrefixTableByRoute :: PrefixTable -> String
-showPrefixTableByRoute pt = unlines $ map showRoute (getAdjRIBOut pt) where
-    showRoute (r,pfxs) = unlines $ ( show r ) :
-                       map showOther pfxs
-                       where
-                           showOther pfx = "   " ++ show pfx
+showPrefixTableByRoute = showPrefixTableByRoute' show 
+showPrefixTableByRoute' fr pt = unlines $ map showRoute (getAdjRIBOut pt) where
+    -- showRoute (r,pfxs) = Data.List.intercalate " " $  fr r : ":" : map show pfxs
+    showRoute (r,pfxs) = Data.List.intercalate " " $  fr r : ":" : if length pfxs < 3 then map show pfxs else (map show (take 2 pfxs)) ++ ["..."]
