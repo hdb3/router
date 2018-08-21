@@ -19,8 +19,8 @@ main = do config <- getConfig
                  main'
                  config
 
-main' (address,local,remote,peerData) = do
-    print (address,local,remote)
+main' (address,peerData) = do
+    print address
     putStrLn "begin:: "
     sock <- socket AF_INET Stream defaultProtocol
     connect sock address
@@ -31,7 +31,7 @@ main' (address,local,remote,peerData) = do
     exitMVar <- newEmptyMVar
     t <- utcSecs
     handle <- openBinaryFile (show t ++ ".bgp") WriteMode
-    let config = BgpFSMconfig local remote sock collisionDetector peerName delayOpenTimer exitMVar (Just handle) peerData
+    let config = BgpFSMconfig sock collisionDetector peerName delayOpenTimer exitMVar (Just handle) peerData
     finally (bgpFSM config) (close sock) 
     (tid,msg) <- takeMVar exitMVar
     putStrLn $ "complete:: " ++ show (tid :: ThreadId) ++ " : " ++ msg

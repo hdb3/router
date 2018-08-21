@@ -35,11 +35,9 @@ newtype FSMException = FSMException String
 
 instance Exception FSMException
 
-data BgpFSMconfig = BgpFSMconfig {local :: BGPMessage,
-                                  remote :: BGPMessage,
+data BgpFSMconfig = BgpFSMconfig {
                                   sock :: Socket,
                                   collisionDetector :: CollisionDetector,
-                                  -- updateProcessor :: UpdateProcessor,
                                   peerName :: SockAddr,
                                   delayOpenTimer :: Int,
                                   exitMVar :: MVar (ThreadId,String)
@@ -61,9 +59,12 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     exit s = throw $ FSMException s
     initialHoldTimer = 120
     cd = collisionDetector
-    osm = makeOpenStateMachine local remote
-    myOpen = local
-    myBGPID = bgpID myOpen
+    osm = makeOpenStateMachine myOpen remote
+    myBGPID = myBGPid $ globalData peerData
+    localAS = fromIntegral (myAS (globalData peerData)) -- conflict between 16 and 32 bit ASN types!!
+    remoteAS = fromIntegral $ peerAS peerData            -- conflict between 16 and 32 bit ASN types!!
+    myOpen = BGPOpen localAS (propHoldTime peerData) myBGPID (offerCapabilies peerData)
+    remote = BGPOpen remoteAS (reqHoldTime peerData) (peerBGPid peerData) (requireCapabilies peerData)
     snd msg = catchIOError ( sndBgpMessage bsock0 (encode msg)) (\e -> exit (show (e :: IOError)))
 
     get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
