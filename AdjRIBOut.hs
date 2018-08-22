@@ -20,7 +20,9 @@ import Prefixes
 
 type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
+-- TODO I think that the newtype wrapper here is unnecessary!!
 newtype AdjRIBOut = AdjRIBOut AdjRIBTable
+fromAdjRIBOut (AdjRIBOut x) = x
 
 newAdjRIBOut = AdjRIBOut emptyFifo
 
@@ -30,9 +32,13 @@ insertAdjRIBOut are (AdjRIBOut table) = AdjRIBOut ( enqueue table are )
 isEmptyAdjRIBOut :: AdjRIBOut -> Bool
 isEmptyAdjRIBOut (AdjRIBOut table) = nullFifo table
 
-simpleGetAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
+getAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
 -- undefined on empty
-simpleGetAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
+getAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
+
+getNAdjRIBOut :: Int -> AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
+-- undefined on empty
+getNAdjRIBOut n (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
 
 getAllAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,[AdjRIBEntry])
 getAllAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , ares ) where (table' , ares) = dequeueAll table
