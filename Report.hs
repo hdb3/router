@@ -27,6 +27,7 @@ report (rib,adjrib) = do
         if True then do
             -- putStrLn $ showPrefixTable rib
             -- putStrLn "\n #############################\n"
+            -- putStrLn $ showPrefixTableByRoute rib
             putStrLn $ showPrefixTableByRoute' customShowRoute rib
         else
             return ()
