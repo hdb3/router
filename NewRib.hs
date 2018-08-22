@@ -31,7 +31,7 @@ addPeer rib peer = modifyIORef' rib ( addPeer' peer )
 addPeer' ::  PeerData -> Rib' -> Rib'
 -- addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer newAdjRIBOut adjRib in Rib' prefixTable adjRib'
 addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
-                              aro = AdjRIBOut $ fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
+                              aro = fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
                               -- aro = newAdjRIBOut
                               f (rd,ipfxs) = (ipfxs , routeId rd)
                            in Rib' prefixTable adjRib'

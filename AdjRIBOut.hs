@@ -20,31 +20,32 @@ import Prefixes
 
 type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
+type AdjRIBOut = AdjRIBTable
 -- TODO I think that the newtype wrapper here is unnecessary!!
-newtype AdjRIBOut = AdjRIBOut AdjRIBTable
-fromAdjRIBOut (AdjRIBOut x) = x
+-- newtype AdjRIBOut = AdjRIBOut AdjRIBTable
+-- fromAdjRIBOut (AdjRIBOut x) = x
 
-newAdjRIBOut = AdjRIBOut emptyFifo
+newAdjRIBOut = emptyFifo
 
 insertAdjRIBOut :: AdjRIBEntry -> AdjRIBOut -> AdjRIBOut
-insertAdjRIBOut are (AdjRIBOut table) = AdjRIBOut ( enqueue table are )
+insertAdjRIBOut are table = ( enqueue table are )
 
 isEmptyAdjRIBOut :: AdjRIBOut -> Bool
-isEmptyAdjRIBOut (AdjRIBOut table) = nullFifo table
+isEmptyAdjRIBOut table = nullFifo table
 
 getAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
 -- undefined on empty
-getAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
+getAdjRIBOut table = ( table' , are ) where (table',are) = dequeue table
 
 getNAdjRIBOut :: Int -> AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
 -- undefined on empty
-getNAdjRIBOut n (AdjRIBOut table) = ( AdjRIBOut  table' , are ) where (table',are) = dequeue table
+getNAdjRIBOut n table = ( table' , are ) where (table',are) = dequeue table
 
 getAllAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,[AdjRIBEntry])
-getAllAdjRIBOut (AdjRIBOut table) = ( AdjRIBOut  table' , ares ) where (table' , ares) = dequeueAll table
+getAllAdjRIBOut table = ( table' , ares ) where (table' , ares) = dequeueAll table
 
 peekAllAdjRIBOut :: AdjRIBOut -> [AdjRIBEntry]
-peekAllAdjRIBOut (AdjRIBOut table) = peekAll table
+peekAllAdjRIBOut table = peekAll table
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
 groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap 
