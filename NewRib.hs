@@ -35,7 +35,7 @@ addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
                               -- aro = newAdjRIBOut
                               f (rd,ipfxs) = (ipfxs , routeId rd)
                            in Rib' prefixTable adjRib'
-{-
+
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
 pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
 pullUpdates n peer rib = atomicModifyIORef' rib f where
@@ -47,7 +47,6 @@ pullUpdates' n peer aroTable = (aroTable',updates) where
     aroTable' = Data.Map.update (\_ -> Just aro') peer aroTable
     (aro',updates) | n == 0    = dequeueAll (aroTable Data.Map.! peer) 
                    | otherwise = dequeueN n (aroTable Data.Map.! peer) 
--}
 
 -- this is a read only operation which does not change the RIB
 -- see pullUpdates for the operational function which empties the AdjRibOut fifo
