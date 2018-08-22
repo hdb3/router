@@ -50,8 +50,8 @@ pullUpdates' n peer aroTable = (aroTable',updates) where
 
 -- this is a read only operation which does not change the RIB
 -- see pullUpdates for the operational function which empties the AdjRibOut fifo
-getARO :: PeerData -> Rib -> IO [AdjRIBEntry]
-getARO peer rib = do
+peekUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
+peekUpdates peer rib = do
     rib' <- readIORef rib
     return $ peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
 
