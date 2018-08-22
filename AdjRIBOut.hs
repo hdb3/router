@@ -1,8 +1,8 @@
 module AdjRIBOut where
 
 {-
- - AdjRIBOut provdes a list structure to support route dissemination
- - every peer has its own AdjRIBOut in order to allow each peer to consume Updates at its own pace
+ - AdjRIBTable provdes a list structure to support route dissemination
+ - every peer has its own AdjRIBTable in order to allow each peer to consume Updates at its own pace
  - an optimisation to suppress duplicate updates due to slow consumption can be implnented outside this API
  - using the route identity which is stored with the prefix set
  - the structure is a simple list which holds a set of prefixes
@@ -20,32 +20,28 @@ import Prefixes
 
 type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
-type AdjRIBOut = AdjRIBTable
--- TODO I think that the newtype wrapper here is unnecessary!!
--- newtype AdjRIBOut = AdjRIBOut AdjRIBTable
--- fromAdjRIBOut (AdjRIBOut x) = x
 
-newAdjRIBOut = emptyFifo
+newAdjRIBTable = emptyFifo
 
-insertAdjRIBOut :: AdjRIBEntry -> AdjRIBOut -> AdjRIBOut
-insertAdjRIBOut are table = ( enqueue table are )
+insertAdjRIBTable :: AdjRIBEntry -> AdjRIBTable -> AdjRIBTable
+insertAdjRIBTable are table = ( enqueue table are )
 
-isEmptyAdjRIBOut :: AdjRIBOut -> Bool
-isEmptyAdjRIBOut table = nullFifo table
+isEmptyAdjRIBTable :: AdjRIBTable -> Bool
+isEmptyAdjRIBTable table = nullFifo table
 
-getAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
+getAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
 -- undefined on empty
-getAdjRIBOut table = ( table' , are ) where (table',are) = dequeue table
+getAdjRIBTable table = ( table' , are ) where (table',are) = dequeue table
 
-getNAdjRIBOut :: Int -> AdjRIBOut -> (AdjRIBOut,AdjRIBEntry)
+getNAdjRIBTable :: Int -> AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
 -- undefined on empty
-getNAdjRIBOut n table = ( table' , are ) where (table',are) = dequeue table
+getNAdjRIBTable n table = ( table' , are ) where (table',are) = dequeue table
 
-getAllAdjRIBOut :: AdjRIBOut -> (AdjRIBOut,[AdjRIBEntry])
-getAllAdjRIBOut table = ( table' , ares ) where (table' , ares) = dequeueAll table
+getAllAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,[AdjRIBEntry])
+getAllAdjRIBTable table = ( table' , ares ) where (table' , ares) = dequeueAll table
 
-peekAllAdjRIBOut :: AdjRIBOut -> [AdjRIBEntry]
-peekAllAdjRIBOut table = peekAll table
+peekAllAdjRIBTable :: AdjRIBTable -> [AdjRIBEntry]
+peekAllAdjRIBTable table = peekAll table
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
 groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap 
