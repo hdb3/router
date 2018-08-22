@@ -38,14 +38,27 @@ main = do
             limit = if n > 0 then take n else id
         processUpdates ( limit updateMsgs )
 
+showAvailableUpdates pd rib = do
+        adjrib <- peekUpdates pd rib
+        putStrLn $ show (length adjrib) ++ " updates"
+
+getNAvailableUpdates n pd rib = do
+        adjrib <- pullUpdates n pd rib
+        putStrLn $ show (length adjrib) ++ " updates pulled"
+        print adjrib
+
 processUpdates updates = do
+        let peer = defaultPeerData
         hPutStrLn stderr $ "read " ++ show (length updates) ++ " updates"
         rib <- newRib
-        -- addPeer rib defaultPeerData
-        mapM_ (updateRib defaultPeerData rib) updates
-        addPeer rib defaultPeerData
+        -- addPeer rib peer
+        mapM_ (updateRib peer rib) updates
+        addPeer rib peer
+        showAvailableUpdates peer rib
+        getNAvailableUpdates 1 peer rib
+        showAvailableUpdates peer rib
         rib' <- getRib rib
-        adjrib <- getARO defaultPeerData rib
+        adjrib <- peekUpdates peer rib
         report (rib',adjrib)
 
 analyse BGPUpdateP{..} = do
