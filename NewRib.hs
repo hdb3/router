@@ -14,7 +14,7 @@ import PathAttributes
 import AdjRIBOut
 
 type Rib = IORef Rib'
-type AdjRIB = Data.Map.Map PeerData AdjRIBOut
+type AdjRIB = Data.Map.Map PeerData AdjRIBTable
 data Rib' = Rib' { 
                    prefixTable :: PrefixTable
                  , adjRib:: AdjRIB
@@ -23,7 +23,7 @@ data Rib' = Rib' {
 newRib :: IO Rib
 newRib = newIORef newRib'
 newRib' :: Rib'
-newRib' = Rib' newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBOut ) 
+newRib' = Rib' newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBTable ) 
 
 addPeer :: Rib -> PeerData -> IO ()
 addPeer rib peer = modifyIORef' rib ( addPeer' peer )
@@ -54,7 +54,7 @@ pullUpdates' n peer aroTable = (aroTable',updates) where
 getARO :: PeerData -> Rib -> IO [AdjRIBEntry]
 getARO peer rib = do
     rib' <- readIORef rib
-    return $ peekAllAdjRIBOut $ fromJust $ Data.Map.lookup peer (adjRib rib')
+    return $ peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
 
 getRib :: Rib -> IO PrefixTable
 getRib rib = do
@@ -64,7 +64,7 @@ getRib rib = do
 -- updateAdjRibOutTables -- this function applies the same update to _all_ of the adjribs
 -- it is called from within ribUpdate so has no IO wrapper of its own
 updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
-updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBOut are )
+updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBTable are )
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
