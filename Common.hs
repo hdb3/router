@@ -46,6 +46,7 @@ fifo = Seq.fromList
 enqueue s e = e Seq.<| s
 dequeue s = (s',e) where (s' Seq.:> e) = Seq.viewr s
 dequeueAll s = ( Seq.empty , Data.Foldable.toList s )
+dequeueN n s = let (s1,s2) = Seq.splitAt n s in (s2, Data.Foldable.toList s1 )
 peekAll s = Data.Foldable.toList s
 
 -- application stuff

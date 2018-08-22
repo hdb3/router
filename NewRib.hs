@@ -2,14 +2,14 @@
 module NewRib where
 import Data.IORef
 import qualified Data.ByteString.Lazy as L
-import qualified Data.Map
+import qualified Data.Map.Strict as Data.Map
 import Data.Maybe(fromJust)
 
 import Common
 import BGPData
 import Prefixes
 import PrefixTable
-import PrefixTableUtils
+import qualified PrefixTableUtils
 import PathAttributes
 import AdjRIBOut
 
@@ -31,11 +31,26 @@ addPeer rib peer = modifyIORef' rib ( addPeer' peer )
 addPeer' ::  PeerData -> Rib' -> Rib'
 -- addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer newAdjRIBOut adjRib in Rib' prefixTable adjRib'
 addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
-                              aro = AdjRIBOut $ fifo $ map f $ getAdjRIBOut prefixTable
+                              aro = AdjRIBOut $ fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
                               -- aro = newAdjRIBOut
                               f (rd,ipfxs) = (ipfxs , routeId rd)
                            in Rib' prefixTable adjRib'
+{-
+-- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
+pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
+pullUpdates n peer rib = atomicModifyIORef' rib f where
+    f (Rib' pt arot) = (Rib' pt arot' , updates) where
+        (arot',updates) = pullUpdates' n peer arot
 
+pullUpdates' :: Int -> PeerData -> AdjRIB -> (AdjRIB,[AdjRIBEntry])
+pullUpdates' n peer aroTable = (aroTable',updates) where
+    aroTable' = Data.Map.update (\_ -> Just aro') peer aroTable
+    (aro',updates) | n == 0    = dequeueAll (aroTable Data.Map.! peer) 
+                   | otherwise = dequeueN n (aroTable Data.Map.! peer) 
+-}
+
+-- this is a read only operation which does not change the RIB
+-- see pullUpdates for the operational function which empties the AdjRibOut fifo
 getARO :: PeerData -> Rib -> IO [AdjRIBEntry]
 getARO peer rib = do
     rib' <- readIORef rib
@@ -46,9 +61,12 @@ getRib rib = do
     rib' <- readIORef rib
     return (prefixTable rib')
 
+-- updateAdjRibOutTables -- this function applies the same update to _all_ of the adjribs
+-- it is called from within ribUpdate so has no IO wrapper of its own
 updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
 updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBOut are )
 
+-- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
 ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
