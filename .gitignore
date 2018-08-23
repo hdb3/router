@@ -25,4 +25,5 @@ Active
 BgpFile
 NewBgpFile
 Passive
+Reader
 *.bgp

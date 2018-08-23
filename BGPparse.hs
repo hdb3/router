@@ -41,6 +41,10 @@ isOpen :: BGPMessage -> Bool
 isOpen BGPOpen{} = True
 isOpen _ = False
 
+isUpdate :: BGPMessage -> Bool
+isUpdate BGPUpdate{} = True
+isUpdate _ = False
+
 instance Binary BGPMessage where
 
     put (BGPOpen myAutonomousSystem holdTime bgpID caps) = do putWord8 _BGPOpen
