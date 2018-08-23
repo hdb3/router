@@ -46,4 +46,13 @@ fromList :: Overlap a => [a] -> Node a
 fromList = foldl' insert Empty
 
 width :: Node a -> Int
-width Empty = 0
+width t = max j k where
+    (j,k) = w (0,0) t
+    w (a,b) Empty = (a,b)
+    w (a,b) (Item _ x y) = w (a+1, max b (width y)) x 
+
+height :: Node a -> Int
+height t = max j k where
+    (j,k) = h (0,0) t
+    h (a,b) Empty = (a,b)
+    h (a,b) (Item _ x y) = h (a+1, max b (height x)) y 
