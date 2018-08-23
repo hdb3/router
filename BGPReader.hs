@@ -6,32 +6,31 @@ import Data.Binary.Get(runGet)
 
 import Update
 import BGPparse
-import NewRib
+import qualified NewRib as NR
 import GetBGPMsg
 import BGPData(defaultPeerData)
 import PrefixTable(PrefixTable)
+import PrefixTableUtils(getAdjRIBOut)
+import qualified Prefixes
+import qualified PathAttributes
+import qualified BGPData
 
-bgpReader :: FilePath -> IO PrefixTable
+type Rib = [([PathAttributes.PathAttribute], [Prefixes.Prefix])]
+bgpReader :: FilePath -> IO Rib
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
     let msgs = runGet getBGPByteStrings stream
         parsedMsgs = map decodeBGPByteString msgs
-        updates = map getUpdateP $ filter isUpdate $ getUpdatesFrom parsedMsgs
-        -- updates = map getUpdateP $ getUpdatesFrom parsedMsgs
-    -- hPutStrLn stderr $ "read " ++ show (length updates) ++ " updates"
-    rib <- newRib
+        updates = map getUpdateP $ filter isUpdate parsedMsgs
+    rib <- NR.newRib
     mapM_ (updateRib defaultPeerData rib) updates
-    getRib rib
+    rib' <- NR.getRib rib
+    return $ dump rib'
 
 updateRib peer rib BGPUpdateP{..} = do
-                ribUpdateMany rib peer attributesP hashP nlriP
-                ribWithdrawMany rib peer withdrawnP
+                NR.ribUpdateMany rib peer attributesP hashP nlriP
+                NR.ribWithdrawMany rib peer withdrawnP
 
--- TODO rewrite this as a simple filter???
-getUpdatesFrom :: [BGPMessage] -> [BGPMessage]
-getUpdatesFrom = filter isUpdate
-getUpdatesFrom' :: [BGPMessage] -> [BGPMessage]
-getUpdatesFrom' = foldr keepOnlyUpdates [] where
-                          keepOnlyUpdates a@BGPUpdate{} ax = a:ax
-                          keepOnlyUpdates _ ax = ax
+dump :: PrefixTable -> Rib
+dump prefixTable = let f (routeData,ipfxs) = (BGPData.pathAttributes routeData,Prefixes.toPrefixes ipfxs) in map f (getAdjRIBOut prefixTable)

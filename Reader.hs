@@ -32,4 +32,5 @@ main = do
          hPutStrLn stderr "no filename specified"
     else do
         rib <- bgpReader (args !! 0)
-        putStrLn $ "got " ++ show (length rib) ++ "prefixes"
+        putStrLn $ "got " ++ show (length rib) ++ " prefixes"
+        print (last rib)
