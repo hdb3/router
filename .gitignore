@@ -26,4 +26,5 @@ BgpFile
 NewBgpFile
 Passive
 Reader
+OverlapReader
 *.bgp
