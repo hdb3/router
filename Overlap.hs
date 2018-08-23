@@ -22,6 +22,17 @@ instance Overlap Prefix where
 
 data Node a = Empty | Item a (Node a) (Node a) deriving Show
 
+instance Functor Node where
+    fmap _ Empty = Empty
+    fmap f (Item a b c ) = Item (f a) (fmap f b) (fmap f c)  
+
+instance Foldable Node where
+    foldr f z Empty = z
+    foldr f z (Item a b c ) = foldr f (foldr f (f a z) b) c
+
+size :: Node a -> Int
+size = foldr (\_ b -> b+1) 0
+
 singleton x = Item x Empty Empty
 insert Empty x = singleton x
 insert (Item a b c) x
@@ -33,3 +44,6 @@ insert (Item a b c) x
 
 fromList :: Overlap a => [a] -> Node a
 fromList = foldl' insert Empty
+
+width :: Node a -> Int
+width Empty = 0
