@@ -38,6 +38,7 @@ fromPrefix (Prefix (!l,!v)) = let l' = fromIntegral l :: Int
                                   v' = fromIntegral v :: Int
                               in IPrefix $! unsafeShiftL l' 32 .|. v'
 fromPrefixes = map fromPrefix
+toPrefixes = map toPrefix
 
 instance IsString Prefix where
     fromString = read
