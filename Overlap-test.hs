@@ -1,20 +1,31 @@
-{-#LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Prefixes
 import Overlap
 
 fl :: [Prefix] -> PrefixTree
-fl = fromList . ("0.0.0.0/0" :)
+fl = fromList
+-- fl = fromList . ("0.0.0.0/0" :)
 
 main = do
-    t id
-    t size
-    t (\x -> (id x,size x))
+    -- t id
+    -- t width
+    -- t size
+    -- t (\x -> (id x,size x))
+    let f x = (id x,size x,width x, height x)
+        trees = map ( f . fl) m
+    mapM print trees
 
-t f = do
-    print $ f $ fl []
-    print $ f $ singleton "192.168.0.0/24"
-    print $ f $ fl ["192.168.0.0/24"]
-    print $ f $ fl ["192.168.0.0/24","192.168.0.0/24"]
-    print $ f $ fl ["192.168.1.0/24","192.168.0.0/24"]
-    print $ f $ fl ["192.168.1.0/24","192.168.1.128/25"]
+l = [
+       ["0.0.0.0/0"]
+     , ["192.168.0.0/24"]
+     , ["192.168.0.0/24","192.168.0.0/24"]
+     , ["192.168.1.0/24","192.168.0.0/24"]
+     , ["192.168.1.0/24","192.168.1.128/25"]
+    ]
+
+m = [ ["192.168.0.0/24"]
+    , ["192.168.0.0/24","192.168.1.0/24","192.168.2.0/24"]
+    , ["192.168.1.0/24","192.168.1.0/25","192.168.1.0/26"]
+    , ["192.168.0.0/24","192.168.1.0/24","192.168.2.0/24","192.168.2.0/25","192.168.2.0/26"]
+    ]
