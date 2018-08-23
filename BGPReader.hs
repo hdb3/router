@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-module BGPReader where
+module BGPReader(readRib,bgpReader) where
 import System.IO
+import System.Exit(die)
+import System.Environment(getArgs)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get(runGet)
 
@@ -31,6 +33,19 @@ bgpReader path = do
 updateRib peer rib BGPUpdateP{..} = do
                 NR.ribUpdateMany rib peer attributesP hashP nlriP
                 NR.ribWithdrawMany rib peer withdrawnP
+
+-- readRib: a convenience function for simple applications
+readRib = do
+    args <- getArgs
+    let n = if 1 < length args then read (args !! 1) :: Int else 0
+    if null args then do
+        die "no filename specified"
+    else do
+        rib <- bgpReader (args !! 0)
+        if n == 0 then
+            return rib
+        else
+            return ( take n rib)
 
 dump :: PrefixTable -> Rib
 dump prefixTable = let f (routeData,ipfxs) = (BGPData.pathAttributes routeData,Prefixes.toPrefixes ipfxs) in map f (getAdjRIBOut prefixTable)
