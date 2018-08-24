@@ -4,13 +4,13 @@ import qualified Data.List
 
 import Prefixes
 import BGPReader(readRib)
-import qualified Overlap2 as Overlap
+import qualified Overlap
 
 main = do
     let sortPrefixes = Data.List.sortOn tuple where tuple (Prefix (a,b)) = (a,b)
         len (Prefix (a,b)) = a
         coverage (Prefix (a,_)) = 2^(32-a)
-        fullCoverage = 2^32
+        fullCoverage = 2^32 - 2^24 - 2^20 -2^16 -- obvious bogons excluded !
 
     rib <- readRib
     putStrLn $ "got " ++ show (length rib) ++ " routes"
