@@ -24,7 +24,7 @@ instance Show a => Show (Tree a) where
         showN Empty = "-"
 
 isSet :: Word8 -> Word32 -> Bool
-isSet level bits = testBit bits (fromIntegral level)
+isSet level bits = testBit bits (31 - fromIntegral level)
 
 ins (a,bits,target,level) Empty        | level == target  = Item (Just a) Empty Empty
                                        | isSet level bits = Item Nothing (ins (a,bits,target,level+1) Empty) Empty
