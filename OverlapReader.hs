@@ -9,6 +9,8 @@ import qualified Overlap2 as Overlap
 main = do
     let sortPrefixes = Data.List.sortOn tuple where tuple (Prefix (a,b)) = (a,b)
         len (Prefix (a,b)) = a
+        coverage (Prefix (a,_)) = 2^(32-a)
+        fullCoverage = 2^32
 
     rib <- readRib
     putStrLn $ "got " ++ show (length rib) ++ " routes"
@@ -41,6 +43,15 @@ main = do
     putStrLn $ show (length single) ++ " non-overlapping and " ++ show (length multiple) ++ " overlapping partitions"
     putStrLn $ "full distribution by size: " ++ show (distribution $ map Overlap.size p)
     putStrLn $ "full distribution by height: " ++ show (distribution $ map Overlap.height p)
+
+    putStrLn "\nCoverage analysis\n"
+    let heads = map Overlap.head p
+        actualCoverage = sum $ map coverage heads
+        overlapCoverage = sum $ map coverage real
+    -- putStrLn $ "actual coverage is" ++ show $ sum $ map ( coverage . head ) p
+    putStrLn $ "actual coverage is " ++ show actualCoverage ++ " (" ++ show (100 * actualCoverage `div` fullCoverage) ++ "%)"
+    putStrLn $ "overlap coverage is " ++ show overlapCoverage ++ " (" ++ show (100 * overlapCoverage `div` fullCoverage) ++ "%)"
+
 
 
 distribution :: [Int] -> [(Int,Int)]
