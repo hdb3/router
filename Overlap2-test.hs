@@ -7,20 +7,32 @@ fl :: [Prefix] -> PrefixTree
 fl = fromList
 -- fl = fromList . ("0.0.0.0/0" :)
 
-ins = flip insertPrefix
-main = do
-    print $ fromList [ "128.0.0.0/1" , "0.0.0.0/0"]
-    print $ map fromList l
-    print $ map fromList m
+main=main2
 
-main' = do
-    -- t id
-    -- t width
-    -- t size
-    -- t (\x -> (id x,size x))
-    let f x = (id x,size x,width x, height x)
-        trees = map ( f . fl) m
+main0 = do
+    print $ insertPrefix "1.0.0.0/1" Empty
+
+main1 = do
+    print $ map fromList n
+    print $ map size $ map fromList n
+    print $ map height $ map fromList n
+
+main2 = do
+    let f x = (id x,size x,height x)
+        trees = map ( f . fl) n
     mapM print trees
+
+n = [
+      ["0.0.0.0/0","0.0.0.0/1","0.0.0.0/2","0.0.0.0/3","0.0.0.0/4","0.0.0.0/5"]
+   ,  ["0.0.0.0/8","1.0.0.0/8","2.0.0.0/8","3.0.0.0/8","4.0.0.0/8","5.0.0.0/8"]
+--     ["0.0.0.0/0"]
+--     , ["0.0.0.0/1"]
+--     , ["0.0.0.0/2"]
+--     , ["128.0.0.0/1"]
+--     , ["128.0.0.0/2"]
+--     , ["128.0.0.0/1","0.0.0.0/1"]
+--     , ["0.0.0.0/1","128.0.0.0/1"]
+    ]
 
 l = [
        ["0.0.0.0/0"]
