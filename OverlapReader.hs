@@ -31,24 +31,28 @@ main = do
         t' = sortPrefixes $ Overlap.toList r
         p' = sortPrefixes $ concatMap Overlap.toList p
         (single,multiple) = Data.List.partition ( (2 >) . Overlap.size) p
+        monsters = filter ( (7 <) . Overlap.height) p
+        slobs = filter ( (999 <) . Overlap.size) p
 
     if real /= t' then putStrLn "consistency check on Overlap.fromList / Overlap.toList FAILS!!!!" else return ()
     if real /= p' then putStrLn "consistency check on Overlap.partition FAILS!!!!" else return ()
-    -- putStrLn $ "consistency check on Overlap.fromList / Overlap.toList " ++ if real == t' then "Success!" else "FAILS!!!!"
 
     putStrLn $ "tree contains " ++ show (Overlap.size t)
     putStrLn $ "tree height   " ++ show (Overlap.height t)
+
+    -- naive longest - would be much faster to use partitions first
     -- putStrLn $ "longest   " ++ show (Overlap.longest t)
     putStrLn $ "tree contains " ++ show (length p) ++ " partitions"
     putStrLn $ show (length single) ++ " non-overlapping and " ++ show (length multiple) ++ " overlapping partitions"
     putStrLn $ "full distribution by size: " ++ show (distribution $ map Overlap.size p)
     putStrLn $ "full distribution by height: " ++ show (distribution $ map Overlap.height p)
+    putStrLn $ "the monsters are: " ++ show (map Overlap.head monsters) ++ "(" ++ show (map Overlap.size monsters) ++ ")"
+    putStrLn $ "the slobs are: " ++ show (map Overlap.head slobs) ++ "(" ++ show (map Overlap.size slobs) ++ ")"
 
     putStrLn "\nCoverage analysis\n"
     let heads = map Overlap.head p
         actualCoverage = sum $ map coverage heads
         overlapCoverage = sum $ map coverage real
-    -- putStrLn $ "actual coverage is" ++ show $ sum $ map ( coverage . head ) p
     putStrLn $ "actual coverage is " ++ show actualCoverage ++ " (" ++ show (100 * actualCoverage `div` fullCoverage) ++ "%)"
     putStrLn $ "overlap coverage is " ++ show overlapCoverage ++ " (" ++ show (100 * overlapCoverage `div` fullCoverage) ++ "%)"
 
@@ -56,4 +60,3 @@ main = do
 
 distribution :: [Int] -> [(Int,Int)]
 distribution = map (\a -> (head a,length a)) . Data.List.group . Data.List.sort
-
