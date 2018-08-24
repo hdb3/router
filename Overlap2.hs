@@ -1,5 +1,6 @@
 {-#LANGUAGE OverloadedStrings #-}
-module Overlap2(Tree(Empty),PrefixTree,height,size,toList,fromList,insertPrefix,reduce,count,longest,partition) where
+module Overlap2(Tree(Empty),PrefixTree,height,size,toList,fromList,insertPrefix,reduce,count,longest,partition,head) where
+import Prelude hiding (head)
 import Data.List(foldl')
 import Data.Bits(testBit)
 import Data.Word
@@ -78,6 +79,12 @@ height = height' where
     height' Empty = 0
     height' (Item Nothing b c) = max (height' b) (height' c)
     height' (Item _ b c) = 1 + max (height' b) (height' c)
+
+head :: Tree a -> a
+head (Item (Just a) _ _) = a
+head (Item Nothing b Empty) = head b
+head (Item Nothing Empty c) = head c
+head _ = undefined
 
 reduce :: Tree a -> Tree a
 reduce Empty = Empty
