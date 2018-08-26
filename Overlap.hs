@@ -1,4 +1,5 @@
 {-#LANGUAGE OverloadedStrings #-}
+{-#LANGUAGE FlexibleInstances #-}
 -- module Overlap(Tree(Empty),PrefixTree,height,size,toList,fromList,insertPrefix,reduce,count,longest,partition,head) where
 module Overlap where
 import Prelude hiding (head)
@@ -16,6 +17,9 @@ insertPrefix :: Prefix -> PrefixTree -> PrefixTree
 insertPrefix = insert
 instance Leaf Prefix where
     lv (Prefix (l,v)) = (l,v)
+
+instance Leaf (a,Prefix) where
+    lv ((a,Prefix (l,v))) = (l,v)
 
 -- End of Prefix specific code
 
