@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module BGPReader(readRib,bgpReader) where
+module BGPReader(readRib,bgpReader,Rib) where
 import System.IO
 import System.Exit(die)
 import System.Environment(getArgs)
@@ -16,8 +16,9 @@ import PrefixTableUtils(getAdjRIBOut)
 import qualified Prefixes
 import qualified PathAttributes
 import qualified BGPData
+import BogonFilter
 
-type Rib = [([PathAttributes.PathAttribute], [Prefixes.Prefix])]
+type Rib = [((Int,[PathAttributes.PathAttribute]), [Prefixes.Prefix])]
 bgpReader :: FilePath -> IO Rib
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
@@ -28,7 +29,7 @@ bgpReader path = do
     rib <- NR.newRib
     mapM_ (updateRib defaultPeerData rib) updates
     rib' <- NR.getRib rib
-    return $ dump rib'
+    return $ applyBogonFilter $ dump rib'
 
 updateRib peer rib BGPUpdateP{..} = do
                 NR.ribUpdateMany rib peer attributesP hashP nlriP
@@ -48,4 +49,5 @@ readRib = do
             return ( take n rib)
 
 dump :: PrefixTable -> Rib
-dump prefixTable = let f (routeData,ipfxs) = (BGPData.pathAttributes routeData,Prefixes.toPrefixes ipfxs) in map f (getAdjRIBOut prefixTable)
+dump prefixTable = let f (routeData,ipfxs) = ((BGPData.routeId routeData , BGPData.pathAttributes routeData) , Prefixes.toPrefixes ipfxs) in map f (getAdjRIBOut prefixTable)
+-- dump prefixTable = let f (routeData,ipfxs) = (BGPData.pathAttributes routeData,Prefixes.toPrefixes ipfxs) in map f (getAdjRIBOut prefixTable)
