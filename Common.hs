@@ -15,12 +15,16 @@ import qualified Data.Sequence as Seq
 import qualified Data.HashMap.Strict
 import Data.Hashable
 import Data.Foldable(toList)
+import Numeric(showHex)
 
 -- Debug stuff
 --
 import qualified Data.ByteString.Base16 as Base16 -- from package base16-bytestring
 import Hexdump -- from package pretty-hex
 
+hex :: Int -> String
+hex x = Numeric.showHex x' "" where
+  x' = (fromIntegral x) :: Word64
 fromHex = fst . Base16.decode
 fromHex' = L.fromStrict . fst . Base16.decode
 toHex = C8.unpack . Base16.encode
