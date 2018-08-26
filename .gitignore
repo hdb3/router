@@ -27,4 +27,6 @@ NewBgpFile
 Passive
 Reader
 OverlapReader
+ASPathReader
+ASReader
 *.bgp
