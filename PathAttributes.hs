@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-#LANGUAGE OverloadedStrings #-}
 module PathAttributes (module Codes, module PathAttributes, module ASPath) where
-import Data.Maybe(fromJust)
+import Data.Maybe(fromJust,fromMaybe)
 import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
@@ -46,7 +46,10 @@ getASPathLength pas = maybe
                       (\(PathAttributeASPath asPath) -> asPathLength asPath)
                       (getPathAttribute TypeCodePathAttributeASPath pas)
 
-getASPath = fromJust . getPathAttribute TypeCodePathAttributeASPath
+getAS2Path = fromJust . getPathAttribute TypeCodePathAttributeASPath
+getAS4Path = fromJust . getPathAttribute TypeCodePathAttributeAS4Path
+
+getASPath pax = fromMaybe (getAS2Path pax) (getPathAttribute TypeCodePathAttributeAS4Path pax)
 
 getMED :: [PathAttribute] -> Word32
 getMED pas = maybe 0 (\(PathAttributeMultiExitDisc x) -> x) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
@@ -61,7 +64,7 @@ checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
-                     PathAttributeASPath ASPath42  |
+                     PathAttributeASPath ASPath  |
                      PathAttributeNextHop IPv4 |
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
@@ -71,7 +74,7 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeMPREachNLRI B.ByteString |
                      PathAttributeMPUnreachNLRI B.ByteString |
                      PathAttributeExtendedCommunities [Word64] |
-                     PathAttributeAS4Path (ASPath Word32) |
+                     PathAttributeAS4Path ASPath |
                      PathAttributeAS4Aggregator (Word32,Word32) |
                      PathAttributeConnector B.ByteString |
                      PathAttributeASPathlimit B.ByteString |
