@@ -61,6 +61,8 @@ instance Show Prefix where
 instance Show IPrefix where
     show = show.toAddrRange.toPrefix
 
+shorten pfxs = if length pfxs < 3 then show pfxs else show ([head pfxs]) ++ " ..(+" ++ show (length pfxs - 1) ++ ")"
+
 subnet :: Prefix -> Word8
 subnet (Prefix (s,_)) = s
 
