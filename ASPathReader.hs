@@ -47,7 +47,7 @@ stripASPath (PathAttributeASPath (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath2 path)) = undefined
 
-reportSegments paths = unlines [all,sequences,sequenceSet1,sequenceSetN,seqSetSeq] where
+reportSegments paths = unlines [heading,all,sequences,sequenceSet1,sequenceSetN,seqSetSeq] where
     heading = "\nSequence Analysis"
     all = "all " ++ show (length paths)
     sequences = "sequences " ++ show ( length $ filter matchSeq paths)
