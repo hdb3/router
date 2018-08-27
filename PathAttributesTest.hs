@@ -8,20 +8,25 @@ import Data.Int(Int64)
 import Common
 import PathAttributes
 
+-- NOTE - the test only supports either AS4 or AS2 at one time since test data is not managed smartly
+--      - manually substitute 'AS2' for 'AS4'
+--      - also note.... the null path test fails in AS2 mode since the decoder cannot tell an empty AS2 path from an AS4 path
+-- TODO - update when there is an AS4 path convertor
+-- TODO2 add test for AS4Paths
 main = do
     main'
     test [PathAttributeLargeCommunity[(1::Word32,2::Word32,3::Word32)]]
     mapM_ testCode allPathAttributeTypeCodes
     test []
     test [PathAttributeOrigin 2]
-    test [PathAttributeASPath (ASPath []) ]
-    test [PathAttributeASPath (ASPath [ASSequence [1]]) ]
+    test [PathAttributeASPath (ASPath4 []) ]
+    test [PathAttributeASPath (ASPath4 [ASSequence [1]]) ]
     test attrs1
     where
         testCode c = assert ( c == (toEnum . fromEnum) c ) (putStrLn $ show c ++ " - OK" )
-        path0 = ASPath []
-        path1 = ASPath [seg1]
-        path2 = ASPath [seg1,seg2]
+        path0 = ASPath4 []
+        path1 = ASPath4 [seg1]
+        path2 = ASPath4 [seg1,seg2]
         seg1  = ASSet [1,2,3]
         seg2  = ASSequence [6,5,4]
         attrs1 = [PathAttributeOrigin 2, PathAttributeASPath path2, PathAttributeNextHop "192.168.0.1"]
