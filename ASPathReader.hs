@@ -21,17 +21,66 @@ main = do
     putStrLn $ "routes: " ++ show (length rib)
     let prefixCount = sum (map (length .snd) rib)
     putStrLn $ "prefixes: " ++ show prefixCount
-    putStrLn $ unlines $ map (customShowRoute . snd . fst ) rib
+    -- putStrLn $ unlines $ mapt (customShowRoute . snd , shorten ) rib
+    -- putStrLn $ unlines $ map (customShowRoute . snd . fst ) rib
+    let paths = map (stripASPath . getASPath . snd . fst) rib
+        simplePaths = map flattenPath paths
+        simplerPaths = map removePrepends simplePaths
+        uniqueASes = Data.List.nub $ concat simplePaths
+        endASes = Data.List.nub $ map last simplePaths
+        transitASes = Data.List.nub $ concatMap (tail.reverse) simplerPaths 
+    putStrLn $ "uniqueASes: " ++ show (length uniqueASes)
+    putStrLn $ "endASes: " ++ show (length endASes)
+    putStrLn $ "transitASes: " ++ show (length transitASes)
+    putStrLn $ reportSegments paths
 
 customShowRoute = showASPath . getASPath
 -- customShowRoute route = show (pathAttributes route)
 
-showASPath = showPath . stripASPath -- where
+mapt (f,g) = map (\(a,b) -> (f a ++ " " ++ g b))
+showASPath = showPath . stripASPath
+
 stripASPath :: PathAttribute -> [ASSegment Word32]
 stripASPath (PathAttributeASPath (ASPath2 path)) = stripASPath $ PathAttributeASPath (toASPath4 (ASPath2 path))
 stripASPath (PathAttributeASPath (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath2 path)) = undefined
+
+reportSegments paths = unlines [all,sequences,sequenceSet1,sequenceSetN,seqSetSeq] where
+    all = "all " ++ show (length paths)
+    sequences = "sequences " ++ show ( length $ filter matchSeq paths)
+    sequenceSet1 = "sequenceSet1 " ++ show ( length $ filter matchSeqSet1 paths)
+    sequenceSetN = "sequenceSetN " ++ show ( length $ filter matchSeqSet paths)
+    seqSetSeq = "seqSetSeq " ++ show ( length $ filter matchSeqSetSeq paths)
+
+matchSeq [ASSequence _] = True
+matchSeq _ = False
+
+matchSeqSet1 [ASSequence _ , ASSet [_]] = True
+matchSeqSet1 _ = False
+
+matchSeqSet [ASSequence _ , ASSet [_]] = False
+matchSeqSet [ASSequence _ , ASSet _] = True
+matchSeqSet _ = False
+
+matchSeqSetSeq [ASSequence _ , ASSet _, ASSequence _] = True
+matchSeqSetSeq _ = False
+
+flattenPath :: [ASSegment Word32] -> [Word32]
+--flattenPath _ = []
+flattenPath [] = []
+flattenPath ((ASSequence []):segs) = flattenPath segs
+flattenPath ((ASSequence asns):segs) = asns ++ flattenPath segs
+flattenPath ((ASSet []):segs) = flattenPath segs
+flattenPath ((ASSet asns):segs) = (head asns) : flattenPath segs
+
+removePrepends :: [Word32] -> [Word32]
+--removePrepends _ = []
+removePrepends [] = []
+removePrepends [x] = [x]
+removePrepends (x:y:ax) | x==y = removePrepends (y:ax)
+                        | otherwise = x : removePrepends (y:ax)
+
 
 showPath [ASSequence seq1 , ASSet set, ASSequence seq2] = "SEQ+SET+SEQ " ++ show seq1 ++ " / " ++ show set ++ " / " ++ show seq2
 showPath [ASSequence seq , ASSet set] = "SEQ+SET     " ++ show seq ++ " / " ++ show set
