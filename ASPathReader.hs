@@ -29,6 +29,7 @@ main = do
         uniqueASes = Data.List.nub $ concat simplePaths
         endASes = Data.List.nub $ map last simplePaths
         transitASes = Data.List.nub $ concatMap (tail.reverse) simplerPaths 
+    putStrLn $ "\nAS analysis"
     putStrLn $ "uniqueASes: " ++ show (length uniqueASes)
     putStrLn $ "endASes: " ++ show (length endASes)
     putStrLn $ "transitASes: " ++ show (length transitASes)
@@ -47,6 +48,7 @@ stripASPath (PathAttributeAS4Path (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath2 path)) = undefined
 
 reportSegments paths = unlines [all,sequences,sequenceSet1,sequenceSetN,seqSetSeq] where
+    heading = "\nSequence Analysis"
     all = "all " ++ show (length paths)
     sequences = "sequences " ++ show ( length $ filter matchSeq paths)
     sequenceSet1 = "sequenceSet1 " ++ show ( length $ filter matchSeqSet1 paths)
