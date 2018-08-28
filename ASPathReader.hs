@@ -25,16 +25,23 @@ main = do
     -- putStrLn $ unlines $ map (customShowRoute . snd . fst ) rib
     let paths = map (stripASPath . getASPath . snd . fst) rib
         simplePaths = map flattenPath paths
+        longestPath = Data.List.maximum (map length simplePaths)
         simplerPaths = map removePrepends simplePaths
-        uniqueASes = Data.List.nub $ concat simplePaths
-        endASes = Data.List.nub $ map last simplePaths
-        transitASes = Data.List.nub $ concatMap (tail.reverse) simplerPaths 
-        transitASDistribution = distribution_ 20 $ concatMap (tail.reverse) simplerPaths 
-    putStrLn $ "\nAS analysis"
-    putStrLn $ "uniqueASes: " ++ show (length uniqueASes)
-    putStrLn $ "endASes: " ++ show (length endASes)
-    putStrLn $ "transitASes: " ++ show (length transitASes)
-    putStrLn $ "transitAS distribution: " ++ show transitASDistribution
+        longestPathWithoutPrepending = Data.List.maximum (map length simplerPaths)
+        uniqueAScount = length $ Data.List.nub $ concat simplePaths
+        endAScount = length $ Data.List.nub $ map last simplePaths
+        transitASes = concatMap (tail.reverse) simplerPaths 
+        transitAScount = length $ Data.List.nub transitASes
+        transitASDistribution = distribution_ 10 transitASes
+        transitASDistribution' = distribution transitASes
+    putStrLn   "\nAS analysis"
+    putStrLn $ "longestPath:  " ++ show longestPath
+    putStrLn $ "longestPathWithoutPrepending:  " ++ show longestPathWithoutPrepending
+    putStrLn $ "uniqueAScount:  " ++ show uniqueAScount
+    putStrLn $ "endAScount:     " ++ show endAScount
+    putStrLn $ "transitAScount: " ++ show transitAScount
+    putStrLn $ "transitAS distribution:\n" ++ unlines ( map show transitASDistribution )
+    putStrLn $ "transitAS distribution':\n" ++ unlines ( map show transitASDistribution' )
     putStrLn $ reportSegments paths
 
 customShowRoute = showASPath . getASPath
@@ -73,10 +80,10 @@ matchSeqSetSeq _ = False
 flattenPath :: [ASSegment Word32] -> [Word32]
 --flattenPath _ = []
 flattenPath [] = []
-flattenPath ((ASSequence []):segs) = flattenPath segs
-flattenPath ((ASSequence asns):segs) = asns ++ flattenPath segs
-flattenPath ((ASSet []):segs) = flattenPath segs
-flattenPath ((ASSet asns):segs) = (head asns) : flattenPath segs
+flattenPath (ASSequence []:segs) = flattenPath segs
+flattenPath (ASSequence asns:segs) = asns ++ flattenPath segs
+flattenPath (ASSet []:segs) = flattenPath segs
+flattenPath (ASSet asns:segs) = head asns : flattenPath segs
 
 removePrepends :: [Word32] -> [Word32]
 --removePrepends _ = []

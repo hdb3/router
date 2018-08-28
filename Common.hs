@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Common(module Data.IP, module Common, module Hexdump) where
-import Data.List(delete,sort,group)
+import Data.List(delete,sort,group,sortOn,foldl')
 import Data.IP -- from package iproute
 import Network.Socket (PortNumber) -- from package network
 import Data.Binary
@@ -13,6 +13,7 @@ import Data.Monoid
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 import qualified Data.Sequence as Seq
 import qualified Data.HashMap.Strict
+import qualified Data.Map.Strict as DMS
 import Data.Hashable
 import Data.Foldable(toList)
 import Numeric(showHex)
@@ -65,16 +66,25 @@ included [] _ = True
 included ax [] | not (null ax) = False
 included ax (b:bx) = included (delete b ax) bx
 
+-- unsure which implementation of 'distribution' is better.....
+-- distribution = map (\a -> (head a,length a)) . Data.List.group . Data.List.sort
+
 distribution :: Ord a => [a] -> [(a,Int)]
-distribution = map (\a -> (head a,length a)) . Data.List.group . Data.List.sort
+distribution = sortOn ( (0 -) . snd) . DMS.toList . mapped
+    where
+    -- mapped :: (Ord a, Num b) => [a] -> DMS.Map a b
+    mapped ix = foldl' f' DMS.empty ix
+    -- f' :: (Ord a, Num b) => DMS.Map a b -> a -> DMS.Map a b
+    f' m k = DMS.insertWith (+) k 1 m
 
 distribution_ :: Integral a => Int -> [a] -> [(a,Int)]
-distribution_ n a | length a > n = take n (distribution a1) ++ [rollUp (distribution a2)]
+distribution_ n a | length (distribution a) > n = a1 ++ [rollUp a2]
                   | otherwise = distribution a
                   where
-    (a1,a2) = splitAt n a
+    (a1,a2) = splitAt n (distribution a)
     rollUp [] = (0,0)
-    rollUp ax = (fromIntegral $ 0 - length ax, 0)
+    -- rollUp ax = (fromIntegral $ length ax, sum (map snd a2))
+    rollUp ax = (0, sum (map snd a2))
 
 bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")
