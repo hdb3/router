@@ -29,10 +29,12 @@ main = do
         uniqueASes = Data.List.nub $ concat simplePaths
         endASes = Data.List.nub $ map last simplePaths
         transitASes = Data.List.nub $ concatMap (tail.reverse) simplerPaths 
+        transitASDistribution = distribution_ 20 $ concatMap (tail.reverse) simplerPaths 
     putStrLn $ "\nAS analysis"
     putStrLn $ "uniqueASes: " ++ show (length uniqueASes)
     putStrLn $ "endASes: " ++ show (length endASes)
     putStrLn $ "transitASes: " ++ show (length transitASes)
+    putStrLn $ "transitAS distribution: " ++ show transitASDistribution
     putStrLn $ reportSegments paths
 
 customShowRoute = showASPath . getASPath

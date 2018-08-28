@@ -3,7 +3,8 @@ import System.IO
 import qualified Data.List
 
 import Prefixes
-import BGPReader(readRib)
+import Common(distribution)
+import BGPReader(readGroupedRib)
 import qualified Overlap
 
 main = do
@@ -12,7 +13,7 @@ main = do
         coverage (Prefix (a,_)) = 2^(32-a)
         fullCoverage = 2^32 - 2^24 - 2^20 -2^16 -- obvious bogons excluded !
 
-    rib <- readRib
+    rib <- readGroupedRib
     putStrLn $ "got " ++ show (length rib) ++ " routes"
     -- print (last rib)
     let allPrefixes = concatMap snd rib
@@ -55,8 +56,3 @@ main = do
         overlapCoverage = sum $ map coverage real
     putStrLn $ "actual coverage is " ++ show actualCoverage ++ " (" ++ show (100 * actualCoverage `div` fullCoverage) ++ "%)"
     putStrLn $ "overlap coverage is " ++ show overlapCoverage ++ " (" ++ show (100 * overlapCoverage `div` fullCoverage) ++ "%)"
-
-
-
-distribution :: [Int] -> [(Int,Int)]
-distribution = map (\a -> (head a,length a)) . Data.List.group . Data.List.sort

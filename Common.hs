@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Common(module Data.IP, module Common, module Hexdump) where
-import Data.List(delete)
+import Data.List(delete,sort,group)
 import Data.IP -- from package iproute
 import Network.Socket (PortNumber) -- from package network
 import Data.Binary
@@ -65,6 +65,17 @@ included [] _ = True
 included ax [] | not (null ax) = False
 included ax (b:bx) = included (delete b ax) bx
 
+distribution :: Ord a => [a] -> [(a,Int)]
+distribution = map (\a -> (head a,length a)) . Data.List.group . Data.List.sort
+
+distribution_ :: Integral a => Int -> [a] -> [(a,Int)]
+distribution_ n a | length a > n = take n (distribution a1) ++ [rollUp (distribution a2)]
+                  | otherwise = distribution a
+                  where
+    (a1,a2) = splitAt n a
+    rollUp [] = (0,0)
+    rollUp ax = (fromIntegral $ 0 - length ax, 0)
+
 bgpPort = 179 :: PortNumber
 ipV4_wildcard = toHostAddress ( read "0.0.0.0")
 ipV4_localhost = toHostAddress ( read "127.0.0.1")
@@ -100,10 +111,9 @@ getn = do
     else do b <- get
             bs <- getn
             return (b:bs)
-{-
--}
 
 -- moved from RFC4721.hs
+
 class Enum e => EnumWord8 e where
     decode8 :: Word8 -> e
     decode8 = toEnum . fromIntegral
