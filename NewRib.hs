@@ -65,19 +65,22 @@ getRib rib = do
 updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
 updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBTable are )
 
+makeRouteData peerData pathAttributes routeId = RouteData peerData pathAttributes routeId pathLength nextHop origin med fromEBGP
+    where
+    pathLength = getASPathLength pathAttributes
+    fromEBGP = isExternal peerData
+    med = if fromEBGP then 0 else getMED pathAttributes
+    nextHop = getNextHop pathAttributes
+    origin = getOrigin pathAttributes
+
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
 ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
-ribUpdateMany' peerData attrs hash pfxs (Rib' prefixTable adjRibOutTables ) = let
+ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables ) = let
+    routeData = makeRouteData peerData pathAttributes routeId
     ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
-    routeData = RouteData peerData attrs hash pathLength nextHop origin med fromEBGP
-    fromEBGP = isExternal peerData
-    pathLength = getASPathLength attrs
-    med = if fromEBGP then 0 else getMED attrs
-    nextHop = getNextHop attrs
-    origin = getOrigin attrs
-    adjRibOutTables' = updateAdjRibOutTables (updates,hash) adjRibOutTables
+    adjRibOutTables' = updateAdjRibOutTables (updates,routeId) adjRibOutTables
     in Rib' prefixTable' adjRibOutTables'
 
 ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)

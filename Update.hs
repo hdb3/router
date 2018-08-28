@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 -- module Update where
-module Update(processUpdate,getUpdateP,BGPUpdateP(..),fromRaw') where
+module Update(processUpdate,getUpdateP,BGPUpdateP(..)) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -17,13 +17,13 @@ import PathAttributes
 import Prefixes
 import BGPparse
 
--- TODO - remove rawAttributes, substitute only a hash....
-data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix], rawAttributes :: RawAttributes, hashP :: Int } deriving Show
+data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix], hashP :: Int } deriving Show
 
+{-
 newtype RawAttributes = RawAttributes B.ByteString deriving Eq
 instance Show RawAttributes where
     show (RawAttributes raw) = "RawAttributes [" ++ show (B.length raw ) ++ "]"
-
+-}
 type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
@@ -57,13 +57,13 @@ verbose (a,n,w) = do
     putStrLn "---------------------"
 
 getUpdateP :: BGPMessage -> BGPUpdateP
-getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w, rawAttributes = RawAttributes (L.toStrict attributes),
+getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w,
                                         hashP = fromIntegral $ hash64 (L.toStrict attributes)  }
                                where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
-getRaw :: BGPUpdateP -> B.ByteString
-getRaw BGPUpdateP{..} = fromRaw rawAttributes
-fromRaw (RawAttributes raw) = raw
-fromRaw' = L.fromStrict . fromRaw
+-- getRaw :: BGPUpdateP -> B.ByteString
+-- getRaw BGPUpdateP{..} = fromRaw rawAttributes
+-- fromRaw (RawAttributes raw) = raw
+-- fromRaw' = L.fromStrict . fromRaw
 
 processUpdate a n w v = do
 -- 'v' is the verbose flag
