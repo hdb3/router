@@ -33,7 +33,7 @@ main = do
         transitASes = concatMap (tail.reverse) simplerPaths 
         transitAScount = length $ Data.List.nub transitASes
         transitASDistribution = distribution_ 10 transitASes
-        transitASDistribution' = distribution transitASes
+        -- transitASDistribution' = distribution transitASes
     putStrLn   "\nAS analysis"
     putStrLn $ "longestPath:  " ++ show longestPath
     putStrLn $ "longestPathWithoutPrepending:  " ++ show longestPathWithoutPrepending
@@ -41,7 +41,7 @@ main = do
     putStrLn $ "endAScount:     " ++ show endAScount
     putStrLn $ "transitAScount: " ++ show transitAScount
     putStrLn $ "transitAS distribution:\n" ++ unlines ( map show transitASDistribution )
-    putStrLn $ "transitAS distribution':\n" ++ unlines ( map show transitASDistribution' )
+    -- putStrLn $ "transitAS distribution':\n" ++ unlines ( map show transitASDistribution' )
     putStrLn $ reportSegments paths
 
 customShowRoute = showASPath . getASPath
