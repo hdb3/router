@@ -78,13 +78,13 @@ ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
 
 ribUpdater' :: RouteData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttributes routeId nlri ) . ( ribWithdrawMany' peerData withdrawn ) where
+ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttributes routeId nlri ) . ( ribWithdrawMany' peerData withdrawn )
 
 
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
-ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
-ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
+--ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
+--ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables ) = let
     routeData = makeRouteData peerData pathAttributes routeId
@@ -92,7 +92,7 @@ ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutT
     adjRibOutTables' = updateAdjRibOutTables (updates,routeId) adjRibOutTables
     in Rib' prefixTable' adjRibOutTables'
 
-ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)
+--ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)
 ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
 ribWithdrawMany' peerData pfxs (Rib' prefixTable adjRibOutTables) = let
     ( prefixTable' , updates ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
