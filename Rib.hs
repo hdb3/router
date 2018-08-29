@@ -66,7 +66,12 @@ getRib rib = do
 updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
 updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBTable are )
 
-makeRouteData peerData pathAttributes routeId = RouteData peerData pathAttributes routeId pathLength nextHop origin med fromEBGP
+makeRouteData :: PeerData -> ParsedUpdate -> RouteData
+makeRouteData peerData parsedUpdate = makeRouteData' peerData ( puPathAttributes parsedUpdate) ( hash parsedUpdate)
+
+
+makeRouteData' :: PeerData -> [PathAttribute] -> Int -> RouteData
+makeRouteData' peerData pathAttributes routeId = RouteData peerData pathAttributes routeId pathLength nextHop origin med fromEBGP
     where
     pathLength = getASPathLength pathAttributes
     fromEBGP = isExternal peerData
@@ -87,7 +92,7 @@ ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttri
 --ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables ) = let
-    routeData = makeRouteData peerData pathAttributes routeId
+    routeData = makeRouteData' peerData pathAttributes routeId
     ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
     adjRibOutTables' = updateAdjRibOutTables (updates,routeId) adjRibOutTables
     in Rib' prefixTable' adjRibOutTables'

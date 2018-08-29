@@ -38,7 +38,7 @@ bgpReader path = do
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = Rib.makeRouteData defaultPeerData puPathAttributes hash
+                let routeData = Rib.makeRouteData defaultPeerData parsedUpdate
                 -- Rib.ribUpdateMany rib peer pathAttributes routeId nlri
                 -- Rib.ribWithdrawMany rib peer withdrawn
                 Rib.ribUpdater rib routeData parsedUpdate
