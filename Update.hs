@@ -43,15 +43,6 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
     diagnose _ (Right _) _ = ""
     diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
-verbose (a,n,w) = do
-    putStrLn "attributes"
-    print a
-    putStrLn "nrli"
-    print n
-    putStrLn "withdrawn"
-    print w
-    putStrLn "---------------------"
-
 getRoute :: ParsedUpdate -> RouteData
 getRoute ParsedUpdate{..} = makeRouteData undefined puPathAttributes hash
 
@@ -68,25 +59,14 @@ getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withd
                                         hash = fromIntegral $ hash64 (L.toStrict attributes)  }
                                where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
 
-processUpdate a n w v = do
--- 'v' is the verbose flag
+processUpdate a n w = 
     let parsedResult = parseUpdate a n w
         parsedUpdate = validResult parsedResult
-    if parseSuccess parsedResult then do
-        when v (putStrLn "Parse success")
-        if not (validAttributes parsedUpdate) then do
-            putStrLn "***Invalid Update!!!"
-            verbose parsedUpdate
-        else if endOfRIB parsedUpdate then
-            putStrLn "End-of-RIB"
-        else if v then
-            verbose parsedUpdate
-        else
-            -- putChar '.'
-            return ()
-        return (Just parsedUpdate)
-    else do
-        putStr "parsing failed: "
-        putStrLn $ parseErrorMesgs parsedResult
-        putStrLn $ diagoseResult parsedResult (a,n,w)
-        return Nothing
+    in
+    if parseSuccess parsedResult then (Just parsedUpdate)
+    else Nothing
+{- informative error message is:
+        "parsing failed: "
+        parseErrorMesgs parsedResult
+        diagoseResult parsedResult (a,n,w)
+-}
