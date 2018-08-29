@@ -47,7 +47,7 @@ data BgpFSMconfig = BgpFSMconfig {
                                   exitMVar :: MVar (ThreadId,String)
                                   , logFile :: Maybe Handle
                                   , peerData :: PeerData
-                                  , newRib :: Rib.Rib
+                                  , rib :: Rib.Rib
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
@@ -182,7 +182,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        addPeer newRib peerData -- shoudl update it with the received parameters!!!!
+        addPeer rib peerData -- shoudl update it with the received parameters!!!!
         return (Established,bsock,osm)
 
     established :: F
@@ -192,15 +192,15 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                prefixTable <- Rib.getRib newRib
+                prefixTable <- Rib.getRib rib
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
                 parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
                 if isJust parsedUpdate then do
-                    Rib.ribUpdateMany newRib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
-                    Rib.ribWithdrawMany newRib peerData parsedWithdrawn
+                    Rib.ribUpdateMany rib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
+                    Rib.ribWithdrawMany rib peerData parsedWithdrawn
                     return (Established,bsock',osm)
                 else do
                     snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty
