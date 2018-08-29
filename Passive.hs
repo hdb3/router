@@ -20,6 +20,7 @@ import BgpFSM
 import Capabilities
 import Collision
 import Args
+import Rib
 
 main :: IO ()
 main = do config <- getConfig
@@ -37,7 +38,8 @@ main' (address,peerData) = do
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
     forkIO $ reaper exitMVar
-    let config = BgpFSMconfig undefined collisionDetector undefined delayOpenTimer exitMVar Nothing peerData
+    rib <- Rib.newRib
+    let config = BgpFSMconfig undefined collisionDetector undefined delayOpenTimer exitMVar Nothing peerData rib
     E.finally (loop sock config) (close sock)
   where
     delayOpenTimer = 10
