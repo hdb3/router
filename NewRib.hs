@@ -11,6 +11,7 @@ import Prefixes
 import PrefixTable
 import qualified PrefixTableUtils
 import PathAttributes
+import Update
 import AdjRIBOut
 
 type Rib = IORef Rib'
@@ -72,6 +73,14 @@ makeRouteData peerData pathAttributes routeId = RouteData peerData pathAttribute
     med = if fromEBGP then 0 else getMED pathAttributes
     nextHop = getNextHop pathAttributes
     origin = getOrigin pathAttributes
+
+ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
+ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
+
+ribUpdater' :: RouteData -> ParsedUpdate -> Rib' -> Rib'
+ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttributes routeId nlri ) . ( ribWithdrawMany' peerData withdrawn ) where
+
+
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
