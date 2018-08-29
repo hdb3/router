@@ -1,4 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
+
+{- DEPRECATED - not updated since major API changes - superceded by BGPReader -}
+
 module Main where
 import System.Environment
 import System.IO(Handle,openBinaryFile,IOMode(..))
@@ -30,7 +33,7 @@ main = do
         stream <- L.hGetContents handle
         let msgs = runGet getBGPByteStrings stream
             parsedMsgs = map decodeBGPByteString msgs
-            updateMsgs = map getUpdateP $ getUpdatesFrom parsedMsgs
+            updateMsgs = map getUpdate $ getUpdatesFrom parsedMsgs
             limit = if n > 0 then take n else id
         processUpdates ( limit updateMsgs )
 
@@ -40,7 +43,7 @@ processUpdates updates = do
         mapM_ (updateRib rib) updates
         summary rib >>= putStrLn
 
-analyse BGPUpdateP{..} =
+analyse ParsedUpdate{..} =
    putStrLn $ show (length nlriP) ++ " prefixes " ++ show (length withdrawnP) ++ " withdrawn " ++ show (getASPathLength attributesP) ++ " = pathlength "
 list  :: (Show t) => [t] -> String
 list = unlines . map show
@@ -56,6 +59,6 @@ dropUpdatesFrom msgs = foldr keepOnlyUpdates [] msgs where
                           keepOnlyUpdates a@BGPUpdate{} ax = ax
                           keepOnlyUpdates a ax = a:ax
 
-updateRib rib BGPUpdateP{..} = do
+updateRib rib ParsedUpdate{..} = do
                 ribUpdateMany rib (attributesP,fromRaw' rawAttributes) nlriP
                 ribWithdrawMany rib withdrawnP

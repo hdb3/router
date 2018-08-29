@@ -1,4 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
+
+{- DEPRECATED - not updated since major API changes - superceded by BGPReader -}
+
 module Main where
 import System.Environment
 import System.IO
@@ -34,7 +37,7 @@ main = do
         stream <- L.hGetContents handle
         let msgs = runGet getBGPByteStrings stream
             parsedMsgs = map decodeBGPByteString msgs
-            updateMsgs = map getUpdateP $ getUpdatesFrom parsedMsgs
+            updateMsgs = map getUpdate $ getUpdatesFrom parsedMsgs
             limit = if n > 0 then take n else id
         processUpdates ( limit updateMsgs )
 
