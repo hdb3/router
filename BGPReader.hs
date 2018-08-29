@@ -25,19 +25,23 @@ type Rib = [((Int,[PathAttributes.PathAttribute]), [Prefixes.Prefix])]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
-    let msgs = runGet getBGPByteStrings stream
-        parsedMsgs = map decodeBGPByteString msgs
-        updates = map getUpdateP $ filter isUpdate parsedMsgs
+    stream' <- L.hGetContents <$ ( openBinaryFile path ReadMode )
+    let bgpByteStrings = runGet getBGPByteStrings stream
+        bgpMessages = map decodeBGPByteString bgpByteStrings
+        updates = map getUpdate $ filter isUpdate bgpMessages
+    let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
     rib <- NR.newRib
-    mapM_ (updateRib defaultPeerData rib) updates
+    mapM_ (updateRib rib) updates
     rib' <- NR.getRib rib
     let groupedRib = map normalise $ applyBogonFilter $ groupBy_ (getRIB rib')
         ungroupedRib = map normalise $ filter (bogonFilter . snd) (getRIB rib')
     return (getRIB rib')
 
-updateRib peer rib BGPUpdateP{..} = do
-                NR.ribUpdateMany rib peer attributesP hashP nlriP
-                NR.ribWithdrawMany rib peer withdrawnP
+updateRib rib parsedUpdate@ParsedUpdate{..} = do
+                let routeData = NR.makeRouteData defaultPeerData puPathAttributes hash
+                -- NR.ribUpdateMany rib peer pathAttributes routeId nlri
+                -- NR.ribWithdrawMany rib peer withdrawn
+                NR.ribUpdater rib routeData parsedUpdate
 
 -- readRib: a convenience function for simple applications
 -- the returned structure masks only derived or artificial data

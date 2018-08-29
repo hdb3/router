@@ -1,6 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
--- module Update where
-module Update(processUpdate,getUpdateP,BGPUpdateP(..)) where
+module Update(processUpdate,getUpdate,ParsedUpdate(..)) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -16,14 +15,11 @@ import Capabilities
 import PathAttributes
 import Prefixes
 import BGPparse
+import BGPData
 
-data BGPUpdateP = BGPUpdateP { attributesP :: [PathAttribute], nlriP :: [Prefix], withdrawnP :: [Prefix], hashP :: Int } deriving Show
+-- 'hash' will become 'routeId' when it is inserted into the RouteData record....
+data ParsedUpdate = ParsedUpdate { puPathAttributes :: [PathAttribute], nlri :: [Prefix], withdrawn :: [Prefix], hash :: Int } deriving Show
 
-{-
-newtype RawAttributes = RawAttributes B.ByteString deriving Eq
-instance Show RawAttributes where
-    show (RawAttributes raw) = "RawAttributes [" ++ show (B.length raw ) ++ "]"
--}
 type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
@@ -56,14 +52,21 @@ verbose (a,n,w) = do
     print w
     putStrLn "---------------------"
 
-getUpdateP :: BGPMessage -> BGPUpdateP
-getUpdateP BGPUpdate{..} = BGPUpdateP { attributesP = a , nlriP = n , withdrawnP = w,
-                                        hashP = fromIntegral $ hash64 (L.toStrict attributes)  }
+getRoute :: ParsedUpdate -> RouteData
+getRoute ParsedUpdate{..} = makeRouteData undefined puPathAttributes hash
+
+makeRouteData peerData pathAttributes routeId = RouteData peerData pathAttributes routeId pathLength nextHop origin med fromEBGP
+    where
+    pathLength = getASPathLength pathAttributes
+    fromEBGP = isExternal peerData
+    med = if fromEBGP then 0 else getMED pathAttributes
+    nextHop = getNextHop pathAttributes
+    origin = getOrigin pathAttributes
+
+getUpdate :: BGPMessage -> ParsedUpdate
+getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
+                                        hash = fromIntegral $ hash64 (L.toStrict attributes)  }
                                where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
--- getRaw :: BGPUpdateP -> B.ByteString
--- getRaw BGPUpdateP{..} = fromRaw rawAttributes
--- fromRaw (RawAttributes raw) = raw
--- fromRaw' = L.fromStrict . fromRaw
 
 processUpdate a n w v = do
 -- 'v' is the verbose flag
