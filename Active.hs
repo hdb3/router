@@ -12,7 +12,7 @@ import BGPparse
 import Capabilities
 import Args
 import Collision
-import NewRib
+import Rib
 
 main :: IO ()
 main = do config <- getConfig
@@ -32,7 +32,7 @@ main' (address,peerData) = do
     exitMVar <- newEmptyMVar
     t <- utcSecs
     handle <- openBinaryFile (show t ++ ".bgp") WriteMode
-    rib <- NewRib.newRib
+    rib <- Rib.newRib
     let config = BgpFSMconfig sock collisionDetector peerName delayOpenTimer exitMVar (Just handle) peerData rib
     finally (bgpFSM config) (close sock) 
     (tid,msg) <- takeMVar exitMVar
