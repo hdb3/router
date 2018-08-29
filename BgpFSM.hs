@@ -12,6 +12,7 @@ import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
 import Data.Int(Int64)
+-- TODO - this hash should not be here!!! maybe in Update parser?
 import FarmHash(hash64) -- from package farmhash
 
 import Common
@@ -25,7 +26,6 @@ import Collision
 import Update
 import PathAttributes
 import Prefixes
-import Rib
 import NewRib
 import PrefixTableUtils
 
@@ -182,11 +182,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        rib <- if checkAS4Capability osm then newRib4 else newRib2
-        -- let osm' = let {adjRibIn = rib} in OpenStateMachine {adjRibIn = rib, ..}
-        let osm' = osm {adjRibIn = rib}
         addPeer newRib peerData -- shoudl update it with the received parameters!!!!
-        return (Established,bsock,osm')
+        return (Established,bsock,osm)
 
     established :: F
     established (bsock,osm) = do
@@ -195,9 +192,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                ribState <- summary (adjRibIn osm)
-                -- ribState <- display (adjRibIn osm)
-                putStrLn ribState
                 prefixTable <- NewRib.getRib newRib
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
@@ -205,8 +199,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             update@BGPUpdate{..} -> do
                 parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
                 if isJust parsedUpdate then do
-                    Rib.ribUpdateMany (adjRibIn osm) (parsedAttributes,attributes) parsedNlri
-                    Rib.ribWithdrawMany (adjRibIn osm) parsedWithdrawn
                     NewRib.ribUpdateMany newRib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
                     NewRib.ribWithdrawMany newRib peerData parsedWithdrawn
                     return (Established,bsock',osm)
