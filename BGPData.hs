@@ -43,6 +43,8 @@ data RouteData =  RouteData { peerData :: PeerData
 instance Hashable RouteData where
     hashWithSalt _ = routeId
 
+nullRoute :: RouteData
+nullRoute = RouteData undefined undefined 0 undefined undefined undefined undefined undefined
 defaultPeerData :: PeerData
 defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 100 0 [] []
 defaultGlobalData :: GlobalData
