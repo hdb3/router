@@ -15,12 +15,10 @@ import Capabilities
 import PathAttributes
 import Prefixes
 import BGPparse
-import BGPData
 
 -- 'hash' will become 'routeId' when it is inserted into the RouteData record....
 data ParsedUpdate = ParsedUpdate { puPathAttributes :: [PathAttribute], nlri :: [Prefix], withdrawn :: [Prefix], hash :: Int } deriving Show
 
-type Update = ([PathAttribute],[Prefix],[Prefix])
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)
     where
         decodedAttributes = decodeOrFail a :: Either (L.ByteString, Int64, String) (L.ByteString, Int64, [PathAttribute])

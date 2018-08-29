@@ -202,7 +202,8 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                          idle "established - Update parse error"
                     )
                     (\parsedUpdate -> do
-                      let routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
+                      let routeData = Rib.makeRouteData peerData parsedUpdate
+                      -- let routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
                       Rib.ribUpdater rib routeData parsedUpdate
                       return (Established,bsock',osm)
                     )
