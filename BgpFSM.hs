@@ -195,35 +195,18 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
                 return (Established,bsock',osm)
-{-
-updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = Rib.makeRouteData defaultPeerData puPathAttributes hash
-                -- Rib.ribUpdateMany rib peer pathAttributes routeId nlri
-                -- Rib.ribWithdrawMany rib peer withdrawn
-                Rib.ribUpdater rib routeData parsedUpdate
-
--}
-            update@BGPUpdate{..} -> do
-                -- parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
-                -- let parsedUpdate = processUpdate attributes nlri withdrawn
-                --if isJust parsedUpdate then do
+            update@BGPUpdate{} -> do
                 maybe
                     ( do
                          snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty
                          idle "established - Update parse error"
                     )
-                    (\(parsedAttributes,parsedNlri,parsedWithdrawn) -> do
-                      -- let hash = fromIntegral $ hash64 (L.toStrict attributes)
-                      --     routeData = Rib.makeRouteData peerData parsedAttributes hash
-                      -- Rib.ribUpdateMany rib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
-                      -- Rib.ribWithdrawMany rib peerData parsedWithdrawn
-                      let parsedUpdate = getUpdate update
-                          routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
+                    (\parsedUpdate -> do
+                      let routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
                       Rib.ribUpdater rib routeData parsedUpdate
                       return (Established,bsock',osm)
                     )
-                    ( processUpdate attributes nlri withdrawn )
-                    -- parsedUpdate
+                    ( processUpdate update )
 
             notify@BGPNotify{} -> do
                 print notify

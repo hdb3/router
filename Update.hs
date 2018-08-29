@@ -43,27 +43,19 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
     diagnose _ (Right _) _ = ""
     diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
-getRoute :: ParsedUpdate -> RouteData
-getRoute ParsedUpdate{..} = makeRouteData undefined puPathAttributes hash
-
-makeRouteData peerData pathAttributes routeId = RouteData peerData pathAttributes routeId pathLength nextHop origin med fromEBGP
-    where
-    pathLength = getASPathLength pathAttributes
-    fromEBGP = isExternal peerData
-    med = if fromEBGP then 0 else getMED pathAttributes
-    nextHop = getNextHop pathAttributes
-    origin = getOrigin pathAttributes
-
 getUpdate :: BGPMessage -> ParsedUpdate
 getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
                                         hash = fromIntegral $ hash64 (L.toStrict attributes)  }
                                where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
 
-processUpdate a n w = 
+-- TODO clean up the mess here around error handling.....
+processUpdate :: BGPMessage -> Maybe ParsedUpdate
+processUpdate ( BGPUpdate w a n ) = 
     let parsedResult = parseUpdate a n w
-        parsedUpdate = validResult parsedResult
+        (puPathAttributes,nlri,withdrawn) = validResult parsedResult
+        hash = fromIntegral $ hash64 (L.toStrict a)
     in
-    if parseSuccess parsedResult then (Just parsedUpdate)
+    if parseSuccess parsedResult then Just (ParsedUpdate puPathAttributes nlri withdrawn hash)
     else Nothing
 {- informative error message is:
         "parsing failed: "

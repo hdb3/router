@@ -53,6 +53,7 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
+-- TODO - make resilient against lookup failure which could happen if a peer withdrew routes it had not sent....
     (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
     f :: Int -> PrefixTableEntry -> Maybe PrefixTableEntry
     f _ routes = let routes' = SL.filter (notPeer peer) routes in
