@@ -10,7 +10,7 @@ import Control.Monad(liftM)
 import Common
 import Update
 import BGPparse
-import qualified NewRib as NR
+import qualified Rib
 import GetBGPMsg
 import BGPData(defaultPeerData)
 import PrefixTable(PrefixTable)
@@ -30,18 +30,18 @@ bgpReader path = do
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
     let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
-    rib <- NR.newRib
+    rib <- Rib.newRib
     mapM_ (updateRib rib) updates
-    rib' <- NR.getRib rib
+    rib' <- Rib.getRib rib
     let groupedRib = map normalise $ applyBogonFilter $ groupBy_ (getRIB rib')
         ungroupedRib = map normalise $ filter (bogonFilter . snd) (getRIB rib')
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = NR.makeRouteData defaultPeerData puPathAttributes hash
-                -- NR.ribUpdateMany rib peer pathAttributes routeId nlri
-                -- NR.ribWithdrawMany rib peer withdrawn
-                NR.ribUpdater rib routeData parsedUpdate
+                let routeData = Rib.makeRouteData defaultPeerData puPathAttributes hash
+                -- Rib.ribUpdateMany rib peer pathAttributes routeId nlri
+                -- Rib.ribWithdrawMany rib peer withdrawn
+                Rib.ribUpdater rib routeData parsedUpdate
 
 -- readRib: a convenience function for simple applications
 -- the returned structure masks only derived or artificial data

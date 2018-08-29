@@ -26,7 +26,7 @@ import Collision
 import Update
 import PathAttributes
 import Prefixes
-import NewRib
+import Rib
 import PrefixTableUtils
 
 verbose = False
@@ -47,7 +47,7 @@ data BgpFSMconfig = BgpFSMconfig {
                                   exitMVar :: MVar (ThreadId,String)
                                   , logFile :: Maybe Handle
                                   , peerData :: PeerData
-                                  , newRib :: NewRib.Rib
+                                  , newRib :: Rib.Rib
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
@@ -192,15 +192,15 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                prefixTable <- NewRib.getRib newRib
+                prefixTable <- Rib.getRib newRib
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
                 return (Established,bsock',osm)
             update@BGPUpdate{..} -> do
                 parsedUpdate@(Just(parsedAttributes,parsedNlri,parsedWithdrawn)) <- processUpdate attributes nlri withdrawn verbose
                 if isJust parsedUpdate then do
-                    NewRib.ribUpdateMany newRib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
-                    NewRib.ribWithdrawMany newRib peerData parsedWithdrawn
+                    Rib.ribUpdateMany newRib peerData parsedAttributes (fromIntegral $ hash64 (L.toStrict attributes)) parsedNlri
+                    Rib.ribWithdrawMany newRib peerData parsedWithdrawn
                     return (Established,bsock',osm)
                 else do
                     snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty

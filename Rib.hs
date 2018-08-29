@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module NewRib where
+module Rib where
 import Data.IORef
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
