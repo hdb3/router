@@ -14,6 +14,7 @@ import Capabilities
 
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
+                             -- TODO add a default local address - usually is going to be myBGPid but this might not be routable in some cases
                              }
                             deriving (Show,Eq)
 
@@ -43,6 +44,9 @@ data RouteData =  RouteData { peerData :: PeerData
 instance Hashable RouteData where
     hashWithSalt _ = routeId
 
+localPeer :: GlobalData -> PeerData
+localPeer gd = PeerData gd False (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 undefined undefined undefined undefined 
+-- localPeer gd = PeerData gd false (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 0 0 [] [] 
 nullRoute :: RouteData
 nullRoute = RouteData undefined undefined 0 undefined undefined undefined undefined undefined
 defaultPeerData :: PeerData

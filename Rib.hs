@@ -88,6 +88,12 @@ makeRouteData' peerData pathAttributes routeId = RouteData peerData pathAttribut
     nextHop = getNextHop pathAttributes
     origin = getOrigin pathAttributes
 
+ribUpdater2 :: Rib -> PeerData -> ParsedUpdate -> IO()
+ribUpdater2 rib routeData update = modifyIORef' rib (ribUpdater2' routeData update)
+
+ribUpdater2' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
+ribUpdater2' peerData ParsedUpdate{..} = ( ribUpdateMany' peerData puPathAttributes hash nlri ) . ( ribWithdrawMany' peerData withdrawn )
+
 ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
 
@@ -95,8 +101,8 @@ ribUpdater' :: RouteData -> ParsedUpdate -> Rib' -> Rib'
 ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttributes routeId nlri ) . ( ribWithdrawMany' peerData withdrawn )
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
---ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
---ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
+ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
+ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables ) = let
     routeData = makeRouteData' peerData pathAttributes routeId

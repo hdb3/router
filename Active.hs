@@ -1,3 +1,4 @@
+{-#LANGUAGE OverloadedStrings #-}
 module Main where
 -- active TCP speaker
 import System.Environment
@@ -9,6 +10,8 @@ import System.IO(Handle,openBinaryFile,IOMode( WriteMode ))
 import Common
 import BgpFSM
 import BGPparse
+import BGPData
+import Update
 import Capabilities
 import Args
 import Collision
@@ -21,6 +24,7 @@ main = do config <- getConfig
                  config
 
 main' (address,peerData) = do
+    let global = globalData peerData
     print address
     putStrLn "begin:: "
     sock <- socket AF_INET Stream defaultProtocol
@@ -33,6 +37,10 @@ main' (address,peerData) = do
     t <- utcSecs
     handle <- openBinaryFile (show t ++ ".bgp") WriteMode
     rib <- Rib.newRib
+    -- this is kludgy - the global and peer data distribution needs to be overhauled
+    let local = localPeer global
+        update = igpUpdate (myBGPid global) ["10.0.0.0/8","13.0.0.0/8"]
+    ribUpdater2 rib local update
     let config = BgpFSMconfig sock collisionDetector peerName delayOpenTimer exitMVar (Just handle) peerData rib
     finally (bgpFSM config) (close sock) 
     (tid,msg) <- takeMVar exitMVar
