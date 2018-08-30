@@ -12,8 +12,6 @@ import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
 import Data.Int(Int64)
--- TODO - this hash should not be here!!! maybe in Update parser?
-import FarmHash(hash64) -- from package farmhash
 
 import Common
 import BGPparse
