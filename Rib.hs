@@ -38,6 +38,8 @@ addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
                            in Rib' prefixTable adjRib'
 
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
+pullAllUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
+pullAllUpdates = pullUpdates 0
 pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
 pullUpdates n peer rib = atomicModifyIORef' rib f where
     f (Rib' pt arot) = (Rib' pt arot' , updates) where
