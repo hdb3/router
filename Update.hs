@@ -6,7 +6,6 @@ import Data.Int
 import Data.Binary
 import Data.Either
 import Control.Monad(when)
-import FarmHash(hash64) -- from package farmhash
 
 import Common
 import RFC4271
@@ -48,7 +47,7 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
 
 getUpdate :: BGPMessage -> ParsedUpdate
 getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
-                                        hash = fromIntegral $ hash64 (L.toStrict attributes)  }
+                                        hash = myHash attributes  }
                                where (a,n,w) = validResult $ parseUpdate attributes nlri withdrawn
 
 -- TODO clean up the mess here around error handling.....
@@ -56,7 +55,7 @@ processUpdate :: BGPMessage -> Maybe ParsedUpdate
 processUpdate ( BGPUpdate w a n ) = 
     let parsedResult = parseUpdate a n w
         (puPathAttributes,nlri,withdrawn) = validResult parsedResult
-        hash = fromIntegral $ hash64 (L.toStrict a)
+        hash = myHash a
     in
     if parseSuccess parsedResult then Just (ParsedUpdate puPathAttributes nlri withdrawn hash)
     else Nothing
@@ -68,6 +67,6 @@ processUpdate ( BGPUpdate w a n ) =
 
 originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
-    hash = fromIntegral $ hash64 $ L.toStrict $ encode attributes
+    hash = myHash $ encode attributes
 
 igpUpdate = originateUpdate _BGP_ORIGIN_IGP []

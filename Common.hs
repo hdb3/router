@@ -17,6 +17,7 @@ import qualified Data.Map.Strict as DMS
 import Data.Hashable
 import Data.Foldable(toList)
 import Numeric(showHex)
+import FarmHash(hash64)
 
 -- Debug stuff
 --
@@ -56,7 +57,8 @@ peekAll s = Data.Foldable.toList s
 
 -- application stuff
 --
-
+myHash :: L.ByteString -> Int
+myHash = fromIntegral . hash64 . L.toStrict
 utcSecs = do
     (TOD sec psec) <- getClockTime
     return sec
