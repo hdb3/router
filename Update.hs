@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(processUpdate,getUpdate,ParsedUpdate(..)) where
+module Update(processUpdate,getUpdate,ParsedUpdate(..),igpUpdate) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -41,6 +41,11 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
     diagnose _ (Right _) _ = ""
     diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
+-- BGPUpdate { withdrawn :: L.ByteString, attributes :: L.ByteString, nlri :: L.ByteString }
+
+-- ungetUpdate :: ParsedUpdate -> BGPMessage
+-- ungetUpdate ParsedUpdate{..} = BGPUpdate { withdrawn = encode withdrawn , attributes = encode puPathAttributes , nlri = nlri } 
+
 getUpdate :: BGPMessage -> ParsedUpdate
 getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
                                         hash = fromIntegral $ hash64 (L.toStrict attributes)  }
@@ -60,3 +65,9 @@ processUpdate ( BGPUpdate w a n ) =
         parseErrorMesgs parsedResult
         diagoseResult parsedResult (a,n,w)
 -}
+
+originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
+    attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
+    hash = fromIntegral $ hash64 $ L.toStrict $ encode attributes
+
+igpUpdate = originateUpdate _BGP_ORIGIN_IGP []
