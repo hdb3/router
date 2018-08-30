@@ -25,7 +25,7 @@ type Rib = [((Int,[PathAttributes.PathAttribute]), [Prefixes.Prefix])]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
-    stream' <- L.hGetContents <$ ( openBinaryFile path ReadMode )
+    stream' <- L.hGetContents <$ openBinaryFile path ReadMode
     let bgpByteStrings = runGet getBGPByteStrings stream
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
@@ -60,7 +60,7 @@ readRib = readUngroupedRib
 readRib' = do
     args <- getArgs
     let n = if 1 < length args then read (args !! 1) :: Int else 0
-    if null args then do
+    if null args then
         die "no filename specified"
     else do
         rib <- bgpReader (args !! 0)

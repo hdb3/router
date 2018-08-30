@@ -198,9 +198,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 print $ map fst updates
                 routes <- lookupRoutes rib peerData updates
                 -- print routes
-                mapM snd routes
+                mapM_ snd routes
                 return (Established,bsock',osm)
-            update@BGPUpdate{} -> do
+            update@BGPUpdate{} ->
                 maybe
                     ( do
                          snd $ BGPNotify NotificationUPDATEMessageError 0 L.empty

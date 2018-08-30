@@ -24,10 +24,10 @@ type AdjRIBTable = Fifo AdjRIBEntry
 newAdjRIBTable = emptyFifo
 
 insertAdjRIBTable :: AdjRIBEntry -> AdjRIBTable -> AdjRIBTable
-insertAdjRIBTable are table = ( enqueue table are )
+insertAdjRIBTable are table = enqueue table are
 
 isEmptyAdjRIBTable :: AdjRIBTable -> Bool
-isEmptyAdjRIBTable table = nullFifo table
+isEmptyAdjRIBTable = nullFifo
 
 getAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
 -- undefined on empty
@@ -41,7 +41,7 @@ getAllAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,[AdjRIBEntry])
 getAllAdjRIBTable table = ( table' , ares ) where (table' , ares) = dequeueAll table
 
 peekAllAdjRIBTable :: AdjRIBTable -> [AdjRIBEntry]
-peekAllAdjRIBTable table = peekAll table
+peekAllAdjRIBTable = peekAll
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
 groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap 

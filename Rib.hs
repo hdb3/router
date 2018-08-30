@@ -80,7 +80,7 @@ updateRibOutWithPeerData :: PeerData -> RouteData -> [IPrefix] -> AdjRIB -> AdjR
 
 updateRibOutWithPeerData originPeer routeData updates = Data.Map.mapWithKey updateWithKey where
     updateWithKey destinationPeer table = if isExternal destinationPeer || isExternal originPeer
-                               then ( insertAdjRIBTable (updates, routeId routeData ) table )
+                               then insertAdjRIBTable (updates, routeId routeData ) table
                                else table
 
 makeRouteData :: PeerData -> ParsedUpdate -> RouteData
@@ -100,13 +100,13 @@ ribUpdater2 :: Rib -> PeerData -> ParsedUpdate -> IO()
 ribUpdater2 rib routeData update = modifyIORef' rib (ribUpdater2' routeData update)
 
 ribUpdater2' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater2' peerData ParsedUpdate{..} = ( ribUpdateMany' peerData puPathAttributes hash nlri ) . ( ribWithdrawMany' peerData withdrawn )
+ribUpdater2' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri . ribWithdrawMany' peerData withdrawn
 
 ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
 
 ribUpdater' :: RouteData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater' RouteData{..} ParsedUpdate{..} = ( ribUpdateMany' peerData pathAttributes routeId nlri ) . ( ribWithdrawMany' peerData withdrawn )
+ribUpdater' RouteData{..} ParsedUpdate{..} = ribUpdateMany' peerData pathAttributes routeId nlri . ribWithdrawMany' peerData withdrawn
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()

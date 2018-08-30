@@ -19,7 +19,7 @@ instance Leaf Prefix where
     lv (Prefix (l,v)) = (l,v)
 
 instance Leaf (a,Prefix) where
-    lv ((a,Prefix (l,v))) = (l,v)
+    lv (a,Prefix (l,v)) = (l,v)
 
 -- End of Prefix specific code
 
@@ -49,7 +49,7 @@ ins (a,bits,target,level) (Item x y z) | level == target  = Item (Just a) y z
 -- insert a bits target = ins (a,bits,target,0)
 
 insert :: Leaf a => a -> Tree a -> Tree a
-insert a t = ins (a,v,l,0) t where (l,v) = lv a 
+insert a = ins (a,v,l,0) where (l,v) = lv a 
 
 class Leaf a where
   lv ::  a -> (Word8,Word32)
@@ -71,7 +71,7 @@ count (Item _ b c ) = 1 + count b + count c
 singleton x = Item (Just x) Empty Empty
 
 toList :: Tree a -> [a]
-toList t = foldr (:) [] t
+toList = foldr (:) []
 
 fromList :: Leaf a => [a] -> Tree a
 fromList = foldl' (flip insert) Empty
@@ -86,8 +86,8 @@ size = foldr (\_ b -> b+1) 0
 
 longest :: Tree a -> [a]
 longest Empty = []
-longest (Item Nothing b c) = if (length $ longest c) > (length $ longest b) then longest c else longest b
-longest (Item (Just a) b c) = a : (longest (Item Nothing b c))
+longest (Item Nothing b c) = if length (longest c) > length (longest b) then longest c else longest b
+longest (Item (Just a) b c) = a : longest (Item Nothing b c)
 
 height :: Tree a -> Int
 -- height = height' . reduce where
