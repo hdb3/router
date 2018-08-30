@@ -70,14 +70,13 @@ originateWithdraw prefixes = ParsedUpdate []  [] prefixes 0
 
 updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
 updateRoute attributes origin maybeAS maybeNextHop prefixes = ParsedUpdate attributes' prefixes [] hash where
-    -- attributes' = attributes
     attributes' = updateOrigin origin $ updateNextHop maybeNextHop $ updatePath maybeAS attributes :: [PathAttribute]
-    updateOrigin Nothing b = b
     updateNextHop Nothing b = b
+    updateNextHop (Just nextHop) b = substitutePathAttribute (PathAttributeNextHop nextHop) b
+    updateOrigin Nothing b = b
+    updateOrigin (Just origin) b = substitutePathAttribute (PathAttributeOrigin origin) b
     updatePath Nothing b = b
-    -- updateOrigin a b = b
-    -- updateNextHop a b = b
-    -- updatePath a b = b
+    updatePath (Just as) b = prePendAS as b
     hash = myHash $ encode attributes'
 
 originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate

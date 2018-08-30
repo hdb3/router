@@ -43,7 +43,7 @@ lookupRoute rib peer (iprefixes, routeId ) = do
                               (Just $ myAS $ globalData $ peerData route )
                               ( Just $ nextHop route )
                               (toPrefixes iprefixes)
-    return $ ungetUpdate update
+    return $ ungetUpdate $ if (isExternal peer) then update' else update
 -- originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate
 -- updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
 
