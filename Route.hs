@@ -36,14 +36,14 @@ lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO BGPMessage
 lookupRoute rib peer (iprefixes, 0 ) = return $ ungetUpdate $ originateWithdraw $ toPrefixes iprefixes
 lookupRoute rib peer (iprefixes, routeId ) = do
     maybeRoute <- queryRib rib (head iprefixes)
-    let route = fromJust $ maybeRoute
+    let route = fromJust maybeRoute
         update = updateRoute (pathAttributes route) Nothing Nothing Nothing (toPrefixes iprefixes)
         update' = updateRoute (pathAttributes route)
                               (Just _BGP_ORIGIN_INCOMPLETE)
                               (Just $ myAS $ globalData $ peerData route )
                               ( Just $ nextHop route )
                               (toPrefixes iprefixes)
-    return $ ungetUpdate $ if (isExternal peer) then update' else update
+    return $ ungetUpdate $ if isExternal peer then update' else update
 -- originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate
 -- updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
 

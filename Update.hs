@@ -30,7 +30,7 @@ parseErrorMesgs (a,n,w) = concat [getMsgA a,getMsgP n,getMsgP w]
           getMsgP (Left(_,_,s)) = s
           getMsgA (Right _) = ""
           getMsgA (Left(_,_,s)) = s
-validResult (a,n,w) = (f a,f n, f w) where f = (\(Right(_,_,x)) ->x)
+validResult (a,n,w) = (f a,f n, f w) where f (Right (_, _, x)) = x
 validAttributes (a,n,w) = (null n && null a) || checkForRequiredPathAttributes a
 endOfRIB (a,n,w) = null a && null n && null w
 

@@ -46,7 +46,7 @@ getMsg b t = do next <- getNextTimeout t b
 -- core functions...
 
 getNextTimeout :: Int -> BufferedSocket -> IO BufferedSocket
-getNextTimeout' t b = getNext b
+getNextTimeout' t = getNext
 getNextTimeout t bsock = let t' = t * 10000000 in
              do resMaybe <- timeout t' (getNext bsock)
                 maybe

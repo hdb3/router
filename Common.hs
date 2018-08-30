@@ -26,7 +26,7 @@ import Hexdump -- from package pretty-hex
 
 hex :: Int -> String
 hex x = Numeric.showHex x' "" where
-  x' = (fromIntegral x) :: Word64
+  x' = fromIntegral x :: Word64
 fromHex = fst . Base16.decode
 fromHex' = L.fromStrict . fst . Base16.decode
 toHex = C8.unpack . Base16.encode
@@ -75,7 +75,7 @@ distribution :: Ord a => [a] -> [(a,Int)]
 distribution = sortOn ( (0 -) . snd) . DMS.toList . mapped
     where
     -- mapped :: (Ord a, Num b) => [a] -> DMS.Map a b
-    mapped ix = foldl' f' DMS.empty ix
+    mapped = foldl' f' DMS.empty
     -- f' :: (Ord a, Num b) => DMS.Map a b -> a -> DMS.Map a b
     f' m k = DMS.insertWith (+) k 1 m
 
