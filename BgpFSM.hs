@@ -25,6 +25,7 @@ import Update
 import PathAttributes
 import Prefixes
 import Rib
+import Route
 import PrefixTableUtils
 
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
@@ -194,7 +195,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn $ showPrefixTable prefixTable
                 updates <- pullAllUpdates peerData rib 
                 putStrLn "Ready to send...:"
-                print updates
+                print $ map fst updates
+                routes <- lookupRoutes rib peerData updates
+                print routes
+                mapM snd routes
                 return (Established,bsock',osm)
             update@BGPUpdate{} -> do
                 maybe
