@@ -197,7 +197,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn "Ready to send...:"
                 print $ map fst updates
                 routes <- lookupRoutes rib peerData updates
-                print routes
+                -- print routes
                 mapM snd routes
                 return (Established,bsock',osm)
             update@BGPUpdate{} -> do
