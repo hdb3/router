@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(processUpdate,getUpdate,ParsedUpdate(..),igpUpdate) where
+module Update(updateRoute, processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),igpUpdate,originateWithdraw,originateUpdate) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -42,8 +42,9 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
 
 -- BGPUpdate { withdrawn :: L.ByteString, attributes :: L.ByteString, nlri :: L.ByteString }
 
--- ungetUpdate :: ParsedUpdate -> BGPMessage
--- ungetUpdate ParsedUpdate{..} = BGPUpdate { withdrawn = encode withdrawn , attributes = encode puPathAttributes , nlri = nlri } 
+ungetUpdate :: ParsedUpdate -> BGPMessage
+ungetUpdate ParsedUpdate{..} = BGPUpdate { withdrawn = encode withdrawn , attributes = encode puPathAttributes , nlri = encode nlri } 
+-- ungetUpdate ( ParsedUpdate puPathAttributes puNlri puWithdrawn _ ) = BGPUpdate { withdrawn = encode puWithdrawn , attributes = encode puPathAttributes , nlri = encode puNlri } 
 
 getUpdate :: BGPMessage -> ParsedUpdate
 getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
@@ -65,6 +66,21 @@ processUpdate ( BGPUpdate w a n ) =
         diagoseResult parsedResult (a,n,w)
 -}
 
+originateWithdraw prefixes = ParsedUpdate []  [] prefixes 0
+
+updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
+updateRoute attributes origin maybeAS maybeNextHop prefixes = ParsedUpdate attributes' prefixes [] hash where
+    -- attributes' = attributes
+    attributes' = updateOrigin origin $ updateNextHop maybeNextHop $ updatePath maybeAS attributes :: [PathAttribute]
+    updateOrigin Nothing b = b
+    updateNextHop Nothing b = b
+    updatePath Nothing b = b
+    -- updateOrigin a b = b
+    -- updateNextHop a b = b
+    -- updatePath a b = b
+    hash = myHash $ encode attributes'
+
+originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate
 originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
     hash = myHash $ encode attributes

@@ -37,6 +37,12 @@ addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
                               f (rd,ipfxs) = (ipfxs , routeId rd)
                            in Rib' prefixTable adjRib'
 
+-- queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
+queryRib :: Rib -> IPrefix -> IO (Maybe RouteData)
+queryRib rib prefix = do
+    rib' <- readIORef rib
+    return $ queryPrefixTable (prefixTable rib') prefix 
+
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
 pullAllUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
 pullAllUpdates = pullUpdates 0

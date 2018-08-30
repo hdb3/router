@@ -13,7 +13,8 @@ module PrefixTable where
  - hence a fast implementation is essential
 -}
 
-import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
+import qualified Data.IntMap.Strict as IntMap
+-- import qualified Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey) as IntMap
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 import qualified Data.Tuple
@@ -24,10 +25,10 @@ import BGPData
 import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
-type PrefixTable = IntMap PrefixTableEntry
+type PrefixTable = IntMap.IntMap PrefixTableEntry
 
 newPrefixTable :: PrefixTable
-newPrefixTable = Data.IntMap.Strict.empty
+newPrefixTable = IntMap.empty
 
 slHead sl = x where
     Just (x,_) = SL.uncons sl
@@ -45,16 +46,22 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
                                                    in SL.insert newRoute $ SL.filter pIsNotOldRoute routes
 
     newSingletonPrefixTableEntry = SL.singleton route
-    (maybeOldPrefixTableEntry, newPrefixTable) = insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt where
+    (maybeOldPrefixTableEntry, newPrefixTable) = IntMap.insertLookupWithKey f ipfx newSingletonPrefixTableEntry pt where
         f _ = updatePrefixTableEntry
     newPrefixTableEntry = maybe newSingletonPrefixTableEntry ( updatePrefixTableEntry newSingletonPrefixTableEntry ) maybeOldPrefixTableEntry
     newBestRoute = slHead newPrefixTableEntry
     isNewBestRoute = newBestRoute == route
 
+-- this function finds the best route for a specicif prefix
+-- if the requirement is bulk look up then another function might be better.....
+queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
+-- queryPrefixTable _ _ = Nothing
+queryPrefixTable table (IPrefix iprefix) = maybe Nothing (Just . slHead) (IntMap.lookup iprefix table)
+
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
 -- TODO - make resilient against lookup failure which could happen if a peer withdrew routes it had not sent....
-    (Just oldRouteList , pt') = updateLookupWithKey f ipfx pt
+    (Just oldRouteList , pt') = IntMap.updateLookupWithKey f ipfx pt
     f :: Int -> PrefixTableEntry -> Maybe PrefixTableEntry
     f _ routes = let routes' = SL.filter (notPeer peer) routes in
          if null routes' then Nothing else Just routes'
