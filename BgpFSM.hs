@@ -192,6 +192,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 prefixTable <- Rib.getRib rib
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
+                updates <- pullAllUpdates peerData rib 
+                putStrLn "Ready to send...:"
+                print updates
                 return (Established,bsock',osm)
             update@BGPUpdate{} -> do
                 maybe
