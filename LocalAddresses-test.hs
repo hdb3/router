@@ -17,3 +17,8 @@ main = do
     validPublicAddress <- getPublicAddress 
     putStrLn $ "valid public address: " ++ show validPublicAddress
 
+    bestAddress <- getBestAddress 
+    putStrLn $ "best address: " ++ show bestAddress
+
+    allInterfaces <- getAllInterfaces
+    putStrLn $ "\n*************************\nallInterfaces\n" ++ allInterfaces
