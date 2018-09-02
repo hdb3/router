@@ -10,7 +10,7 @@ import BGPparse
 import Capabilities
 import BGPData
 
-type Args = (SockAddr, PeerData)
+type Args = (SockAddr, [PeerData])
 -- type Args = (SockAddr, BGPMessage, BGPMessage, PeerData)
 
 -- here is an example of a valid parameter list:
@@ -77,6 +77,8 @@ getConfig' args = (address,pd) where
             parseParams $ args !! 2
         else
             defaultRemoteParameters
+
+    additionalPeers = if length args > 2 then map parseParams ( drop 3 args)
 
     parseAddress :: String -> SockAddr
     parseAddress ps = SockAddrInet (read $ ws !! 1) (toHostAddress ip) where

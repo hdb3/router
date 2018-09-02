@@ -72,6 +72,7 @@ instance Eq PeerData where
 instance Ord PeerData where
     compare p1 p2 = compare (peerBGPid p1) (peerBGPid p2)
 
+-- TODO - LocalPref should be a route not peer level value!!!!!
 instance Ord RouteData where
 
   compare rd1 rd2 = compare (localPref (peerData rd1), pathLength rd1, origin rd1, med rd1, not $ fromEBGP rd1, peerBGPid (peerData rd1), peerIPv4 (peerData rd1))

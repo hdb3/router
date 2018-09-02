@@ -1,5 +1,6 @@
 module Args2 where
 import System.Environment
+import System.Exit(die)
 import Control.Exception
 import Data.List(intercalate)
 import Data.Word
@@ -13,11 +14,10 @@ import Capabilities
 import BGPData
 import LocalAddresses
 
-defaultParameterString = ["192.168.1.2,179","30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0","0,0,127.0.0.1"]
-helpMessage = "usage:  | address,port | address,port localBGPparameters | address,port localBGPparameters remoteBGPparameters \n\
-               \where xBGPparameters = holdTime,AS,BGPID,optionalcapabilities\n\
-               \zero values can be used to represent wildcards\n\
-               \an example of this is:  " ++ intercalate "  " defaultParameterString
+--defaultParameterString = ["192.168.1.2,179","30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0","0,0,127.0.0.1"]
+helpMessage = "usage:  localBGPparameters remoteBGPparameters [ remoteBGPparameters ]*\n\
+               \where localBGPparameters = AS,BGPID,HoldTime\n\
+               \and   remoteBGPparameters = AS,BGPID,optionalcapabilities\n"
 
 getConfig :: IO (Either String [PeerData])
 getConfig = do
@@ -29,7 +29,8 @@ getConfig = do
     let force v = if 0 < length  (show v) then return v else return undefined
     eVal <- try (force $ getConfig' localIPv4 args) :: IO (Either SomeException [PeerData])
 
-    return $ either
+    if length args < 2 then die helpMessage else
+        return $ either
              (\_ -> Left helpMessage)
              -- (\e -> Left $ show e)
              -- expect "Prelude.read: no parse"

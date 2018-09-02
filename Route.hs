@@ -22,28 +22,32 @@ import Capabilities
 import Collision
 import Update
 import PathAttributes
+import PathAttributeUtils
 import Prefixes
 import Rib
 import PrefixTableUtils
 import AdjRIBOut
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
--- lookupRoutes _ _ _ = return [BGPKeepalive]
-lookupRoutes rib peer updates = mapM (lookupRoute rib peer) updates
+lookupRoutes rib peer = mapM (lookupRoute rib peer)
 
 lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO BGPMessage
--- lookupRoute _ _ _ = return BGPKeepalive
 lookupRoute rib peer (iprefixes, 0 ) = return $ ungetUpdate $ originateWithdraw $ toPrefixes iprefixes
 lookupRoute rib peer (iprefixes, routeId ) = do
     maybeRoute <- queryRib rib (head iprefixes)
     let route = fromJust maybeRoute
-        update = updateRoute (pathAttributes route) Nothing Nothing Nothing (toPrefixes iprefixes)
-        update' = updateRoute (pathAttributes route)
-                              (Just _BGP_ORIGIN_INCOMPLETE)
-                              (Just $ myAS $ globalData $ peerData route )
-                              ( Just $ nextHop route )
-                              (toPrefixes iprefixes)
-    return $ ungetUpdate $ if isExternal peer then update' else update
--- originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate
--- updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
-
+        igpUpdate = makeUpdate (toPrefixes iprefixes)
+                               []
+                               ( setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                   setNextHop (nextHop route) $
+                                   setLocalPref (localPref $ peerData route) $
+                                   pathAttributes route
+                                 )
+        egpUpdate = makeUpdate (toPrefixes iprefixes)
+                               []
+                               ( setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                   setNextHop (nextHop route) $
+                                   prePendAS ( myAS $ globalData $ peerData route) $
+                                   pathAttributes route
+                                 )
+    return $ ungetUpdate $ if isExternal peer then egpUpdate else igpUpdate

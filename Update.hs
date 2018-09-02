@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(updateRoute, processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),igpUpdate,originateWithdraw,originateUpdate) where
+module Update(updateRoute, processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,igpUpdate,originateWithdraw,originateUpdate) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -12,6 +12,7 @@ import RFC4271
 import Open
 import Capabilities
 import PathAttributes
+import PathAttributeUtils
 import Prefixes
 import BGPparse
 
@@ -83,5 +84,8 @@ originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpda
 originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
     hash = myHash $ encode attributes
+
+makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
+makeUpdate nlri withdrawn attributes = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
 
 igpUpdate = originateUpdate _BGP_ORIGIN_IGP []
