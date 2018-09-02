@@ -7,8 +7,8 @@ import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode,decodeOrFail)
 import Control.Concurrent
 import Control.Exception
-import Control.Monad(when,unless)
-import Data.Maybe(fromJust,isJust)
+import Control.Monad(when,unless,liftM)
+import Data.Maybe(fromJust,isJust,catMaybes)
 import Data.Either(either)
 import Data.Int(Int64)
 
@@ -29,25 +29,33 @@ import PrefixTableUtils
 import AdjRIBOut
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
-lookupRoutes rib peer = mapM (lookupRoute rib peer)
+lookupRoutes rib peer ares = (liftM catMaybes) $ mapM (lookupRoute rib peer) ares
 
-lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO BGPMessage
-lookupRoute rib peer (iprefixes, 0 ) = return $ ungetUpdate $ originateWithdraw $ toPrefixes iprefixes
+lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO (Maybe BGPMessage)
+lookupRoute rib peer (iprefixes, 0 ) = return $ Just $ ungetUpdate $ originateWithdraw $ toPrefixes iprefixes
+lookupRoute rib peer ([], routeId ) = do
+    putStrLn ("empty prefix list in lookupRoute")
+    return Nothing
+
 lookupRoute rib peer (iprefixes, routeId ) = do
     maybeRoute <- queryRib rib (head iprefixes)
-    let route = fromJust maybeRoute
-        igpUpdate = makeUpdate (toPrefixes iprefixes)
-                               []
-                               ( setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                   setNextHop (nextHop route) $
-                                   setLocalPref (localPref $ peerData route) $
-                                   pathAttributes route
-                                 )
-        egpUpdate = makeUpdate (toPrefixes iprefixes)
-                               []
-                               ( setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                   setNextHop (nextHop route) $
-                                   prePendAS ( myAS $ globalData $ peerData route) $
-                                   pathAttributes route
-                                 )
-    return $ ungetUpdate $ if isExternal peer then egpUpdate else igpUpdate
+    maybe (do putStrLn "failed lookup in lookupRoute"
+              return Nothing
+          )
+          (\route -> let igpUpdate = makeUpdate (toPrefixes iprefixes)
+                                                []
+                                                ( setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                                    setNextHop (nextHop route) $
+                                                    setLocalPref (localPref $ peerData route) $
+                                                    pathAttributes route
+                                                  )
+                         egpUpdate = makeUpdate (toPrefixes iprefixes)
+                                                []
+                                                ( setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                                    setNextHop (nextHop route) $
+                                                    prePendAS ( myAS $ globalData $ peerData route) $
+                                                    pathAttributes route
+                                                  )
+              in return $ Just $ ungetUpdate $ if isExternal peer then egpUpdate else igpUpdate
+          )
+          maybeRoute
