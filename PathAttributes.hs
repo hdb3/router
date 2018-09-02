@@ -7,7 +7,7 @@ import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
-import Data.List(find)
+import Data.List(find, deleteBy, sortOn)
 import Data.IP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -24,8 +24,19 @@ type LargeCommunity = (Word32,Word32,Word32)
 getPathAttribute :: PathAttributeTypeCode -> [PathAttribute] -> Maybe PathAttribute
 getPathAttribute code pas = find ((code ==) . identify) pas
 
+deletePathAttributeType :: PathAttributeTypeCode -> [PathAttribute] -> [PathAttribute]
+deletePathAttributeType t = filter ( (t ==) . identify )
+
+insertPathAttribute :: PathAttribute -> [PathAttribute] -> [PathAttribute]
+-- replaces an existing attribute of the same type
+insertPathAttribute attr = sortPathAttributes . ( attr : ) . deleteBy sameSort attr where
+    sameSort a b = identify a == identify b
+
+sortPathAttributes :: [PathAttribute] -> [PathAttribute]
+sortPathAttributes = sortOn identify
+
 substitutePathAttribute :: PathAttribute -> [PathAttribute] -> [PathAttribute]
--- note silently ignores request if attribute is missing :-(
+-- silently ignores request if attribute is missing, use insertPathAttribute if this is not waht is required
 substitutePathAttribute attr = map (f attr) where
     f a b = if sameSort a b then a else b
     sameSort a b = identify a == identify b
@@ -35,33 +46,6 @@ updatePathAttribute :: PathAttributeTypeCode -> (PathAttribute -> PathAttribute)
 updatePathAttribute t f = map f' where
     f' a | t == identify a = f a
          | otherwise = a
-
-prePendAS :: ASNumber a => a -> [PathAttribute] -> [PathAttribute]
-prePendAS asn = updatePathAttribute TypeCodePathAttributeASPath (asPrePend' asn) where
-    asPrePend' asn ( PathAttributeASPath p) = PathAttributeASPath (asPrePend asn p)
-
-getASPathLength :: [PathAttribute] -> Int
-getASPathLength pas = maybe
-                      0
-                      (\(PathAttributeASPath asPath) -> asPathLength asPath)
-                      (getPathAttribute TypeCodePathAttributeASPath pas)
-
-getAS2Path = fromJust . getPathAttribute TypeCodePathAttributeASPath
-getAS4Path = fromJust . getPathAttribute TypeCodePathAttributeAS4Path
-
-getASPath pax = fromMaybe (getAS2Path pax) (getPathAttribute TypeCodePathAttributeAS4Path pax)
-
-getMED :: [PathAttribute] -> Word32
-getMED pas = maybe 0 (\(PathAttributeMultiExitDisc x) -> x) (getPathAttribute TypeCodePathAttributeMultiExitDisc pas)
-
-getOrigin :: [PathAttribute] -> Word8
-getOrigin pas = maybe 0 (\(PathAttributeOrigin x) -> x ) (getPathAttribute TypeCodePathAttributeOrigin pas)
-
-getNextHop :: [PathAttribute] -> IPv4
-getNextHop pas = maybe "0.0.0.0" (\(PathAttributeNextHop x) -> x ) (getPathAttribute TypeCodePathAttributeNextHop pas)
-
-checkForRequiredPathAttributes :: [PathAttribute] -> Bool
-checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
 
 data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an enum
                      PathAttributeASPath ASPath  |

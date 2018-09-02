@@ -11,6 +11,7 @@ import Prefixes
 import PrefixTable
 import qualified PrefixTableUtils
 import PathAttributes
+import PathAttributeUtils
 import Update
 import AdjRIBOut
 

@@ -11,7 +11,7 @@ data PathAttributeTypeCode = TypeCodePathAttributeOrigin | TypeCodePathAttribute
                              TypeCodePathAttributeExtendedCommunities | TypeCodePathAttributeAS4Path | TypeCodePathAttributeAS4Aggregator |
                              TypeCodePathAttributeConnector | TypeCodePathAttributeASPathlimit | TypeCodePathAttributeLargeCommunity | TypeCodePathAttributeAttrSet |
                              TypeCodePathAttributeUnknown
-                             deriving (Show,Eq)
+                             deriving (Show,Eq,Ord)
 
 allPathAttributeTypeCodes = [ TypeCodePathAttributeOrigin , TypeCodePathAttributeASPath , TypeCodePathAttributeNextHop , TypeCodePathAttributeMultiExitDisc ,
                               TypeCodePathAttributeLocalPref , TypeCodePathAttributeAtomicAggregate , TypeCodePathAttributeAggregator , TypeCodePathAttributeCommunities ,
