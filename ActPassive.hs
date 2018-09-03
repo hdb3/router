@@ -41,7 +41,7 @@ main' peers = do
     let peerMap = Data.Map.fromList $ map (\pd -> (peerIPv4 pd,pd)) peers
     print peerMap
 
-    putStrLn "Passive starting"
+    putStrLn "ActPassive starting"
     sock <- socket AF_INET Stream defaultProtocol 
     setSocketOption sock ReuseAddr 1
     bind sock address
@@ -52,26 +52,27 @@ main' peers = do
     rib <- Rib.newRib
     E.finally (loop (sock,rib,peerMap,exitMVar,collisionDetector) )
               (close sock)
-  where
-    delayOpenTimer = 10
-    reaper mbox = forever $ do
-        (t,s) <- takeMVar mbox
-        putStrLn $ "thread " ++ show t ++ " exited with <" ++ s ++ ">"
-    loop (sock,rib,peerMap,exitMVar,collisionDetector) = forever $ do
-        (conn, peer) <- accept sock
-        let peerIPv4 = getIPv4 peer
-        maybe
-            ( putStrLn $ "Reject connection from " ++ show peer )
-            ( \peerData -> do
-                putStrLn $ "Connection from " ++ show peer
-                logfile <- getLogFile
-                let config = BgpFSMconfig conn collisionDetector peer delayOpenTimer exitMVar logfile peerData rib
-                void $ forkFinally (bgpFSM config)
-                                   (\tid -> do putStrLn $ "ending " ++ show tid
-                                               close conn
-                                   )
-            )
-            ( Data.Map.lookup peerIPv4 peerMap )
+
+reaper mbox = forever $ do
+    (t,peerName,es) <- takeMVar mbox
+    either
+        (\s -> putStrLn $ "thread " ++ show t ++ "/" ++ show peerName ++ " exited with exception <" ++ s ++ ">")
+        (\s -> putStrLn $ "thread " ++ show t ++ "/" ++ show peerName ++ " exited normally <" ++ s ++ ">")
+        es
+
+loop (sock,rib,peerMap,exitMVar,collisionDetector) = forever $ do
+    (conn, peer) <- accept sock
+    let peerIPv4 = getIPv4 peer
+        delayOpenTimer = 10
+    maybe
+        ( putStrLn $ "Reject connection from " ++ show peer )
+        ( \peerData -> do
+            putStrLn $ "Connection from " ++ show peer
+            logfile <- getLogFile
+            let config = BgpFSMconfig conn collisionDetector peer delayOpenTimer exitMVar logfile peerData rib
+            void $ forkIO (bgpFSM config)
+        )
+        ( Data.Map.lookup peerIPv4 peerMap )
 
 
 getIPv4 :: SockAddr -> Data.IP.IPv4
