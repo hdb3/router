@@ -137,6 +137,11 @@ instance Binary PathAttribute where
     put (PathAttributeExtendedCommunities a) = putAttributeByteString TypeCodePathAttributeExtendedCommunities (encode a)
     put (PathAttributeAS4Path a) = putAttributeByteString TypeCodePathAttributeAS4Path (encode a)
     put (PathAttributeLargeCommunity a) = putAttributeByteString TypeCodePathAttributeLargeCommunity (encode a)
+    put (PathAttributeAS4Aggregator a) = putAttributeByteString TypeCodePathAttributeAS4Aggregator (encode a)
+    put (PathAttributeASPathlimit a) = putAttributeByteString TypeCodePathAttributeASPathlimit (encode a)
+    put (PathAttributeAttrSet a) = putAttributeByteString TypeCodePathAttributeAttrSet (encode a)
+
+    put x = error $ "Unexpected type code: " ++ show x
 
     get = label "PathAttribute" $ do
              flags <- getWord8
