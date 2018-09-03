@@ -69,24 +69,12 @@ processUpdate ( BGPUpdate w a n ) =
 
 originateWithdraw prefixes = ParsedUpdate []  [] prefixes 0
 
--- TODO remove, not exported...
-updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
-updateRoute attributes origin maybeAS maybeNextHop prefixes = ParsedUpdate attributes' prefixes [] hash where
-    attributes' = updateOrigin origin $ updateNextHop maybeNextHop $ updatePath maybeAS attributes :: [PathAttribute]
-    updateNextHop Nothing b = b
-    updateNextHop (Just nextHop) b = substitutePathAttribute (PathAttributeNextHop nextHop) b
-    updateOrigin Nothing b = b
-    updateOrigin (Just origin) b = substitutePathAttribute (PathAttributeOrigin origin) b
-    updatePath Nothing b = b
-    updatePath (Just as) b = prePendAS as b
-    hash = myHash $ encode attributes'
-
 originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpdate
 originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
     hash = myHash $ encode attributes
 
 makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
-makeUpdate nlri withdrawn attributes = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
+makeUpdate nlri withdrawn attributes | 4097 > L.length (encode attributes) = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
 
 igpUpdate = originateUpdate _BGP_ORIGIN_IGP []
