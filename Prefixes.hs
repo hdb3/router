@@ -3,16 +3,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 module Prefixes where
--- import GHC.Exts
 import Data.Binary
 import Data.Hashable
 import GHC.Generics(Generic)
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Word
+import Data.Int
 import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
+import qualified Data.ByteString.Lazy as L
 
 import Common
 
@@ -115,6 +116,28 @@ fromAddrRange ar = Prefix (fromIntegral subnet, byteSwap32 $ toHostAddress ip) w
             irrelevant.
 -}
 
+
+-- segmentBinaryPrefix :: Int -> L.ByteString -> [L.ByteString]
+-- segmentBinaryPrefix n lbs | L.length lbs <= n = [lbs]
+
+-- encodedChunkPrefixes n = map encode . chunkPrefixes n . reverse
+chunkPrefixes :: Int64 -> [Prefix] -> [[Prefix]]
+chunkPrefixes n pfxs = let (xl,l,_) = chunkPrefixes' n pfxs in (l : xl) 
+chunkPrefixes' n = chunkEnumeratedPrefixes n . enumeratePrefixes
+
+-- chunkEnumeratedPrefixes :: Int -> [(Int,Prefix)] -> ([[Prefix]],[Prefix],Int)
+chunkEnumeratedPrefixes n = foldl f ([],[],0) where
+    f (xl,l,accSize) (size,pfx) | accSize + size <= n = (xl,pfx : l, accSize + size)
+                                | otherwise = (l:xl,[pfx],size)
+
+-- enumeratePrefixes :: [Prefix] -> [(Int,Prefix)]
+enumeratePrefixes = map (\pfx -> (getLength pfx, pfx)) where
+    getLength (Prefix (subnet,ip)) | subnet == 0 = 1
+                                   | subnet < 9  = 2
+                                   | subnet < 17 = 3
+                                   | subnet < 25 = 4
+                                   | subnet < 33 = 5
+                                   | otherwise = error $ "subnet mask of " ++ show subnet ++ " is > 32"
 
 instance Binary Prefix where 
 

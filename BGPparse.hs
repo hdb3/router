@@ -56,14 +56,19 @@ instance Binary BGPMessage where
                                                               putWord8 $ fromIntegral $ B.length optionalParameters
                                                               putByteString optionalParameters
 
-    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do let withdrawnRoutesLength = fromIntegral $ L.length withdrawnRoutes
-                                                                 pathAttributesLength = fromIntegral $ L.length pathAttributes
-                                                             putWord8 _BGPUpdate
-                                                             putWord16be withdrawnRoutesLength
-                                                             putLazyByteString withdrawnRoutes
-                                                             putWord16be pathAttributesLength
-                                                             putLazyByteString pathAttributes
-                                                             putLazyByteString nlri
+    put (BGPUpdate withdrawnRoutes pathAttributes nlri) = do
+                                                               putWord8 _BGPUpdate
+                                                               putWord16be withdrawnRoutesLength
+                                                               putLazyByteString withdrawnRoutes
+                                                               putWord16be pathAttributesLength
+                                                               putLazyByteString pathAttributes
+                                                               putLazyByteString nlri
+                                                               where
+                                                                   withdrawnRoutesLength = fromIntegral $ L.length withdrawnRoutes
+                                                                   pathAttributesLength = fromIntegral $ L.length pathAttributes
+                                                                   nlriLength = fromIntegral $ L.length nlri
+                                                                   nonPrefixLength = 16 + 2 + 1 + 2 + 2 + pathAttributesLength
+                                                                   availablePrefixSpace = 4096 - nonPrefixLength
 
     put (BGPNotify code subCode caps) = do putWord8 _BGPNotify
                                            putWord8 $ encode8 code

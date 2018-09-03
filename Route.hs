@@ -8,6 +8,7 @@ import Data.Binary(encode,decode,decodeOrFail)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad(when,unless,liftM)
+import Control.Monad.Extra(concatMapM)
 import Data.Maybe(fromJust,isJust,catMaybes)
 import Data.Either(either)
 import Data.Int(Int64)
@@ -28,25 +29,21 @@ import Rib
 import PrefixTableUtils
 import AdjRIBOut
 
-lookupRoutes'' rib peer ares = do routes <- lookupRoutes' rib peer ares
-                                  mapM (print . getUpdate) routes
-                                  return routes
+lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
+lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
+                                -- mapM print routes
+                                return $ map ungetUpdate routes
 
-lookupRoutes = lookupRoutes'
-
-lookupRoutes' :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
-lookupRoutes' rib peer ares = (liftM catMaybes) $ mapM (lookupRoute rib peer) ares
-
-lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO (Maybe BGPMessage)
-lookupRoute rib peer (iprefixes, 0 ) = return $ Just $ ungetUpdate $ originateWithdraw $ toPrefixes iprefixes
+lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO [ ParsedUpdate ]
+lookupRoute rib peer (iprefixes, 0 ) = return [ originateWithdraw $ toPrefixes iprefixes ]
 lookupRoute rib peer ([], routeId ) = do
     putStrLn ("empty prefix list in lookupRoute")
-    return Nothing
+    return []
 
 lookupRoute rib peer (iprefixes, routeId ) = do
     maybeRoute <- queryRib rib (head iprefixes)
     maybe (do putStrLn "failed lookup in lookupRoute"
-              return Nothing
+              return []
           )
           (\route -> let igpUpdate = makeUpdate (toPrefixes iprefixes)
                                                 []
@@ -64,6 +61,6 @@ lookupRoute rib peer (iprefixes, routeId ) = do
                                                   prePendAS ( myAS $ globalData $ peerData route) $
                                                   pathAttributes route
                                                  )
-              in return $ Just $ ungetUpdate $ if isExternal peer then egpUpdate else igpUpdate
+              in return $ if isExternal peer then egpUpdate else igpUpdate
           )
           maybeRoute

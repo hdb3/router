@@ -92,6 +92,6 @@ insertStatic rib local = do
     updates <- pathReadRib "bgpdata/full.bgp"
     -- ribUpdater2 :: Rib -> PeerData -> ParsedUpdate -> IO()
     -- makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
-    let updates' = map (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
+    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
     -- mapM print updates'
     mapM (ribUpdater2 rib local) updates'
