@@ -44,18 +44,20 @@ lookupRoute rib peer (iprefixes, routeId ) = do
           )
           (\route -> let igpUpdate = makeUpdate (toPrefixes iprefixes)
                                                 []
-                                                ( setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                                    setNextHop (nextHop route) $
-                                                    setLocalPref (localPref $ peerData route) $
-                                                    pathAttributes route
-                                                  )
+                                                ( sortPathAttributes $
+                                                  setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                                  setNextHop (nextHop route) $
+                                                  setLocalPref (localPref $ peerData route) $
+                                                  pathAttributes route
+                                                 )
                          egpUpdate = makeUpdate (toPrefixes iprefixes)
                                                 []
-                                                ( setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                                    setNextHop (nextHop route) $
-                                                    prePendAS ( myAS $ globalData $ peerData route) $
-                                                    pathAttributes route
-                                                  )
+                                                ( sortPathAttributes $
+                                                  setOrigin _BGP_ORIGIN_INCOMPLETE $
+                                                  setNextHop (nextHop route) $
+                                                  prePendAS ( myAS $ globalData $ peerData route) $
+                                                  pathAttributes route
+                                                 )
               in return $ Just $ ungetUpdate $ if isExternal peer then egpUpdate else igpUpdate
           )
           maybeRoute
