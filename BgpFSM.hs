@@ -29,6 +29,7 @@ import Route
 import PrefixTableUtils
 
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
+type FSMExit = ( ThreadId, SockAddr, Either String String )
 
 data State = StateConnected | StateOpenSent | StateOpenConfirm | ToEstablished | Established | Idle deriving (Show,Eq)
 
@@ -42,22 +43,30 @@ data BgpFSMconfig = BgpFSMconfig {
                                   collisionDetector :: CollisionDetector,
                                   peerName :: SockAddr,
                                   delayOpenTimer :: Int,
-                                  exitMVar :: MVar (ThreadId,String)
+                                  exitMVar :: MVar FSMExit
                                   , logFile :: Maybe Handle
                                   , peerData :: PeerData
                                   , rib :: Rib.Rib
                                   }
 bgpFSM :: BgpFSMconfig -> IO ()
+
 bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                              putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
-                             catch
+                             fsmExitStatus <-
+                                 catch
                                  (fsm (StateConnected,bsock0,osm) )
                                  (\(FSMException s) -> do
-                                     logFlush bsock0
-                                     deregister cd
-                                     putMVar exitMVar (threadId,s)
-                                     putStrLn $ "Thread " ++ show threadId ++ " exiting"
-                                 ) where
+                                     return $ Left s
+                                 )
+                             close sock
+                             logFlush bsock0
+                             deregister cd
+                             putMVar exitMVar (threadId , peerName, fsmExitStatus )
+                             either
+                                 (\s -> putStrLn $ "BGPfsm exception exit" ++ s)
+                                 (\s -> putStrLn $ "BGPfsm normal exit" ++ s)
+                                 fsmExitStatus
+                             where
     bsock0 = newBufferedSocket sock logFile
     exit s = throw $ FSMException s
     initialHoldTimer = 120
@@ -74,12 +83,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     get b t = do (next,bytes) <- getMsg b t
                  return (next, decodeBGPByteString bytes )
 
-    fsm :: (State,BufferedSocket,OpenStateMachine) -> IO()
+    fsm :: (State,BufferedSocket,OpenStateMachine) -> IO (Either String String)
     fsm (s,b,o) | s == Idle = do
                                 logFlush bsock0
-                                putStrLn $ "FSM exiting" ++ rcvStatus (result b)
+                                let s = "FSM exiting" ++ rcvStatus (result b)
+                                -- putStrLn s
+                                return $ Right s
                 | otherwise = do
-        -- putStrLn $ "FSM executing " ++ show s
         (s',b',o') <- f s (b,o)
         fsm (s',b',o') where
             f StateConnected = stateConnected
@@ -90,6 +100,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
 
     idle s = do putStrLn $ "IDLE - reason: " ++ s
                 return (Idle,newBufferedSocket undefined undefined,undefined)
+
     stateConnected :: F
     stateConnected (bsock,osm) = do
         (bsock',msg) <- get bsock delayOpenTimer
@@ -170,8 +181,17 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
 
     keepAliveLoop timer = do
         threadDelay $ 1000000 * timer
-        snd BGPKeepalive
-        keepAliveLoop timer
+        running <- catch
+            (do snd BGPKeepalive
+                return True)
+            (\(FSMException s) -> do
+                putStrLn "keepAliveLoop exiting on snd failure"
+                return False
+            )
+        if running then
+            keepAliveLoop timer
+        else
+            return ()
 
     toEstablished :: F
     toEstablished (bsock,osm) = do
