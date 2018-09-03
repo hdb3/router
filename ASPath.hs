@@ -60,6 +60,7 @@ gmap f (ASSequence a : ax) = ASSequence (fmap f a) : gmap f ax
 -- reason for allowing this, i won't write it...
 toASPath4 :: ASPath -> ASPath
 toASPath4 (ASPath2 aspath) = ASPath4 (gmap fromIntegral aspath)
+toASPath4 (ASPath4 aspath) = ASPath4 (aspath)
 
 -- NOTE** the below 'raw' asPrePend function masks the complexity of mixing ASN2 and ASN4 operations
 -- a complete version would have to operate on AS4 paths and ASPaths and use 'AS_TRANS'

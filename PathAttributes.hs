@@ -25,7 +25,7 @@ getPathAttribute :: PathAttributeTypeCode -> [PathAttribute] -> Maybe PathAttrib
 getPathAttribute code pas = find ((code ==) . identify) pas
 
 deletePathAttributeType :: PathAttributeTypeCode -> [PathAttribute] -> [PathAttribute]
-deletePathAttributeType t = filter ( (t ==) . identify )
+deletePathAttributeType t = filter ( not . (t ==) . identify )
 
 insertPathAttribute :: PathAttribute -> [PathAttribute] -> [PathAttribute]
 -- replaces an existing attribute of the same type
