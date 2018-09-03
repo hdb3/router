@@ -74,7 +74,28 @@ originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes 
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
     hash = myHash $ encode attributes
 
-makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
-makeUpdate nlri withdrawn attributes | 4097 > L.length (encode attributes) = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
+makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> [ParsedUpdate]
+--makeUpdate a b c = [makeUpdate' a b c]
+makeUpdate = makeSegmentedUpdate
+makeUpdate' nlri withdrawn attributes = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
+
+makeSegmentedUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> [ParsedUpdate]
+makeSegmentedUpdate nlri withdrawn attributes = result where
+                                                    withdrawnRoutesLength = L.length (encode withdrawn)
+                                                    pathAttributesLength = L.length (encode attributes)
+                                                    nlriLength = L.length (encode nlri)
+                                                    nonPrefixLength = 16 + 2 + 1 + 2 + 2 + pathAttributesLength
+                                                    nominalLength = nonPrefixLength + withdrawnRoutesLength + nlriLength
+                                                    availablePrefixSpace = fromIntegral (4096 - nonPrefixLength) :: Int64
+                                                    chunkedNlri = chunkPrefixes availablePrefixSpace nlri
+                                                    chunkedWithdrawn = chunkPrefixes availablePrefixSpace withdrawn
+                                                    updates = map (\pfxs -> makeUpdate' pfxs [] attributes) (tail chunkedNlri)
+                                                    withdraws = map (\pfxs -> makeUpdate' [] pfxs attributes) (tail chunkedWithdrawn)
+                                                    result = if availablePrefixSpace >= L.length (encode (head chunkedNlri))
+                                                                                        + L.length (encode (head chunkedWithdrawn))
+                                                             then [(makeUpdate' (head chunkedNlri) (head chunkedWithdrawn) attributes)] ++ withdraws ++ updates
+                                                             else [(makeUpdate' [] (head chunkedWithdrawn) attributes),
+                                                                   (makeUpdate' (head chunkedNlri) [] attributes)] ++ withdraws ++ updates
+
 
 igpUpdate = originateUpdate _BGP_ORIGIN_IGP []

@@ -77,7 +77,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     remoteAS = fromIntegral $ peerAS peerData            -- conflict between 16 and 32 bit ASN types!!
     myOpen = BGPOpen localAS (propHoldTime peerData) myBGPID (offerCapabilies peerData)
     remote = BGPOpen remoteAS (reqHoldTime peerData) (peerBGPid peerData) (requireCapabilies peerData)
-    snd msg = catchIOError ( sndBgpMessage bsock0 (encode msg)) (\e -> exit (show (e :: IOError)))
+    snd msg | 4079 > L.length (encode msg) = catchIOError ( sndBgpMessage bsock0 (encode msg)) (\e -> exit (show (e :: IOError)))
 
     get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
     get b t = do (next,bytes) <- getMsg b t
