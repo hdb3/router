@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 module Prefixes where
@@ -55,13 +56,21 @@ instance Read Prefix where
         readSipfx s = let (a,s') = head $ readsPrec 0 s in [(fromAddrRange a,s')]
 
 instance Hashable Prefix
+
+instance {-# OVERLAPPING #-} Show [Prefix] where
+    show = shorten
+
+instance {-# OVERLAPPING #-} Show [IPrefix] where
+    show = shorten . (map toPrefix)
+
 instance Show Prefix where
     show = show.toAddrRange
 
 instance Show IPrefix where
     show = show.toAddrRange.toPrefix
 
-shorten pfxs = if length pfxs < 3 then show pfxs else show [head pfxs] ++ " ..(+" ++ show (length pfxs - 1) ++ ")"
+realShow = show . (map toAddrRange)
+shorten pfxs = if length pfxs < 3 then realShow pfxs else show (take 2 pfxs) ++ "(+" ++ show (length pfxs - 2) ++ ")"
 
 subnet :: Prefix -> Word8
 subnet (Prefix (s,_)) = s

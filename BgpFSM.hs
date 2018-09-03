@@ -2,7 +2,7 @@
 module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import System.IO.Error(catchIOError)
-import System.IO(Handle)
+import System.IO(Handle,stdout,hFlush)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode,decode,decodeOrFail)
@@ -208,24 +208,27 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         case msg of 
             BGPKeepalive -> do
                 logFlush bsock0
-                putStrLn "established - rcv keepalive"
+                putStr "established - rcv keepalive"
                 prefixTable <- Rib.getRib rib
                 if length prefixTable < 10 then do
-                    putStrLn $ showPrefixTableByRoute prefixTable
-                    putStrLn $ showPrefixTable prefixTable
+                    -- putStrLn $ "Prefix Table (" ++ show (length prefixTable) ++ ")"
+                    -- putStrLn $ showPrefixTableByRoute prefixTable
+                    -- putStrLn $ showPrefixTable prefixTable
+                    putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
                 else
-                    putStrLn $ "prefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
+                    putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
                 updates <- pullAllUpdates peerData rib 
                 if null updates then return ()
                 else if 11 > length updates then do
-                    putStrLn "Ready to send routes....:"
-                    print $ map fst updates
+                    putStr "\nReady to send routes....:"
+                    -- print $ map fst updates
                 else do
-                    putStrLn "Ready to send routes....:"
-                    print $ map fst (take 10 updates)
+                    putStr "\nReady to send routes....:"
+                    -- print $ map fst (take 10 updates)
                     putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 routes <- lookupRoutes rib peerData updates
                 mapM_ snd routes
+                hFlush stdout
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe

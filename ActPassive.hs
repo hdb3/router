@@ -52,7 +52,7 @@ main' peers = do
     exitMVar <- newEmptyMVar
     forkIO $ reaper exitMVar
     rib <- Rib.newRib
-    insertStatic rib local
+    -- insertStatic rib local
     putStrLn "ActPassive ready"
     E.finally (loop (sock,rib,peerMap,exitMVar,collisionDetector) )
               (close sock)
