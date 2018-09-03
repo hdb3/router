@@ -210,8 +210,11 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
                 prefixTable <- Rib.getRib rib
-                putStrLn $ showPrefixTableByRoute prefixTable
-                putStrLn $ showPrefixTable prefixTable
+                if length prefixTable < 10 then do
+                    putStrLn $ showPrefixTableByRoute prefixTable
+                    putStrLn $ showPrefixTable prefixTable
+                else
+                    putStrLn $ "prefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
                 updates <- pullAllUpdates peerData rib 
                 if null updates then return ()
                 else if 11 > length updates then do
