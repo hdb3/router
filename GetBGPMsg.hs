@@ -100,10 +100,13 @@ getNext' bs@(BufferedSocket sock buffer (BGPByteString result) handle)
 !_BGPMarker = B.replicate 16 0xff
 instance Binary BGPByteString where 
 
-    put (BGPByteString (Right bs)) = do
+    put (BGPByteString (Right bs)) | msgLength > 4096 = fail $ "trying to put an overlong BGPByteString, " ++ show msgLength ++ " bytes"
+                                   | otherwise = do
         putLazyByteString lBGPMarker
-        putWord16be (fromIntegral $ L.length bs +18)
-        putLazyByteString bs
+        putWord16be msgLength
+        putLazyByteString bs where
+            msgLength = fromIntegral $ L.length bs + 18
+
     put (BGPByteString (Left _)) = fail "trying to but an invalid BGPByteString"
 
     get = label "BGPByteString" $ do
@@ -112,6 +115,7 @@ instance Binary BGPByteString where
         marker <- getLazyByteString 16
         unless ( marker == lBGPMarker ) (fail "BGP marker synchronisation error")
         len <- getWord16be
+        unless ( len < 4097 ) (fail "BGP message length invalid")
         bs <- getLazyByteString (fromIntegral (len-18))
         return (BGPByteString $ Right bs)
 
