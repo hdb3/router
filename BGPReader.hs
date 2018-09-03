@@ -19,6 +19,7 @@ import qualified Prefixes
 import qualified PathAttributes
 import qualified BGPData
 import BogonFilter
+import PathFilter
 
 bgpReader :: FilePath -> IO [(BGPData.RouteData, Prefixes.Prefix)]
 bgpReader path = do
@@ -54,7 +55,7 @@ readGroupedRib :: IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])
 readGroupedRib = do rawRib <- readRib' 
                     return $ map normalise $ applyBogonFilter $ groupBy_ rawRib
 pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
-pathReadRib path = liftM ( map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
+pathReadRib path = liftM ( applyPathFilter . map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
 --pathReadRib path = bgpReader path >>= map normalise . applyBogonFilter . groupBy_
 
 readRib' = do
