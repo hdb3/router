@@ -55,7 +55,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                              fsmExitStatus <-
                                  catch
                                  (fsm (StateConnected,bsock0,osm) )
-                                 (\(FSMException s) -> do
+                                 (\(FSMException s) ->
                                      return $ Left s
                                  )
                              close sock
@@ -87,7 +87,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
     fsm (s,b,o) | s == Idle = do
                                 logFlush bsock0
                                 let s = "FSM exiting" ++ rcvStatus (result b)
-                                -- putStrLn s
                                 return $ Right s
                 | otherwise = do
         (s',b',o') <- f s (b,o)
@@ -185,13 +184,13 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             (do snd BGPKeepalive
                 return True)
             (\(FSMException s) -> do
-                putStrLn "keepAliveLoop exiting on snd failure"
+                -- putStrLn "keepAliveLoop exiting on snd failure"
+                -- this is perfectly normal event when the fsm closes down as it doesn't stop the keepAliveLoop explicitly
+                -- TODO - integrate keepAliveLoop with update dissemination....
                 return False
             )
-        if running then
-            keepAliveLoop timer
-        else
-            return ()
+        when running
+            ( keepAliveLoop timer )
 
     toEstablished :: F
     toEstablished (bsock,osm) = do
@@ -214,10 +213,15 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 putStrLn $ showPrefixTableByRoute prefixTable
                 putStrLn $ showPrefixTable prefixTable
                 updates <- pullAllUpdates peerData rib 
-                putStrLn "Ready to send...:"
-                print $ map fst updates
+                if null updates then return ()
+                else if 11 > length updates then do
+                    putStrLn "Ready to send routes....:"
+                    print $ map fst updates
+                else do
+                    putStrLn "Ready to send routes....:"
+                    print $ map fst (take 10 updates)
+                    putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 routes <- lookupRoutes rib peerData updates
-                -- print routes
                 mapM_ snd routes
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
