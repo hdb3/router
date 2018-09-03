@@ -28,13 +28,11 @@ import Rib
 import PrefixTableUtils
 import AdjRIBOut
 
-lookupRoutes rib peer ares = do routes <- lookupRoutes' rib peer ares
-                                mapM (print . getUpdate) routes
-                                -- mapM peek routes
-                                return routes where
-    peek (BGPUpdate withdrawn attributes nlri ) = putStrLn $ "BGPUpdate [" ++ show (L.length withdrawn) ++ "] [" ++ show (L.length nlri) ++ "] "
-                                                              ++ show attributes
-    peek a = print a
+lookupRoutes'' rib peer ares = do routes <- lookupRoutes' rib peer ares
+                                  mapM (print . getUpdate) routes
+                                  return routes
+
+lookupRoutes = lookupRoutes'
 
 lookupRoutes' :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
 lookupRoutes' rib peer ares = (liftM catMaybes) $ mapM (lookupRoute rib peer) ares

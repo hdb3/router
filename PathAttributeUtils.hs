@@ -22,9 +22,11 @@ getASPathLength pas = maybe
 -- normaliseASPath:  eliminate as4 path by replacing the original as2 path with the contens of the as4 path
 -- should be a lossless conversion
 -- the reverse would be needed if talking to an as2 only peer...
-normaliseASPath pas = maybe pas
-                            (\(PathAttributeAS4Path path) -> deletePathAttributeType TypeCodePathAttributeAS4Path $ insertPathAttribute (PathAttributeASPath path) pas )
-                            (getPathAttribute TypeCodePathAttributeAS4Path pas)
+normaliseASPath pas = let toASPath4' (PathAttributeASPath p) = PathAttributeASPath (toASPath4 p)
+                          pas' = updatePathAttribute TypeCodePathAttributeASPath toASPath4' pas in
+    maybe pas'
+          (\(PathAttributeAS4Path path) -> deletePathAttributeType TypeCodePathAttributeAS4Path $ insertPathAttribute (PathAttributeASPath (toASPath4 path)) pas)
+          (getPathAttribute TypeCodePathAttributeAS4Path pas)
 
 getAS2Path = fromJust . getPathAttribute TypeCodePathAttributeASPath
 getAS4Path = fromJust . getPathAttribute TypeCodePathAttributeAS4Path
@@ -53,7 +55,7 @@ setNextHop :: IPv4 -> [PathAttribute] -> [PathAttribute]
 setNextHop = insertPathAttribute . PathAttributeNextHop
 
 getNextHop :: [PathAttribute] -> IPv4
-getNextHop pas = maybe "0.0.0.0" (\(PathAttributeNextHop x) -> x ) (getPathAttribute TypeCodePathAttributeNextHop pas)
+getNextHop pas = maybe "127.0.0.127" (\(PathAttributeNextHop x) -> x ) (getPathAttribute TypeCodePathAttributeNextHop pas)
 
 checkForRequiredPathAttributes :: [PathAttribute] -> Bool
 checkForRequiredPathAttributes pas = included requiredPathAttributes (map identify pas)
