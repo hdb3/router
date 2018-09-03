@@ -79,5 +79,5 @@ getIPv4 (SockAddrInet portNumber hostAddress) = fromHostAddress hostAddress
 
 getLogFile = do
     t <- utcSecs
-    handle <- openBinaryFile (show t ++ ".bgp") WriteMode
+    handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
     return $ Just handle
