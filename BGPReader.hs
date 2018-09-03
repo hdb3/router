@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module BGPReader(readRib,bgpReader,Rib,readGroupedRib) where
+module BGPReader(readRib,bgpReader,readGroupedRib,pathReadRib) where
 import System.IO
 import System.Exit(die)
 import System.Environment(getArgs)
@@ -20,8 +20,7 @@ import qualified PathAttributes
 import qualified BGPData
 import BogonFilter
 
-type Rib = [((Int,[PathAttributes.PathAttribute]), [Prefixes.Prefix])]
--- bgpReader :: FilePath -> IO Rib
+bgpReader :: FilePath -> IO [(BGPData.RouteData, Prefixes.Prefix)]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
@@ -33,14 +32,10 @@ bgpReader path = do
     rib <- Rib.newRib
     mapM_ (updateRib rib) updates
     rib' <- Rib.getRib rib
-    let groupedRib = map normalise $ applyBogonFilter $ groupBy_ (getRIB rib')
-        ungroupedRib = map normalise $ filter (bogonFilter . snd) (getRIB rib')
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
                 let routeData = Rib.makeRouteData defaultPeerData parsedUpdate
-                -- Rib.ribUpdateMany rib peer pathAttributes routeId nlri
-                -- Rib.ribWithdrawMany rib peer withdrawn
                 Rib.ribUpdater rib routeData parsedUpdate
 
 -- readRib: a convenience function for simple applications
@@ -49,13 +44,18 @@ updateRib rib parsedUpdate@ParsedUpdate{..} = do
 --   of path attribute sets, it is a hash of the original path attribute binary structure
 --  However, it only contains the last version of the table, so earlier updates in the stream which were superceded are not returned
 
+
+readRib :: IO [((Int, [PathAttributes.PathAttribute]), Prefixes.Prefix)]
+readRib = readUngroupedRib
 readUngroupedRib = do rawRib <- readRib' 
                       return $ map normalise $ filter (bogonFilter . snd) rawRib
 
+readGroupedRib :: IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
 readGroupedRib = do rawRib <- readRib' 
                     return $ map normalise $ applyBogonFilter $ groupBy_ rawRib
-
-readRib = readUngroupedRib
+pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
+pathReadRib path = liftM ( map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
+--pathReadRib path = bgpReader path >>= map normalise . applyBogonFilter . groupBy_
 
 readRib' = do
     args <- getArgs

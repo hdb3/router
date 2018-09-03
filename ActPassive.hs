@@ -24,6 +24,8 @@ import Capabilities
 import Collision
 import Args2
 import Rib
+import BGPReader
+import Update
 
 main :: IO ()
 main = do config <- getConfig
@@ -50,6 +52,8 @@ main' peers = do
     exitMVar <- newEmptyMVar
     forkIO $ reaper exitMVar
     rib <- Rib.newRib
+    insertStatic rib local
+    putStrLn "ActPassive ready"
     E.finally (loop (sock,rib,peerMap,exitMVar,collisionDetector) )
               (close sock)
 
@@ -82,3 +86,11 @@ getLogFile = do
     t <- utcSecs
     handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
     return $ Just handle
+
+insertStatic rib local = do
+    -- pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
+    updates <- pathReadRib "bgpdata/full.bgp"
+    -- ribUpdater2 :: Rib -> PeerData -> ParsedUpdate -> IO()
+    -- makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
+    let updates' = map (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) updates
+    mapM (ribUpdater2 rib local) updates'

@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(updateRoute, processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,igpUpdate,originateWithdraw,originateUpdate) where
+module Update(processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,igpUpdate,originateWithdraw,originateUpdate) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -69,6 +69,7 @@ processUpdate ( BGPUpdate w a n ) =
 
 originateWithdraw prefixes = ParsedUpdate []  [] prefixes 0
 
+-- TODO remove, not exported...
 updateRoute :: [PathAttribute] -> Maybe Word8 -> Maybe Word32 -> Maybe IPv4 -> [Prefix] -> ParsedUpdate
 updateRoute attributes origin maybeAS maybeNextHop prefixes = ParsedUpdate attributes' prefixes [] hash where
     attributes' = updateOrigin origin $ updateNextHop maybeNextHop $ updatePath maybeAS attributes :: [PathAttribute]
