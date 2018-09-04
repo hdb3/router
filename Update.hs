@@ -60,7 +60,13 @@ processUpdate ( BGPUpdate w a n ) =
         hash = myHash a
     in
     if parseSuccess parsedResult then Just (ParsedUpdate puPathAttributes nlri withdrawn hash)
-    else Nothing
+    -- for 'production' use this should be 'Nothing', in which case the session will be dropped....
+    -- a better solution (**TODO**) would be to change the retrun type to 'either' and log the text later....
+    -- else Nothing
+    else error $
+        "parsing failed: " ++
+        ( parseErrorMesgs parsedResult) ++
+        (diagoseResult parsedResult (a,n,w))
 {- informative error message is:
         "parsing failed: "
         parseErrorMesgs parsedResult

@@ -13,7 +13,7 @@ import PathAttributes
 --      - also note.... the null path test fails in AS2 mode since the decoder cannot tell an empty AS2 path from an AS4 path
 -- TODO - update when there is an AS4 path convertor
 -- TODO2 add test for AS4Paths
-main = do
+main'' = do
     main'
     test [PathAttributeLargeCommunity[(1::Word32,2::Word32,3::Word32)]]
     mapM_ testCode allPathAttributeTypeCodes
@@ -47,12 +47,13 @@ test pas = do
               putStrLn " ------------------"
 
 main' = decodeAttributes $ fromHex' "40010100500200100207fbf563740cb900ae5ba051cc51cc400304c0a87af0c008140cb91f630cb975ca0cb9c3510cb9d4800cb9d481d011001e02070000fbf50000637400000cb9000000ae000320b3000051cc000051cce02030000320b30000000100000001000320b30000000200000001000320b30000000300000004000320b300000004000051cc"
+main = decodeAttributes $ fromHex' "400101005002000e02030000fbf50000637400003417400304c0a87af0c0070800003417a29e2001c008143417274f34174a4c34174e523417501434175032"
 
 decodeAttributes :: L.ByteString -> IO()
 decodeAttributes ps = 
     either
         (\(_,offset,msg) -> do
-            putStrLn $ "failed at offset " ++ show offset
+            putStrLn $ "failed at offset " ++ show offset ++ " : " ++ msg
             putStrLn $ prettyHex' ps
         )
         (\(_,_,attributes) -> do
