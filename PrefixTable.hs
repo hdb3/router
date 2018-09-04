@@ -24,6 +24,15 @@ import Common
 import BGPData
 import Prefixes (IPrefix(..))
 
+-- TODO
+-- prefix tabel semantics require prefixes to be removed from the table when routes are lost.
+-- This is suboptimal, as well as leading to more complex code.
+-- The proposal is to change the logic, and retain prefeixes in the table even when there are no longer
+-- any routes to them.
+-- This should have low impact in worst case, and is postive in all others
+-- Contrived worst cases could involve huge numbers of transient prefixes, e.g. /32s
+-- This could be mitigated by grooming the table at (quiet) ointervals
+
 type PrefixTableEntry = SL.SortedList RouteData 
 type PrefixTable = IntMap.IntMap PrefixTableEntry
 
@@ -67,6 +76,12 @@ queryPrefixTable table (IPrefix iprefix) = maybe Nothing (Just . slHead) (IntMap
   The manipulation removes the given route, identified by the peer which originated it.
   In the case that the withdrawn route was the 'best' route then a Bool return flag is set to allow the calling context
   to send updates replacing the route which has been withdrawn.
+
+  TODO
+
+  Withdraw semantics require the withdrawn route to be known, because 'withdraw' should only be sent to peers
+  which have received the corresponding route (e.g., dont' send a withdraw to a peer which originated a route..)
+  As of now, withdraw only supports bare prefixes.
 -}
 
 withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
@@ -76,7 +91,8 @@ withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
 -- the kernel function of type (a -> Key -> b -> (a, c)) has concrete signature [IPrefix] -> IPrefix -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
 -- (note that our input and output mapas have the same type, so type a == type b = PrefixTableEntry)
 -- hence the outer function is simply:
-withdrawPeer prefixTable peerData = Data.Tuple.swap $ IntMap.mapAccumWithKey (updateFunction peerData) [] prefixTable where
+withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateFunction peerData) [] prefixTable where
+    swapNgroom (pfxs,pt) = (groomPrefixTable pt,pfxs)
     updateFunction = nullUpdateFunction
 -- and the inner function has the shape:
     nullUpdateFunction :: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
@@ -101,6 +117,9 @@ withdrawPeer prefixTable peerData = Data.Tuple.swap $ IntMap.mapAccumWithKey (up
                                                                                                                     -- so we need a final preen before returning the Map to the RIB!!!!
                                                                        p route = peer == BGPData.peerData route
                                                                        prefixList' = (IPrefix prefix) : prefixList
+
+groomPrefixTable :: PrefixTable -> PrefixTable
+groomPrefixTable = IntMap.filter ( not . null )
 
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where

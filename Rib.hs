@@ -34,7 +34,11 @@ addPeer :: Rib -> PeerData -> IO ()
 addPeer rib peer = modifyIORef' rib ( addPeer' peer )
 
 delPeer' ::  PeerData -> Rib' -> Rib'
-delPeer' peer Rib' {..} = Rib' prefixTable (Data.Map.delete peer adjRib)
+delPeer' peer Rib' {..} = let rib' = Rib' prefixTable' (Data.Map.delete peer adjRib)
+                              (prefixTable',iprefixes) = withdrawPeer prefixTable peer
+                          in ribWithdrawMany' peer (toPrefixes iprefixes) rib'
+-- withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
+-- ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
 -- this removes the peers adjRib but it does not clean up the loc-rib and force all the corresponding withdraws
 
 addPeer' ::  PeerData -> Rib' -> Rib'
