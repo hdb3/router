@@ -94,4 +94,5 @@ insertStatic rib local = do
     -- makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
     let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
     -- mapM print updates'
-    mapM (ribUpdater2 rib local) updates'
+    -- mapM (ribUpdater2 rib local) updates'
+    return ()

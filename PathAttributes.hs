@@ -53,7 +53,8 @@ data PathAttribute = PathAttributeOrigin Word8 | -- toDo = make the parameter an
                      PathAttributeMultiExitDisc Word32 |
                      PathAttributeLocalPref Word32 |
                      PathAttributeAtomicAggregate | -- a null attribute
-                     PathAttributeAggregator ( Word16 , IPv4 ) | -- the first parameter is an AS number - in AS4 world is 4 bytes not two.....
+                     PathAttributeAggregator ( Word32 , IPv4 ) | -- the first parameter is an AS number - in AS4 world is 4 bytes not two.....
+                                                                 -- so the parser checks the length field and always returns 32 bits even after reading just 16
                      PathAttributeCommunities [Word32] |
                      PathAttributeMPREachNLRI B.ByteString |
                      PathAttributeMPUnreachNLRI B.ByteString |
@@ -98,11 +99,11 @@ putAttributeWord64 code v = do putWord8 (flagsOf code)
                                putWord8 8 -- length of payload
                                putWord64be v
 
-putAttributeAggregator :: Word16 -> Word32 -> Put
+putAttributeAggregator :: Word32 -> Word32 -> Put
 putAttributeAggregator as bgpid = do putWord8 (flagsOf TypeCodePathAttributeAggregator)
                                      putWord8 (encode8 TypeCodePathAttributeAggregator)
-                                     putWord8 6 -- length of payload
-                                     putWord16be as
+                                     putWord8 8 -- length of payload
+                                     putWord32be as
                                      putWord32be bgpid
 
 -- use for attributes upto permitted maximum of 65535 bytes in length
@@ -151,7 +152,7 @@ instance Binary PathAttribute where
                                                      return (fromIntegral l :: Int)  
                                              else do l <- getWord8
                                                      return (fromIntegral l :: Int)  
-             unless (flagCheck flags code) (fail "Bad Flags")
+             unless (flagCheck flags code) (fail $ "Bad Flags - flags=0x" ++ hex8 flags ++ " code=" ++ show code' ++ " (" ++ show code ++ ")")
 
              if | TypeCodePathAttributeOrigin == code -> do 
                  unless (len == 1) (fail "Bad Length")
@@ -178,7 +179,12 @@ instance Binary PathAttribute where
                 | TypeCodePathAttributeAtomicAggregate == code -> return PathAttributeAtomicAggregate
 
                 | TypeCodePathAttributeAggregator == code -> do
-                    as <- getWord16be
+                    as <- if (len == 6) then do
+                        as2 <- getWord16be
+                        return $ fromIntegral as2
+                    else if (len == 8) then
+                        getWord32be
+                    else fail $ "Bad length in PathAttributeAggregator: " ++ show len 
                     bgpid <- getWord32le
                     return $ PathAttributeAggregator (as,fromHostAddress bgpid)
 
