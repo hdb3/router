@@ -58,17 +58,73 @@ queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
 -- queryPrefixTable _ _ = Nothing
 queryPrefixTable table (IPrefix iprefix) = maybe Nothing (Just . slHead) (IntMap.lookup iprefix table)
 
+{-
+  Withdraw Operations
+
+  'withdraw' is a wrapper around 'withdrawPrefixTable'.
+  'withdrawPrefixTable' updates the prefixTable Map for a specific prefix
+  Within 'withdrawPrefixTable' is an inner function which manipulates the route list for the prefix.
+  The manipulation removes the given route, identified by the peer which originated it.
+  In the case that the withdrawn route was the 'best' route then a Bool return flag is set to allow the calling context
+  to send updates replacing the route which has been withdrawn.
+-}
+
+withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
+-- core function is mapAccumWithKey :: (a -> Key -> b -> (a, c)) -> a -> IntMap b -> (a, IntMap c)
+-- which acts on the prefix table, returning a modified prefix table and also the list of prefixes which have been modifed
+-- in a way which REQUIRES an update
+-- the kernel function of type (a -> Key -> b -> (a, c)) has concrete signature [IPrefix] -> IPrefix -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
+-- (note that our input and output mapas have the same type, so type a == type b = PrefixTableEntry)
+-- hence the outer function is simply:
+withdrawPeer prefixTable peerData = Data.Tuple.swap $ IntMap.mapAccumWithKey (updateFunction peerData) [] prefixTable where
+    updateFunction = nullUpdateFunction
+-- and the inner function has the shape:
+    nullUpdateFunction :: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
+    nullUpdateFunction peerData prefixList prefix prefixTableEntry = (prefixList',prefixTableEntry') where
+-- NOTE - this is the null function which simple accumulates all prefixes
+        prefixList' = (IPrefix prefix) : prefixList
+        prefixTableEntry' = prefixTableEntry
+-- the needed function uses the 'peerData' entry of the routes in the sorted list:
+-- it deletes the entry corresponding to the target peer, if it exists
+-- if the deleted entry is the previous best then it adds the corresponding prefix to the accumulator
+-- the required (available) operaions in Data.SortedList are: uncons :: SortedList a -> Maybe (a, SortedList a) / filter :: (a -> Bool) -> SortedList a -> SortedList a
+--
+-- the required equality test is (\route -> peer == peerData route)
+-- use uncons to extract and use if needed the case where the change has effect...
+-- in the other case just use filter
+    activeUpdateFunction peer prefixList prefix prefixTableEntry = if p top
+                                                                   then (prefixList',tail)
+                                                                   else (prefixList, SL.filter ( not . p ) prefixTableEntry)
+                                                                   where
+                                                                       Just (top,tail) = SL.uncons prefixTableEntry -- safe because the list cannot be null
+                                                                                                                    -- however!!!! this can MAKE an empty list which we cannot delet in this operation
+                                                                                                                    -- so we need a final preen before returning the Map to the RIB!!!!
+                                                                       p route = peer == BGPData.peerData route
+                                                                       prefixList' = (IPrefix prefix) : prefixList
+
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
--- TODO - make resilient against lookup failure which could happen if a peer withdrew routes it had not sent....
-    (Just oldRouteList , pt') = IntMap.updateLookupWithKey f ipfx pt
-    f :: Int -> PrefixTableEntry -> Maybe PrefixTableEntry
-    f _ routes = let routes' = SL.filter (notPeer peer) routes in
-         if null routes' then Nothing else Just routes'
-    notPeer :: PeerData -> RouteData -> Bool
-    notPeer pd rd = pd /= peerData rd 
-    oldBestRoute = slHead oldRouteList
-    wasBestRoute = peerData oldBestRoute == peer
+    wasBestRoute = maybe False -- This is the 'prefix not found' return value
+                               -- there are really three possible outcomes, so a tri-valued resuklt could be used
+                               -- a) route was found and removed, but was not the 'best' route
+                               -- b) route was found and removed, and WAS the 'best' route
+                               -- c) the route was not found, which could be a programming error
+                               --    or an external issue
+                         (\oldRouteList -> peerData (slHead oldRouteList) == peer )
+                         maybeOldRouteList
+    (maybeOldRouteList , pt') = IntMap.updateLookupWithKey tableUpdate ipfx pt
+    -- 'tableUpdate' is the 'inner' fundtion which does the sortde list update and posts back the result,
+    -- including the instruction to delete the entry...
+    tableUpdate :: Int -> PrefixTableEntry -> Maybe PrefixTableEntry
+    tableUpdate _ routes = let notPeer pd rd = pd /= peerData rd
+                               routes' = SL.filter (notPeer peer) routes
+                           in if null routes' then Nothing else Just routes'
+    -- notPeer :: PeerData -> RouteData -> Bool
+    -- notPeer pd rd = pd /= peerData rd 
+    --oldBestRoute = slHead oldRouteList -- 'head' operation guaranteed safe as long as the precondition that empty prefix list are removed immediately...
+    --wasBestRoute = peerData oldBestRoute == peer
+    -- oldBestRoute = slHead oldRouteList -- 'head' operation guaranteed safe as long as the precondition that empty prefix list are removed immediately...
+    -- wasBestRoute = peerData oldBestRoute == peer
 
 withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
 withdraw rib prefixes peer = Data.List.foldl' f (rib,[]) prefixes where
