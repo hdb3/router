@@ -27,8 +27,15 @@ newRib = newIORef newRib'
 newRib' :: Rib'
 newRib' = Rib' newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBTable ) 
 
+delPeer :: Rib -> PeerData -> IO ()
+delPeer rib peer = modifyIORef' rib ( delPeer' peer )
+
 addPeer :: Rib -> PeerData -> IO ()
 addPeer rib peer = modifyIORef' rib ( addPeer' peer )
+
+delPeer' ::  PeerData -> Rib' -> Rib'
+delPeer' peer Rib' {..} = Rib' prefixTable (Data.Map.delete peer adjRib)
+-- this removes the peers adjRib but it does not clean up the loc-rib and force all the corresponding withdraws
 
 addPeer' ::  PeerData -> Rib' -> Rib'
 -- addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer newAdjRIBOut adjRib in Rib' prefixTable adjRib'
@@ -36,6 +43,7 @@ addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
                               aro = fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
                               -- aro = newAdjRIBOut
                               f (rd,ipfxs) = (ipfxs , routeId rd)
+                              -- TODO - this would be the place to insert an end-of-rib marker
                            in Rib' prefixTable adjRib'
 
 -- queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
@@ -103,6 +111,7 @@ ribUpdater2 rib routeData update = modifyIORef' rib (ribUpdater2' routeData upda
 ribUpdater2' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
 ribUpdater2' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri . ribWithdrawMany' peerData withdrawn
 
+-- TODO remove ribUpdater and rename ribUpdater2 -> ribUpdater
 ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
 
