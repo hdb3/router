@@ -37,7 +37,7 @@ bgpReader path = do
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
                 let routeData = Rib.makeRouteData dummyPeerData parsedUpdate
-                Rib.ribUpdater rib routeData parsedUpdate
+                Rib.ribUpdater rib dummyPeerData parsedUpdate
 
 -- readRib: a convenience function for simple applications
 -- the returned structure masks only derived or artificial data

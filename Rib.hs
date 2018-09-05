@@ -35,23 +35,17 @@ addPeer :: Rib -> PeerData -> IO ()
 addPeer rib peer = modifyIORef' rib ( addPeer' peer )
 
 delPeer' ::  PeerData -> Rib' -> Rib'
-delPeer' peer Rib' {..} = let rib' = Rib' prefixTable' (Data.Map.delete peer adjRib)
-                              (prefixTable',iprefixes) = withdrawPeer prefixTable peer
-                          in ribWithdrawMany' peer (toPrefixes iprefixes) rib'
--- withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
--- ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
--- this removes the peers adjRib but it does not clean up the loc-rib and force all the corresponding withdraws
+delPeer' peer Rib' {..} = let (prefixTable',iprefixes) = withdrawPeer prefixTable peer
+                              adjRib' = updateRibOutWithPeerData peer nullRoute iprefixes adjRib
+                          in Rib' prefixTable' (Data.Map.delete peer adjRib')
 
 addPeer' ::  PeerData -> Rib' -> Rib'
--- addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer newAdjRIBOut adjRib in Rib' prefixTable adjRib'
 addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
                               aro = fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
-                              -- aro = newAdjRIBOut
                               f (rd,ipfxs) = (ipfxs , routeId rd)
                               -- TODO - this would be the place to insert an end-of-rib marker
                            in Rib' prefixTable adjRib'
 
--- queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
 queryRib :: Rib -> IPrefix -> IO (Maybe RouteData)
 queryRib rib prefix = do
     rib' <- readIORef rib
@@ -115,18 +109,11 @@ makeRouteData' peerData pathAttributes routeId = RouteData peerData pathAttribut
     nextHop = getNextHop pathAttributes
     origin = getOrigin pathAttributes
 
-ribUpdater2 :: Rib -> PeerData -> ParsedUpdate -> IO()
-ribUpdater2 rib routeData update = modifyIORef' rib (ribUpdater2' routeData update)
-
-ribUpdater2' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater2' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri . ribWithdrawMany' peerData withdrawn
-
--- TODO remove ribUpdater and rename ribUpdater2 -> ribUpdater
-ribUpdater :: Rib -> RouteData -> ParsedUpdate -> IO()
+ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
 
-ribUpdater' :: RouteData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater' RouteData{..} ParsedUpdate{..} = ribUpdateMany' peerData pathAttributes routeId nlri . ribWithdrawMany' peerData withdrawn
+ribUpdater' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
+ribUpdater' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri . ribWithdrawMany' peerData withdrawn
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
