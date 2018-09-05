@@ -61,13 +61,57 @@ ap (up:ups) pt = ap ups (up pt)
 ap' ups = ap ups np
 
 
-main = do
+main' = do
     -- selectTest1
     -- selectTest2
     -- selectTestM
     -- updateTestK
     withdrawSelectTestJ
 
+main'' = do
+-- update:: PrefixTable -> [IPrefix] -> RouteData -> (PrefixTable,[IPrefix])
+-- withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
+-- newPrefixTable :: PrefixTable
+-- withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
+    let tell s v = putStrLn $ s ++ " : " ++ show v
+    let pt0 = newPrefixTable
+    tell "pt0" pt0
+    let (pt1,r1) = PrefixTable.update pt0 ["10.0.1.0/24"] route2
+    tell "pt1" pt1
+    tell "r1" r1
+    let (pt2,r2) = PrefixTable.update pt1 ["10.0.1.0/24"] route1
+    tell "pt2" pt2
+    tell "r2" r2
+    let (pt3,r3) = PrefixTable.withdraw pt2 ["10.0.1.0/24"] peer2
+    tell "pt3" pt3
+    tell "r3" r3
+    let (pt4,r4) = PrefixTable.withdraw pt3 ["10.0.1.0/24"] peer1
+    tell "pt4" pt4
+    tell "r4" r4
+
+main = do
+-- update:: PrefixTable -> [IPrefix] -> RouteData -> (PrefixTable,[IPrefix])
+-- withdraw :: PrefixTable -> [IPrefix] -> PeerData -> (PrefixTable,[IPrefix])
+-- newPrefixTable :: PrefixTable
+-- withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
+    let tell s v = putStrLn $ s ++ " : " ++ show v
+    let pt0 = newPrefixTable
+    tell "pt0" pt0
+    let (pt1,r1) = PrefixTable.update pt0 ["10.0.1.0/24"] route11
+    tell "pt1" pt1
+    tell "r1" r1
+    let (pt2,r2) = PrefixTable.update pt1 ["10.0.2.0/24"] route12
+    tell "pt2" pt2
+    tell "r2" r2
+    let (pt3,r3) = PrefixTable.update pt2 ["10.0.3.0/24"] route13
+    tell "pt3" pt3
+    tell "r3" r3
+    let (pt4,r4) = PrefixTable.withdrawPeer pt3 peer1
+    tell "pt4" pt4
+    tell "r4" r4
+
+showPrefixTable = show
+showPrefixTableByRoute = show
 showRib = showPrefixTable
 -- showRib = showPrefixTableByRoute
 
@@ -141,6 +185,7 @@ selectTest2 = do
 withdrawSelectTestJ = do
    putStrLn "\nwithdrawSelectTestJ\n"
 
+   tell' "[up11]" $ ap' [up11]
    tell' "[up11,wd1]" $ ap' [up11,wd1]
    tell' "[up21,wd2]" $ ap' [up21,wd2]
    tell' "[up11,wd1,up21,wd2]" $ ap' [up11,wd1,up21,wd2]
