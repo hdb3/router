@@ -43,7 +43,7 @@ main' peers = do
     t <- utcSecs
     handle <- openBinaryFile (show t ++ ".bgp") WriteMode
     rib <- Rib.newRib
-    ribUpdater2 rib local $ igpUpdate (myBGPid global) ["10.0.0.0/8","13.0.0.0/8"]
+    ribUpdater rib local $ igpUpdate (myBGPid global) ["10.0.0.0/8","13.0.0.0/8"]
     let config = BgpFSMconfig sock collisionDetector peerName delayOpenTimer exitMVar (Just handle) peerData rib
     finally (bgpFSM config) (close sock) 
     (tid,msg) <- takeMVar exitMVar

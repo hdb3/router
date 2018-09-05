@@ -239,7 +239,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                     (\parsedUpdate -> do
                       let routeData = Rib.makeRouteData peerData parsedUpdate
                       -- let routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
-                      Rib.ribUpdater rib routeData parsedUpdate
+                      Rib.ribUpdater rib peerData parsedUpdate
                       return (Established,bsock',osm)
                     )
                     ( processUpdate update )

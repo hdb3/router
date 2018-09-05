@@ -49,7 +49,7 @@ diff rib1 rib2 = do
     return $ r1 == r2
 
 main = do
-    putStrLn "*****************\nRIB test\n*****************"
+    putStrLn "*****************\nRIB delPeer test\n*****************"
     rib <- newRib local
     pr rib
     addPeer rib internalPeer
@@ -57,49 +57,41 @@ main = do
     pr rib
 
     putStrLn "\nupdate internalPeer prefixes1"
-    ribUpdater2 rib internalPeer ( makeUpdateSimple attrs1 prefixes1 [] )
-    -- ribUpdater2 rib internalPeer ( makeUpdateSimple attrs2 prefixes2 [] )
+    ribUpdater rib internalPeer ( makeUpdateSimple attrs1 prefixes1 [] )
+    -- ribUpdater rib internalPeer ( makeUpdateSimple attrs2 prefixes2 [] )
+    pr rib
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+
+    putStrLn "\ndel internalPeer"
+    delPeer rib internalPeer
+    pr rib
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    pr rib
+
+main' = do
+    putStrLn "*****************\nRIB withdraw test\n*****************"
+    rib <- newRib local
+    pr rib
+    addPeer rib internalPeer
+    addPeer rib externalPeer
+    pr rib
+
+    putStrLn "\nupdate internalPeer prefixes1"
+    ribUpdater rib internalPeer ( makeUpdateSimple attrs1 prefixes1 [] )
+    -- ribUpdater rib internalPeer ( makeUpdateSimple attrs2 prefixes2 [] )
     pr rib
     pullAllUpdates internalPeer rib >>= ( \v -> putStrLn $ "internalPeer AdjRibOut" ++ show v )
     pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
     pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
 
     putStrLn "\nwithdraw internalPeer prefixes1"
-    ribUpdater2 rib internalPeer ( makeUpdateSimple [] [] prefixes1 )
+    ribUpdater rib internalPeer ( makeUpdateSimple [] [] prefixes1 )
     pr rib
     pullAllUpdates internalPeer rib >>= ( \v -> putStrLn $ "internalPeer AdjRibOut" ++ show v )
     pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
     pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
-    -- ribUpdater2 rib internalPeer ( makeUpdateSimple [] [] prefixes2 )
-    -- peekUpdates internalPeer rib >>= print
-    -- peekUpdates externalPeer rib >>= print
     delPeer rib internalPeer
     delPeer rib externalPeer
     pr rib
-{-
-main'' = do
-    rib <- newRib
-    rib' <- newRib
-    ribUpdate rib (attrs1, toStrict $ encode path1) prefix2
-    ribUpdate rib (attrs1, toStrict $ encode path1) prefix1
-    ribUpdateMany rib' (attrs1, toStrict $ encode path1) [prefix1,prefix2]
-    pr rib
-    pr rib'
-    p <- diff rib rib'
-    print p
-    ribUpdate rib (attrs1, toStrict $ encode path1) prefix3
-    p <- diff rib rib'
-    print p
-
-main = do
-    rib <- newRib
-    ribUpdateMany rib pathA [prefix1,prefix2]
-    ribUpdateMany rib pathB [prefix3,prefix4]
-    pr rib
-    ribUpdateMany rib pathB [prefix1,prefix2]
-    pr rib
-    ribWithdrawMany rib [prefix4,prefix3]
-    pr rib
-    ribWithdrawMany rib [prefix2,prefix1]
-    pr rib
--}
