@@ -51,7 +51,7 @@ main' peers = do
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
     sessions <- newMVar ( Data.Map.empty :: Data.Map.Map ThreadId PeerData )
-    rib <- Rib.newRib
+    rib <- Rib.newRib local
     insertStatic rib local
     putStrLn "ActPassive ready"
     forkIO $ reaper exitMVar rib sessions

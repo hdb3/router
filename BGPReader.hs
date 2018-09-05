@@ -30,9 +30,9 @@ bgpReader path = do
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
     let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
-    rib <- Rib.newRib
+    rib <- Rib.newRib defaultPeerData
     mapM_ (updateRib rib) updates
-    rib' <- Rib.getRib rib
+    rib' <- Rib.getLocRib rib
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
