@@ -101,11 +101,11 @@ withdrawPeer :: PrefixTable -> PeerData -> (PrefixTable,[IPrefix])
 -- hence the outer function is simply:
 withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateFunction peerData) [] prefixTable where
     swapNgroom (pfxs,pt) = (groomPrefixTable pt,pfxs)
-    updateFunction = nullUpdateFunction
--- and the inner function has the shape:
+    updateFunction = activeUpdateFunction
+-- and the inner function has the shape: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
+-- NOTE - this is the null function which simple accumulates all prefixes
     nullUpdateFunction :: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
     nullUpdateFunction peerData prefixList prefix prefixTableEntry = (prefixList',prefixTableEntry') where
--- NOTE - this is the null function which simple accumulates all prefixes
         prefixList' = (IPrefix prefix) : prefixList
         prefixTableEntry' = prefixTableEntry
 -- the needed function uses the 'peerData' entry of the routes in the sorted list:
@@ -116,15 +116,16 @@ withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateF
 -- the required equality test is (\route -> peer == peerData route)
 -- use uncons to extract and use if needed the case where the change has effect...
 -- in the other case just use filter
-    activeUpdateFunction peer prefixList prefix prefixTableEntry = if p top
-                                                                   then (prefixList',tail)
-                                                                   else (prefixList, SL.filter ( not . p ) prefixTableEntry)
-                                                                   where
-                                                                       Just (top,tail) = SL.uncons prefixTableEntry -- safe because the list cannot be null
-                                                                                                                    -- however!!!! this can MAKE an empty list which we cannot delet in this operation
-                                                                                                                    -- so we need a final preen before returning the Map to the RIB!!!!
-                                                                       p route = peer == BGPData.peerData route
-                                                                       prefixList' = (IPrefix prefix) : prefixList
+    activeUpdateFunction peer prefixList prefix prefixTableEntry =
+        if p top
+        then (prefixList',tail)
+        else (prefixList, SL.filter ( not . p ) prefixTableEntry)
+        where
+            Just (top,tail) = SL.uncons prefixTableEntry -- safe because the list cannot be null
+                                                         -- however!!!! this can MAKE an empty list which we cannot delet in this operation
+                                                         -- so we need a final preen before returning the Map to the RIB!!!!
+            p route = peer == BGPData.peerData route
+            prefixList' = (IPrefix prefix) : prefixList
 
 groomPrefixTable :: PrefixTable -> PrefixTable
 groomPrefixTable = IntMap.filter ( not . null )

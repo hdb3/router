@@ -36,6 +36,11 @@ route1 = RouteData { peerData = internalPeer
                    , med = 0
                    , fromEBGP = True
                    }
+route2 = route1 { peerData = externalPeer
+                   , routeId = 100
+                   , nextHop = "1.2.3.5"
+                   , pathLength = 11
+                  } 
 -- gd1Peer2Route1 = gd1Peer1Route1 { peerData = gd2Peer2 }
 -- gd1Peer1Route2 = gd1Peer1Route1 { pathLength = 11 }
 -- gd1Peer1Route3 = gd1Peer1Route1 { pathLength = 12 }

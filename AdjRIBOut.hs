@@ -18,6 +18,11 @@ import qualified Data.Tuple
 import Common
 import Prefixes
 
+-- TODO
+-- bite this bullet? - the AdjRIBEntry should simply carry the RouteData itself rather than the proxy Int which is a hash over the original
+-- Update Path Attributes
+--
+
 type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
 
