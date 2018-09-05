@@ -60,14 +60,16 @@ main = do
     ribUpdater2 rib internalPeer ( makeUpdateSimple attrs1 prefixes1 [] )
     -- ribUpdater2 rib internalPeer ( makeUpdateSimple attrs2 prefixes2 [] )
     pr rib
-    peekUpdates internalPeer rib >>= print
-    peekUpdates externalPeer rib >>= print
+    pullAllUpdates internalPeer rib >>= ( \v -> putStrLn $ "internalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
 
     putStrLn "\nwithdraw internalPeer prefixes1"
     ribUpdater2 rib internalPeer ( makeUpdateSimple [] [] prefixes1 )
     pr rib
-    peekUpdates internalPeer rib >>= print
-    peekUpdates externalPeer rib >>= print
+    pullAllUpdates internalPeer rib >>= ( \v -> putStrLn $ "internalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
     -- ribUpdater2 rib internalPeer ( makeUpdateSimple [] [] prefixes2 )
     -- peekUpdates internalPeer rib >>= print
     -- peekUpdates externalPeer rib >>= print
