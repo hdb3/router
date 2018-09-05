@@ -12,7 +12,7 @@ import Update
 import BGPparse
 import qualified Rib
 import GetBGPMsg
-import BGPData(defaultPeerData)
+import BGPData(dummyPeerData)
 import PrefixTable(PrefixTable)
 import PrefixTableUtils(getRIB,getAdjRIBOut)
 import qualified Prefixes
@@ -30,13 +30,13 @@ bgpReader path = do
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
     let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
-    rib <- Rib.newRib defaultPeerData
+    rib <- Rib.newRib dummyPeerData
     mapM_ (updateRib rib) updates
     rib' <- Rib.getLocRib rib
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = Rib.makeRouteData defaultPeerData parsedUpdate
+                let routeData = Rib.makeRouteData dummyPeerData parsedUpdate
                 Rib.ribUpdater rib routeData parsedUpdate
 
 -- readRib: a convenience function for simple applications

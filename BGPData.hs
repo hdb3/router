@@ -44,16 +44,31 @@ data RouteData =  RouteData { peerData :: PeerData
 instance Hashable RouteData where
     hashWithSalt _ = routeId
 
+nullRoute :: RouteData
+nullRoute = RouteData undefined undefined 0 undefined undefined undefined undefined undefined
+
+localPeer gd = PeerData { globalData = gd
+                    , isExternal = False
+                    , peerAS  = myAS gd
+                    , peerBGPid = myBGPid gd
+                    ,  peerIPv4 = "127.0.0.1"
+                    ,  localIPv4 = "127.0.0.1"
+                    ,  localPref = 0
+                    ,  propHoldTime = 300
+                    ,  reqHoldTime = 0
+                    ,  offerCapabilies = [ CapAS4 (myAS gd) ]
+                    ,  requireCapabilies = []
+                    }
+
+{-
 localPeer :: GlobalData -> PeerData
 localPeer gd = PeerData gd False (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 undefined undefined undefined undefined 
 -- localPeer gd = PeerData gd false (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 0 0 [] [] 
-nullRoute :: RouteData
-nullRoute = RouteData undefined undefined 0 undefined undefined undefined undefined undefined
-defaultPeerData :: PeerData
-defaultPeerData = PeerData defaultGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 100 0 [] []
-defaultGlobalData :: GlobalData
-defaultGlobalData = GlobalData 64512 "127.0.0.1"
-
+-}
+dummyPeerData :: PeerData
+dummyPeerData = PeerData dummyGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 100 0 [] []
+dummyGlobalData :: GlobalData
+dummyGlobalData = GlobalData 64512 "127.0.0.1"
 --instance Show GlobalData where
 --    show gd = " router: " ++ show ( myBGPid gd )
 
