@@ -209,7 +209,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStr "established - rcv keepalive"
-                prefixTable <- Rib.getRib rib
+                prefixTable <- Rib.getLocRib rib
                 if length prefixTable < 10 then do
                     -- putStrLn $ "Prefix Table (" ++ show (length prefixTable) ++ ")"
                     -- putStrLn $ showPrefixTableByRoute prefixTable

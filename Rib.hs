@@ -19,13 +19,14 @@ type Rib = IORef Rib'
 type AdjRIB = Data.Map.Map PeerData AdjRIBTable
 data Rib' = Rib' { 
                    prefixTable :: PrefixTable
-                 , adjRib:: AdjRIB
+                 , adjRib :: AdjRIB
                  }
 
-newRib :: IO Rib
-newRib = newIORef newRib'
-newRib' :: Rib'
-newRib' = Rib' newPrefixTable ( Data.Map.singleton defaultPeerData newAdjRIBTable ) 
+newRib :: PeerData -> IO Rib
+newRib localPeer = newIORef (newRib' localPeer)
+
+newRib' :: PeerData -> Rib'
+newRib' localPeer = Rib' newPrefixTable ( Data.Map.singleton localPeer newAdjRIBTable ) 
 
 delPeer :: Rib -> PeerData -> IO ()
 delPeer rib peer = modifyIORef' rib ( delPeer' peer )
@@ -77,10 +78,15 @@ peekUpdates peer rib = do
     rib' <- readIORef rib
     return $ peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
 
-getRib :: Rib -> IO PrefixTable
-getRib rib = do
+getLocRib :: Rib -> IO PrefixTable
+getLocRib rib = do
     rib' <- readIORef rib
     return (prefixTable rib')
+
+getAdjRib :: Rib -> IO AdjRIB
+getAdjRib rib = do
+    rib' <- readIORef rib
+    return (adjRib rib')
 
 -- updateAdjRibOutTables -- this function applies the same update to _all_ of the adjribs
 -- it is called from within ribUpdate so has no IO wrapper of its own
