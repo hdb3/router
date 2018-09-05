@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Update(processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,igpUpdate,originateWithdraw,originateUpdate) where
+module Update(processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,makeUpdateSimple,igpUpdate,originateWithdraw,originateUpdate) where
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
@@ -79,6 +79,9 @@ originateUpdate :: Word8 -> [ASSegment Word32] -> IPv4 -> [Prefix] -> ParsedUpda
 originateUpdate origin path nextHop prefixes = ParsedUpdate attributes prefixes [] hash where
     attributes = [PathAttributeOrigin origin, PathAttributeASPath (ASPath4 path), PathAttributeNextHop nextHop]
     hash = myHash $ encode attributes
+
+makeUpdateSimple :: [PathAttribute] -> [Prefix] -> [Prefix] -> ParsedUpdate
+makeUpdateSimple p n w  = head $ makeUpdate n w p
 
 makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> [ParsedUpdate]
 --makeUpdate a b c = [makeUpdate' a b c]

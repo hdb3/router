@@ -6,10 +6,13 @@ import Data.IP(IPv4)
 
 import RFC4271
 import BGPData
+import Capabilities
 
 gd1 = GlobalData 65511 "172.16.0.254"
 gd2 = GlobalData 65512 "172.16.0.253"
 
+internalPeer = externalPeer {peerAS = (myAS (globalData externalPeer))}
+externalPeer = gd1Peer1
 gd1Peer1 = PeerData { globalData = gd1
                     , isExternal = True
                     , peerAS  = 65501
@@ -17,6 +20,11 @@ gd1Peer1 = PeerData { globalData = gd1
                     ,  peerIPv4 = "192.168.0.1"
                     ,  localIPv4 = "192.168.0.254"
                     ,  localPref = 100
+                    ,  propHoldTime = 100
+                    ,  reqHoldTime = 0
+                    ,  offerCapabilies = [ CapAS4 (myAS gd1) ]
+                    ,  requireCapabilies = [ CapAS4 65501 ]
+
                     }
 
 gd1Peer2 = gd1Peer1 { peerAS  = 65502
@@ -29,7 +37,7 @@ gd1Peer3 = gd1Peer1 { peerAS  = 65503
                     , peerIPv4 = "192.168.0.3"
                     }
 
-gd2Peer1 = PeerData { globalData = gd2
+gd2Peer1 = gd1Peer1 { globalData = gd2
                     , isExternal = True
                     , peerAS  = 65521
                     , peerBGPid = "172.16.0.1"
@@ -45,6 +53,9 @@ gd2Peer2 = gd2Peer1 { peerAS  = 65522
 
 
 gd1Peer1Route1 = RouteData { peerData = gd1Peer1
+                   , pathAttributes = []
+                   , routeId = 99
+                   , nextHop = "1.2.3.4"
                    , pathLength = 10
                    , origin = _BGP_ORIGIN_IGP
                    , med = 0
