@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances,FlexibleInstances #-}
 module PrefixTable where
 
 {- A single prefix table holds everything about a prefix we could care about
@@ -35,6 +36,13 @@ import Prefixes (IPrefix(..))
 
 type PrefixTableEntry = SL.SortedList RouteData 
 type PrefixTable = IntMap.IntMap PrefixTableEntry
+type PrefixTableElement = (Int,SL.SortedList RouteData)
+
+instance {-# OVERLAPPING #-} Show PrefixTableElement where
+    show (k,v) = "(" ++ show (IPrefix k) ++ "," ++ show v ++ ")"
+
+instance {-# OVERLAPPING #-} Show PrefixTable where
+    show = show . IntMap.toList
 
 newPrefixTable :: PrefixTable
 newPrefixTable = IntMap.empty
@@ -123,7 +131,8 @@ groomPrefixTable = IntMap.filter ( not . null )
 
 withdrawPrefixTable :: PrefixTable -> IPrefix -> PeerData -> (PrefixTable,Bool)
 withdrawPrefixTable pt (IPrefix ipfx) peer = (pt', wasBestRoute) where
-    wasBestRoute = maybe False -- This is the 'prefix not found' return value
+    wasBestRoute = maybe
+                         False -- This is the 'prefix not found' return value
                                -- there are really three possible outcomes, so a tri-valued resuklt could be used
                                -- a) route was found and removed, but was not the 'best' route
                                -- b) route was found and removed, and WAS the 'best' route
