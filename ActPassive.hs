@@ -50,21 +50,27 @@ main' peers = do
     listen sock 100
     collisionDetector <- mkCollisionDetector
     exitMVar <- newEmptyMVar
-    forkIO $ reaper exitMVar
+    sessions <- newMVar ( Data.Map.empty :: Data.Map.Map ThreadId PeerData )
     rib <- Rib.newRib
     insertStatic rib local
     putStrLn "ActPassive ready"
-    E.finally (loop (sock,rib,peerMap,exitMVar,collisionDetector) )
+    forkIO $ reaper exitMVar rib sessions
+    E.finally (loop (sock,rib,peerMap,exitMVar,collisionDetector,sessions) )
               (close sock)
 
-reaper mbox = forever $ do
-    (t,peerName,es) <- takeMVar mbox
+reaper mbox rib sessions = forever $ do
+    (tid,peerName,es) <- takeMVar mbox
     either
-        (\s -> putStrLn $ "thread " ++ show t ++ "/" ++ show peerName ++ " exited with exception <" ++ s ++ ">")
-        (\s -> putStrLn $ "thread " ++ show t ++ "/" ++ show peerName ++ " exited normally <" ++ s ++ ">")
+        (\s -> putStrLn $ "thread " ++ show tid ++ "/" ++ show peerName ++ " exited with exception <" ++ s ++ ">")
+        (\s -> putStrLn $ "thread " ++ show tid ++ "/" ++ show peerName ++ " exited normally <" ++ s ++ ">")
         es
+    threadMap <- takeMVar sessions
+    -- let peerData = threadMap ! tid
+    delPeer rib ( threadMap Data.Map.! tid )
+    putMVar sessions ( Data.Map.delete tid threadMap )
 
-loop (sock,rib,peerMap,exitMVar,collisionDetector) = forever $ do
+
+loop (sock,rib,peerMap,exitMVar,collisionDetector,sessions) = forever $ do
     (conn, peer) <- accept sock
     let peerIPv4 = getIPv4 peer
         delayOpenTimer = 10
@@ -74,7 +80,9 @@ loop (sock,rib,peerMap,exitMVar,collisionDetector) = forever $ do
             putStrLn $ "Connection from " ++ show peer
             logfile <- getLogFile
             let config = BgpFSMconfig conn collisionDetector peer delayOpenTimer exitMVar logfile peerData rib
-            void $ forkIO (bgpFSM config)
+            threadId <- forkIO (bgpFSM config)
+            threadMap <- takeMVar sessions
+            putMVar sessions ( Data.Map.insert threadId peerData threadMap )
         )
         ( Data.Map.lookup peerIPv4 peerMap )
 
@@ -85,7 +93,8 @@ getIPv4 (SockAddrInet portNumber hostAddress) = fromHostAddress hostAddress
 getLogFile = do
     t <- utcSecs
     handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
-    return $ Just handle
+    return Nothing
+    -- return $ Just handle
 
 insertStatic rib local = do
     -- pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
