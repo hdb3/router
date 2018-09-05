@@ -92,7 +92,7 @@ updateRibOutWithPeerData :: PeerData -> RouteData -> [IPrefix] -> AdjRIB -> AdjR
 -- this is OK since we only get the routeId in this function
 
 updateRibOutWithPeerData originPeer routeData updates = Data.Map.mapWithKey updateWithKey where
-    updateWithKey destinationPeer table = if isExternal destinationPeer || isExternal originPeer
+    updateWithKey destinationPeer table = if (destinationPeer /= originPeer) && ( isExternal destinationPeer || isExternal originPeer )
                                then insertAdjRIBTable (updates, routeId routeData ) table
                                else table
 
