@@ -132,20 +132,24 @@ ribUpdater' RouteData{..} ParsedUpdate{..} = ribUpdateMany' peerData pathAttribu
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
 ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
 ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
-ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables ) = let
-    routeData = makeRouteData' peerData pathAttributes routeId
-    ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
-    adjRibOutTables' = updateRibOutWithPeerData peerData routeData updates adjRibOutTables
+ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
+    | null pfxs = (Rib' prefixTable adjRibOutTables ) 
+    | otherwise = let
+        routeData = makeRouteData' peerData pathAttributes routeId
+        ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
+        adjRibOutTables' = updateRibOutWithPeerData peerData routeData updates adjRibOutTables
     in Rib' prefixTable' adjRibOutTables'
 
 ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)
 ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
-ribWithdrawMany' peerData pfxs (Rib' prefixTable adjRibOutTables) = let
-    ( prefixTable' , updates ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
-    -- adjRibOutTables' = updateAdjRibOutTables (updates,0) adjRibOutTables
-    -- ** NOTE **
-    -- The withdraw entry in the adj-rib-out has a special route value
-    -- in future this could be better done as just the withdrawn route with an indicator to distinguish it from a normal one
-    -- probably just using Either monad?
-    adjRibOutTables' = updateRibOutWithPeerData peerData nullRoute updates adjRibOutTables
-    in Rib' prefixTable' adjRibOutTables
+ribWithdrawMany' peerData pfxs (Rib' prefixTable adjRibOutTables)
+    | null pfxs = (Rib' prefixTable adjRibOutTables )
+    | otherwise = let
+        ( prefixTable' , withdraws ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
+        -- adjRibOutTables' = updateAdjRibOutTables (updates,0) adjRibOutTables
+        -- ** NOTE **
+        -- The withdraw entry in the adj-rib-out has a special route value
+        -- in future this could be better done as just the withdrawn route with an indicator to distinguish it from a normal one
+        -- probably just using Either monad?
+        adjRibOutTables' = updateRibOutWithPeerData peerData nullRoute withdraws adjRibOutTables
+    in Rib' prefixTable' adjRibOutTables'
