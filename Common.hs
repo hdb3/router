@@ -18,6 +18,8 @@ import Data.Hashable
 import Data.Foldable(toList)
 import Numeric(showHex)
 import FarmHash(hash64)
+import Control.Concurrent
+import Control.Monad
 
 -- Debug stuff
 --
@@ -53,15 +55,35 @@ groupBy_ t = Data.HashMap.Strict.toList $ Data.HashMap.Strict.fromListWith (++) 
 fromRight' :: Either a b -> b
 fromRight' (Right b ) = b
 
-type Fifo = Seq.Seq
-emptyFifo = Seq.empty
-nullFifo = Seq.null
-fifo = Seq.fromList
-enqueue s e = e Seq.<| s
-dequeue s = (s',e) where (s' Seq.:> e) = Seq.viewr s
-dequeueAll s = ( Seq.empty , Data.Foldable.toList s )
-dequeueN n s = let (s1,s2) = Seq.splitAt n s in (s2, Data.Foldable.toList s1 )
-peekAll s = Data.Foldable.toList s
+type Fifo t = MVar (Seq.Seq t)
+emptyFifo = newMVar Seq.empty
+-- nullFifo mvar = do
+--     fifo <- tryReadMVar mvar
+--     return $ maybe False Seq.null fifo
+nullFifo m = fmap (maybe False Seq.null) (tryReadMVar m)
+
+fifo = newMVar . Seq.fromList
+showFifo :: Show t => Fifo t -> IO String
+showFifo m = do
+    t <- readMVar m 
+    return $ show t
+-- surely there is a more elegant way to express this?
+-- showFifo m = readMVar m >>= show 
+enqueue m e = modifyMVar_ m (\s -> return (e Seq.<| s ) )
+
+dequeue' :: Seq.Seq t -> (Seq.Seq t, t)
+dequeue' s = (s',e) where (s' Seq.:> e) = Seq.viewr s
+dequeue m = modifyMVar m (\s -> let (s' Seq.:> e) = (Seq.viewr s)
+                                in return (s',e))
+dequeueAll m = modifyMVar m (\s -> return ( Seq.empty , Data.Foldable.toList s ))
+dequeueN n m = modifyMVar m (\s -> let (s1,s2) = Seq.splitAt n s
+                                   in return (s2, Data.Foldable.toList s1 ))
+peekAll' :: Foldable t => t a -> [a]
+peekAll' s = Data.Foldable.toList s
+-- peekAll_ m = do l <- tryReadMVar m
+--                 return $ maybe [] Data.Foldable.toList l
+-- peekAll m = tryReadMVar m >>= ( return . maybe [] Data.Foldable.toList )
+peekAll m = fmap (maybe [] Data.Foldable.toList) (tryReadMVar m)
 
 -- application stuff
 --

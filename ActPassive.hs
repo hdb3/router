@@ -98,10 +98,10 @@ getLogFile = do
 
 insertStatic rib local = do
     -- pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
-    updates <- pathReadRib "bgpdata/full.bgp"
+    -- updates <- pathReadRib "bgpdata/full.bgp"
     -- ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
     -- makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
-    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
+    -- let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
     -- mapM print updates'
     -- mapM (ribUpdater rib local) updates'
     return ()
