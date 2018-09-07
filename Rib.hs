@@ -1,9 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 module Rib where
 import Data.IORef
+import Control.Concurrent
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
 import Data.Maybe(fromJust)
+import Control.Monad(void)
+import Control.Monad.Extra(concatMapM)
+import Data.List(intercalate)
 
 import Common
 import BGPData
@@ -15,71 +19,118 @@ import PathAttributeUtils
 import Update
 import AdjRIBOut
 
-type Rib = IORef Rib'
+type Rib = MVar Rib'
+-- TODO rename AdjRIB -> AdjRIBMap
+-- and create a type 'AdjRIBMapEntry = (PeerData,AdjRIBTable)'
+
 type AdjRIB = Data.Map.Map PeerData AdjRIBTable
 data Rib' = Rib' { 
                    prefixTable :: PrefixTable
                  , adjRib :: AdjRIB
                  }
 
+showAdjRIBMapEntry :: (PeerData,AdjRIBTable) -> IO String
+showAdjRIBMapEntry (peerData, adjRIBTable) = do
+    s <- showAdjRIBTable adjRIBTable
+    let p = show peerData
+    return $ "AdjRIB (" ++ p ++ " : " ++ s ++ ")"
+
+showAdjRIB :: AdjRIB -> IO String
+showAdjRIB adjRIBMap = do
+    let adjRIBs = Data.Map.toList adjRIBMap
+    -- s <- sequence $ mapM showAdjRIBMapEntry adjRIBs
+    -- return s
+    s <- mapM showAdjRIBMapEntry adjRIBs
+    -- return $ unlines s
+    return $ intercalate "\n                 " s
+    -- concatMapM showAdjRIBMapEntry adjRIBs
+
+showRib :: Rib -> IO String
+-- showRib _ = return ""
+showRib r = do
+    rib <- readMVar r
+    let s1 = show (prefixTable rib)
+    s2 <- showAdjRIB (adjRib rib)
+    return $ "Rib { prefixTable = " ++ s1 ++ " ,\n      adjRib = [ " ++ s2 ++ "]"
+
+printRib r = showRib r >>= putStrLn
+{-
+-}
+
 newRib :: PeerData -> IO Rib
-newRib localPeer = newIORef (newRib' localPeer)
+newRib localPeer = do
+    adjRib <- newAdjRIBTable
+    newMVar $ Rib' newPrefixTable ( Data.Map.singleton localPeer adjRib )
+
+{-
+newRib :: PeerData -> IO Rib
+newRib localPeer = newMVar (newRib' localPeer)
 
 newRib' :: PeerData -> Rib'
 newRib' localPeer = Rib' newPrefixTable ( Data.Map.singleton localPeer newAdjRIBTable ) 
 
+-}
 delPeer :: Rib -> PeerData -> IO ()
-delPeer rib peer = modifyIORef' rib ( delPeer' peer )
+delPeer rib peer = modifyMVar_ rib ( delPeer' peer )
+
+delPeer' :: PeerData -> Rib' -> IO Rib'
+delPeer' peer Rib' {..} = do
+    -- drain the prefix table and save the resulting withdraws
+    let (prefixTable',iprefixes) = withdrawPeer prefixTable peer
+    -- schedule the withdraw dissemination
+    -- NOTE - this does not change the AdjRIBMap
+    updateRibOutWithPeerData peer nullRoute iprefixes adjRib
+    -- now remove this peer completely from the AdjRIBMap
+    -- it is liekly that this could be done before the previous action.....
+    -- but the semantics should be identical as long as we didn't try to send withdraw messages to the peer which has gone away...
+    let adjRib' = (Data.Map.delete peer adjRib)
+    return $ Rib' prefixTable' adjRib'
 
 addPeer :: Rib -> PeerData -> IO ()
-addPeer rib peer = modifyIORef' rib ( addPeer' peer )
+addPeer rib peer = modifyMVar_ rib ( addPeer' peer )
 
-delPeer' ::  PeerData -> Rib' -> Rib'
-delPeer' peer Rib' {..} = let (prefixTable',iprefixes) = withdrawPeer prefixTable peer
-                              adjRib' = updateRibOutWithPeerData peer nullRoute iprefixes adjRib
-                          in Rib' prefixTable' (Data.Map.delete peer adjRib')
-
-addPeer' ::  PeerData -> Rib' -> Rib'
-addPeer' peer Rib' {..} = let adjRib' = Data.Map.insert peer aro adjRib
-                              aro = fifo $ map f $ PrefixTableUtils.getAdjRIBOut prefixTable
-                              f (rd,ipfxs) = (ipfxs , routeId rd)
-                              -- TODO - this would be the place to insert an end-of-rib marker
-                           in Rib' prefixTable adjRib'
+addPeer' ::  PeerData -> Rib' -> IO Rib'
+addPeer' peer Rib' {..} = do
+        -- get a complete RIB dump for the new peer...
+    let ribDump = map f (PrefixTableUtils.getAdjRIBOut prefixTable) where
+        f (rd,ipfxs) = (ipfxs , routeId rd)
+        -- make the RIB dump into a Fifo
+    aro <- fifo ribDump
+        -- TODO - this would be the place to insert an end-of-rib marker
+    let adjRib' = Data.Map.insert peer aro adjRib
+    return $ Rib' prefixTable adjRib'
 
 queryRib :: Rib -> IPrefix -> IO (Maybe RouteData)
 queryRib rib prefix = do
-    rib' <- readIORef rib
+    rib' <- readMVar rib
     return $ queryPrefixTable (prefixTable rib') prefix 
 
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
 pullAllUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
 pullAllUpdates = pullUpdates 0
-pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
-pullUpdates n peer rib = atomicModifyIORef' rib f where
-    f (Rib' pt arot) = (Rib' pt arot' , updates) where
-        (arot',updates) = pullUpdates' n peer arot
 
-pullUpdates' :: Int -> PeerData -> AdjRIB -> (AdjRIB,[AdjRIBEntry])
-pullUpdates' n peer aroTable = (aroTable',updates) where
-    aroTable' = Data.Map.update (\_ -> Just aro') peer aroTable
-    (aro',updates) | n == 0    = dequeueAll (aroTable Data.Map.! peer) 
-                   | otherwise = dequeueN n (aroTable Data.Map.! peer) 
+pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
+pullUpdates n peer rib = do
+    (Rib' pt arot) <- readMVar rib
+    if n == 0
+    then dequeueAll (arot Data.Map.! peer) 
+    else  dequeueN n (arot Data.Map.! peer) 
 
 -- this is a read only operation which does not change the RIB
 -- see pullUpdates for the operational function which empties the AdjRibOut fifo
 peekUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
 peekUpdates peer rib = do
-    rib' <- readIORef rib
-    return $ peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
+    rib' <- readMVar rib
+    peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
 
 getLocRib :: Rib -> IO PrefixTable
 getLocRib rib = do
-    rib' <- readIORef rib
+    rib' <- readMVar rib
     return (prefixTable rib')
 
 getAdjRib :: Rib -> IO AdjRIB
 getAdjRib rib = do
-    rib' <- readIORef rib
+    rib' <- readMVar rib
     return (adjRib rib')
 
 -- updateAdjRibOutTables -- this function applies the same update to _all_ of the adjribs
@@ -87,14 +138,15 @@ getAdjRib rib = do
 -- updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
 -- updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBTable are )
 
-updateRibOutWithPeerData :: PeerData -> RouteData -> [IPrefix] -> AdjRIB -> AdjRIB
+updateRibOutWithPeerData :: PeerData -> RouteData -> [IPrefix] -> AdjRIB -> IO ()
 -- NOTE!!!! - we can be called with a null route in which case only the routeId is defined, and is equal 0!!!
 -- this is OK since we only get the routeId in this function
 
-updateRibOutWithPeerData originPeer routeData updates = Data.Map.mapWithKey updateWithKey where
-    updateWithKey destinationPeer table = if (destinationPeer /= originPeer) && ( isExternal destinationPeer || isExternal originPeer )
+updateRibOutWithPeerData originPeer routeData updates adjRib = do
+    let updateWithKey destinationPeer table = if (destinationPeer /= originPeer) && ( isExternal destinationPeer || isExternal originPeer )
                                then insertAdjRIBTable (updates, routeId routeData ) table
-                               else table
+                               else ( return ())
+    void $ sequence $ Data.Map.mapWithKey updateWithKey adjRib
 
 makeRouteData :: PeerData -> ParsedUpdate -> RouteData
 makeRouteData peerData parsedUpdate = makeRouteData' peerData ( puPathAttributes parsedUpdate) ( hash parsedUpdate)
@@ -108,35 +160,40 @@ makeRouteData' peerData pathAttributes routeId = RouteData peerData pathAttribut
     med = if fromEBGP then 0 else getMED pathAttributes
     nextHop = getNextHop pathAttributes
     origin = getOrigin pathAttributes
+{-
+-}
 
 ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
-ribUpdater rib routeData update = modifyIORef' rib (ribUpdater' routeData update)
+ribUpdater rib routeData update = modifyMVar_ rib (ribUpdater' routeData update)
 
-ribUpdater' :: PeerData -> ParsedUpdate -> Rib' -> Rib'
-ribUpdater' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri . ribWithdrawMany' peerData withdrawn
+ribUpdater' :: PeerData -> ParsedUpdate -> Rib' -> IO Rib'
+ribUpdater' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri >> ribWithdrawMany' peerData withdrawn
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
-ribUpdateMany rib peerData attrs hash pfxs = modifyIORef' rib (ribUpdateMany' peerData attrs hash pfxs)
-ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> Rib'
-ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
-    | null pfxs = (Rib' prefixTable adjRibOutTables ) 
-    | otherwise = let
-        routeData = makeRouteData' peerData pathAttributes routeId
-        ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
-        adjRibOutTables' = updateRibOutWithPeerData peerData routeData updates adjRibOutTables
-    in Rib' prefixTable' adjRibOutTables'
+ribUpdateMany rib peerData attrs hash pfxs = modifyMVar_ rib (ribUpdateMany' peerData attrs hash pfxs)
 
-ribWithdrawMany rib peer p = modifyIORef' rib (ribWithdrawMany' peer p)
-ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> Rib'
+ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> IO Rib'
+ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
+    | null pfxs = return (Rib' prefixTable adjRibOutTables ) 
+    | otherwise = do
+          let routeData = makeRouteData' peerData pathAttributes routeId
+              ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
+          updateRibOutWithPeerData peerData routeData updates adjRibOutTables
+          return $ Rib' prefixTable' adjRibOutTables
+
+ribWithdrawMany rib peer p = modifyMVar_ rib (ribWithdrawMany' peer p)
+
+ribWithdrawMany' :: PeerData -> [Prefix] -> Rib' -> IO Rib'
 ribWithdrawMany' peerData pfxs (Rib' prefixTable adjRibOutTables)
-    | null pfxs = (Rib' prefixTable adjRibOutTables )
-    | otherwise = let
-        ( prefixTable' , withdraws ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
+    | null pfxs = return (Rib' prefixTable adjRibOutTables )
+    | otherwise = do
+        let ( prefixTable' , withdraws ) = PrefixTable.withdraw prefixTable (fromPrefixes pfxs) peerData
         -- adjRibOutTables' = updateAdjRibOutTables (updates,0) adjRibOutTables
         -- ** NOTE **
         -- The withdraw entry in the adj-rib-out has a special route value
         -- in future this could be better done as just the withdrawn route with an indicator to distinguish it from a normal one
         -- probably just using Either monad?
-        adjRibOutTables' = updateRibOutWithPeerData peerData nullRoute withdraws adjRibOutTables
-    in Rib' prefixTable' adjRibOutTables'
+        updateRibOutWithPeerData peerData nullRoute withdraws adjRibOutTables
+        return $ Rib' prefixTable' adjRibOutTables
+

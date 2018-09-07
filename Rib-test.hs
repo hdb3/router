@@ -32,6 +32,7 @@ attrs2 = [PathAttributeOrigin 1, PathAttributeASPath path02, PathAttributeNextHo
 pathA = (attrs1, toStrict $ encode attrs1)
 pathB = (attrs2, toStrict $ encode attrs2)
 
+{-
 pr rib = do locRib <- getLocRib rib
             adjRib <- getAdjRib rib
             putStrLn "locRib"
@@ -39,9 +40,8 @@ pr rib = do locRib <- getLocRib rib
             putStrLn "adjRib"
             print adjRib
             putStrLn ""
-{-
-pr rib = return ()
 -}
+pr = printRib
 
 diff rib1 rib2 = do
     r1 <- show rib1
@@ -52,6 +52,7 @@ main = do
     putStrLn "*****************\nRIB delPeer test\n*****************"
     rib <- newRib local
     pr rib
+    putStrLn "\nadd internalPeer + externalPeer"
     addPeer rib internalPeer
     addPeer rib externalPeer
     pr rib

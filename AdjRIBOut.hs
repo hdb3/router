@@ -26,27 +26,33 @@ import Prefixes
 type AdjRIBEntry = ( [IPrefix], Int )
 type AdjRIBTable = Fifo AdjRIBEntry
 
+showAdjRIBTable :: AdjRIBTable -> IO String
+showAdjRIBTable = showFifo
+
+newAdjRIBTable  ::  IO AdjRIBTable
 newAdjRIBTable = emptyFifo
 
-insertAdjRIBTable :: AdjRIBEntry -> AdjRIBTable -> AdjRIBTable
+insertAdjRIBTable :: AdjRIBEntry -> AdjRIBTable -> IO ()
 insertAdjRIBTable are table = enqueue table are
 
-isEmptyAdjRIBTable :: AdjRIBTable -> Bool
+isEmptyAdjRIBTable :: AdjRIBTable -> IO Bool
 isEmptyAdjRIBTable = nullFifo
 
-getAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
+getAdjRIBTable :: AdjRIBTable -> IO AdjRIBEntry
 -- undefined on empty
-getAdjRIBTable table = ( table' , are ) where (table',are) = dequeue table
+getAdjRIBTable table = dequeue table
 
+{-
 getNAdjRIBTable :: Int -> AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
 -- undefined on empty
 getNAdjRIBTable n table = ( table' , are ) where (table',are) = dequeue table
+-}
 
-getAllAdjRIBTable :: AdjRIBTable -> (AdjRIBTable,[AdjRIBEntry])
-getAllAdjRIBTable table = ( table' , ares ) where (table' , ares) = dequeueAll table
+getAllAdjRIBTable :: AdjRIBTable -> IO [AdjRIBEntry]
+getAllAdjRIBTable = dequeueAll
 
-peekAllAdjRIBTable :: AdjRIBTable -> [AdjRIBEntry]
+peekAllAdjRIBTable :: AdjRIBTable -> IO [AdjRIBEntry]
 peekAllAdjRIBTable = peekAll
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
-groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap 
+groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap
