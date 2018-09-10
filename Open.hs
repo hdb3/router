@@ -1,15 +1,13 @@
 {-# LANGUAGE RecordWildCards #-} 
 module Open where
-import Data.Word
 import Data.Binary
 import qualified Data.ByteString.Lazy as L
-import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
+import Data.Maybe(isJust,fromJust)
 import Data.IP(fromHostAddress)
 
 import RFC4271
 import Capabilities(Capability(..),eq_)
 import BGPparse
-import Collision
 import Common
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities

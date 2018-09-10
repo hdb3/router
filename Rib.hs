@@ -1,15 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 module Rib where
-import Data.IORef
+-- import Data.IORef
 import Control.Concurrent
-import qualified Data.ByteString.Lazy as L
+-- import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
-import Data.Maybe(fromJust)
+-- import Data.Maybe(fromJust)
 import Control.Monad(void)
-import Control.Monad.Extra(concatMapM)
+-- import Control.Monad.Extra(concatMapM)
 import Data.List(intercalate)
 
-import Common
+-- import Common
 import BGPData
 import Prefixes
 import PrefixTable
@@ -38,15 +38,10 @@ showAdjRIBMapEntry (peerData, adjRIBTable) = do
 showAdjRIB :: AdjRIB -> IO String
 showAdjRIB adjRIBMap = do
     let adjRIBs = Data.Map.toList adjRIBMap
-    -- s <- sequence $ mapM showAdjRIBMapEntry adjRIBs
-    -- return s
     s <- mapM showAdjRIBMapEntry adjRIBs
-    -- return $ unlines s
     return $ intercalate "\n                 " s
-    -- concatMapM showAdjRIBMapEntry adjRIBs
 
 showRib :: Rib -> IO String
--- showRib _ = return ""
 showRib r = do
     rib <- readMVar r
     let s1 = show (prefixTable rib)
@@ -54,22 +49,12 @@ showRib r = do
     return $ "Rib { prefixTable = " ++ s1 ++ " ,\n      adjRib = [ " ++ s2 ++ "]"
 
 printRib r = showRib r >>= putStrLn
-{-
--}
 
 newRib :: PeerData -> IO Rib
 newRib localPeer = do
     adjRib <- newAdjRIBTable
     newMVar $ Rib' newPrefixTable ( Data.Map.singleton localPeer adjRib )
 
-{-
-newRib :: PeerData -> IO Rib
-newRib localPeer = newMVar (newRib' localPeer)
-
-newRib' :: PeerData -> Rib'
-newRib' localPeer = Rib' newPrefixTable ( Data.Map.singleton localPeer newAdjRIBTable ) 
-
--}
 delPeer :: Rib -> PeerData -> IO ()
 delPeer rib peer = modifyMVar_ rib ( delPeer' peer )
 
@@ -111,7 +96,6 @@ pullAllUpdates t peer rib = do
     (Rib' pt arot) <- readMVar rib
     dequeueTimeout t (arot Data.Map.! peer)
 -- TODO write and use the function 'getAdjRibForPeer'
--- dequeueTimeout :: Int -> Fifo t -> IO [t]
 
 
 
@@ -122,16 +106,6 @@ pullUpdates n peer rib = do
     then dequeueAll (arot Data.Map.! peer) 
     else  dequeueN n (arot Data.Map.! peer) 
 
--- this is a read only operation which does not change the RIB
--- see pullUpdates for the operational function which empties the AdjRibOut fifo
-{-
--- REMOVING as unused and have not implmented the function for the new Fifo
-peekUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
-peekUpdates peer rib = do
-    rib' <- readMVar rib
-    peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
--}
-
 getLocRib :: Rib -> IO PrefixTable
 getLocRib rib = do
     rib' <- readMVar rib
@@ -141,11 +115,6 @@ getAdjRib :: Rib -> IO AdjRIB
 getAdjRib rib = do
     rib' <- readMVar rib
     return (adjRib rib')
-
--- updateAdjRibOutTables -- this function applies the same update to _all_ of the adjribs
--- it is called from within ribUpdate so has no IO wrapper of its own
--- updateAdjRibOutTables :: AdjRIBEntry -> AdjRIB -> AdjRIB
--- updateAdjRibOutTables are = Data.Map.map ( insertAdjRIBTable are )
 
 updateRibOutWithPeerData :: PeerData -> RouteData -> [IPrefix] -> AdjRIB -> IO ()
 -- NOTE!!!! - we can be called with a null route in which case only the routeId is defined, and is equal 0!!!
@@ -169,8 +138,6 @@ makeRouteData' peerData pathAttributes routeId = RouteData peerData pathAttribut
     med = if fromEBGP then 0 else getMED pathAttributes
     nextHop = getNextHop pathAttributes
     origin = getOrigin pathAttributes
-{-
--}
 
 ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyMVar_ rib (ribUpdater' routeData update)
@@ -191,7 +158,6 @@ ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> IO R
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
     | null pfxs = return (Rib' prefixTable adjRibOutTables ) 
     | otherwise = do
-          -- print ("ribUpdateMany'",peerData,pathAttributes,pfxs)
           let routeData = makeRouteData' peerData pathAttributes routeId
               ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
           updateRibOutWithPeerData peerData routeData updates adjRibOutTables

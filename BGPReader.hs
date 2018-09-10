@@ -13,8 +13,7 @@ import BGPparse
 import qualified Rib
 import GetBGPMsg
 import BGPData(dummyPeerData)
-import PrefixTable(PrefixTable)
-import PrefixTableUtils(getRIB,getAdjRIBOut)
+import PrefixTableUtils(getRIB)
 import qualified Prefixes
 import qualified PathAttributes
 import qualified BGPData

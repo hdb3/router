@@ -1,16 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Update(processUpdate,getUpdate,ungetUpdate,ParsedUpdate(..),makeUpdate,makeUpdateSimple,igpUpdate,originateWithdraw,originateUpdate) where
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Int
 import Data.Binary
 import Data.Either
-import Control.Monad(when)
 
 import Common
 import RFC4271
-import Open
-import Capabilities
 import PathAttributes
 import PathAttributeUtils
 import Prefixes

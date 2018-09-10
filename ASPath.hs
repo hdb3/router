@@ -5,16 +5,12 @@
 module ASPath where
 import Data.Binary
 import Data.Binary.Get
-import Data.Binary.Put
-import Data.Word
 import Data.List(foldl')
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Applicative
 import Data.Attoparsec.ByteString -- from package attoparsec
 import Data.Attoparsec.Binary -- from package attoparsec-binary
 
-import RFC4271
 import Codes
 import Common
 

@@ -2,7 +2,6 @@ module Codes where
 import Data.Word
 import Data.Bits
 
-import RFC4271
 import Common
 
 data PathAttributeTypeCode = TypeCodePathAttributeOrigin | TypeCodePathAttributeASPath | TypeCodePathAttributeNextHop | TypeCodePathAttributeMultiExitDisc |

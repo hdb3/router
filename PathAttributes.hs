@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-#LANGUAGE OverloadedStrings #-}
 module PathAttributes (module Codes, module PathAttributes, module ASPath) where
-import Data.Maybe(fromJust,fromMaybe)
 import Data.Binary(Binary(..),encode,decode)
 import Data.Binary.Get
 import Data.Binary.Put
@@ -13,7 +12,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Monad
 
-import RFC4271
 import Codes
 import Common
 import ASPath

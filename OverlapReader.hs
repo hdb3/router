@@ -1,5 +1,4 @@
 module Main where
-import System.IO
 import qualified Data.List
 
 import Prefixes
