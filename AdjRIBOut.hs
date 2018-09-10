@@ -1,4 +1,4 @@
-module AdjRIBOut where
+module AdjRIBOut(module Fifo, module AdjRIBOut) where
 
 {-
  - AdjRIBTable provdes a list structure to support route dissemination
@@ -15,7 +15,7 @@ module AdjRIBOut where
 import qualified Data.IntMap.Strict
 import qualified Data.Tuple
 
-import Common
+import Fifo
 import Prefixes
 
 -- TODO
@@ -35,6 +35,7 @@ newAdjRIBTable = emptyFifo
 insertAdjRIBTable :: AdjRIBEntry -> AdjRIBTable -> IO ()
 insertAdjRIBTable are table = enqueue table are
 
+{-
 isEmptyAdjRIBTable :: AdjRIBTable -> IO Bool
 isEmptyAdjRIBTable = nullFifo
 
@@ -42,7 +43,6 @@ getAdjRIBTable :: AdjRIBTable -> IO AdjRIBEntry
 -- undefined on empty
 getAdjRIBTable table = dequeue table
 
-{-
 getNAdjRIBTable :: Int -> AdjRIBTable -> (AdjRIBTable,AdjRIBEntry)
 -- undefined on empty
 getNAdjRIBTable n table = ( table' , are ) where (table',are) = dequeue table
@@ -51,8 +51,8 @@ getNAdjRIBTable n table = ( table' , are ) where (table',are) = dequeue table
 getAllAdjRIBTable :: AdjRIBTable -> IO [AdjRIBEntry]
 getAllAdjRIBTable = dequeueAll
 
-peekAllAdjRIBTable :: AdjRIBTable -> IO [AdjRIBEntry]
-peekAllAdjRIBTable = peekAll
+-- peekAllAdjRIBTable :: AdjRIBTable -> IO [AdjRIBEntry]
+-- peekAllAdjRIBTable = peekAll
 
 groomAdjRIBList :: [AdjRIBEntry] -> [AdjRIBEntry]
 groomAdjRIBList = map Data.Tuple.swap . Data.IntMap.Strict.toList . Data.IntMap.Strict.fromList . map Data.Tuple.swap

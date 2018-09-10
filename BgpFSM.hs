@@ -178,28 +178,14 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                 idle "stateOpenConfirm - FSM error"
 
-    keepAliveLoop timer = do
-        threadDelay $ 1000000 * timer
-        running <- catch
-            (do snd BGPKeepalive
-                return True)
-            (\(FSMException s) -> do
-                -- putStrLn "keepAliveLoop exiting on snd failure"
-                -- this is perfectly normal event when the fsm closes down as it doesn't stop the keepAliveLoop explicitly
-                -- TODO - integrate keepAliveLoop with update dissemination....
-                return False
-            )
-        when running
-            ( keepAliveLoop timer )
-
     toEstablished :: F
     toEstablished (bsock,osm) = do
         putStrLn "transition -> established"
         putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
-        forkIO $ keepAliveLoop (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
         addPeer rib peerData -- shoudl update it with the received parameters!!!!
+        forkIO $ keepAliveLoop rib peerData  (getKeepAliveTimer osm)
         return (Established,bsock,osm)
 
     established :: F
@@ -208,27 +194,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         case msg of 
             BGPKeepalive -> do
                 logFlush bsock0
-                putStr "established - rcv keepalive"
-                prefixTable <- Rib.getLocRib rib
-                if length prefixTable < 10 then do
-                    -- putStrLn $ "Prefix Table (" ++ show (length prefixTable) ++ ")"
-                    -- putStrLn $ showPrefixTableByRoute prefixTable
-                    -- putStrLn $ showPrefixTable prefixTable
-                    putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
-                else
-                    putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
-                updates <- pullAllUpdates peerData rib 
-                if null updates then return ()
-                else if 11 > length updates then do
-                    putStr "\nReady to send routes....:"
-                    -- print $ map fst updates
-                else do
-                    putStr "\nReady to send routes....:"
-                    -- print $ map fst (take 10 updates)
-                    putStrLn $ "and " ++ show (length updates - 10) ++ " more"
-                routes <- lookupRoutes rib peerData updates
-                mapM_ snd routes
-                hFlush stdout
+                putStrLn "established - rcv keepalive"
+                report rib
+                -- sendQueuedUpdates rib peerData 1
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe
@@ -276,3 +244,44 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                            Nothing
                 )
             rc
+
+    keepAliveLoop rib peer timer = do
+        -- threadDelay $ 1000000 * timer
+        running <- catch
+            -- (do snd BGPKeepalive
+                -- return True)
+            ( do sendQueuedUpdates rib peer (1000000 * timer)
+                 return True
+            )
+            (\(FSMException s) -> do
+                -- putStrLn "keepAliveLoop exiting on snd failure"
+                -- this is perfectly normal event when the fsm closes down as it doesn't stop the keepAliveLoop explicitly
+                -- TODO - integrate keepAliveLoop with update dissemination....
+                return False
+            )
+        when running
+            ( keepAliveLoop rib peer timer )
+
+    sendQueuedUpdates rib peer timeout = do
+        updates <- pullAllUpdates timeout peer rib
+        if null updates then
+            snd BGPKeepalive
+        else do routes <- lookupRoutes rib peer updates
+                putStr "\nReady to send routes....:"
+                if 11 > length updates then do
+                    print $ map fst updates
+                else do
+                    putStr "\nReady to send routes....:"
+                    print $ map fst (take 10 updates)
+                    putStrLn $ "and " ++ show (length updates - 10) ++ " more"
+                mapM_ snd routes
+
+    report rib = do
+        prefixTable <- Rib.getLocRib rib
+        when ( 10 > length prefixTable )
+            ( do putStrLn $ "Prefix Table (" ++ show (length prefixTable) ++ ")"
+                 putStrLn $ showPrefixTableByRoute prefixTable
+                 putStrLn $ showPrefixTable prefixTable
+            )
+        putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
+
