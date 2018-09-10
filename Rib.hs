@@ -106,8 +106,14 @@ queryRib rib prefix = do
     return $ queryPrefixTable (prefixTable rib') prefix 
 
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
-pullAllUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
-pullAllUpdates = pullUpdates 0
+pullAllUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
+pullAllUpdates t peer rib = do
+    (Rib' pt arot) <- readMVar rib
+    dequeueTimeout t (arot Data.Map.! peer)
+-- TODO write and use the function 'getAdjRibForPeer'
+-- dequeueTimeout :: Int -> Fifo t -> IO [t]
+
+
 
 pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
 pullUpdates n peer rib = do
@@ -118,10 +124,13 @@ pullUpdates n peer rib = do
 
 -- this is a read only operation which does not change the RIB
 -- see pullUpdates for the operational function which empties the AdjRibOut fifo
+{-
+-- REMOVING as unused and have not implmented the function for the new Fifo
 peekUpdates :: PeerData -> Rib -> IO [AdjRIBEntry]
 peekUpdates peer rib = do
     rib' <- readMVar rib
     peekAllAdjRIBTable $ fromJust $ Data.Map.lookup peer (adjRib rib')
+-}
 
 getLocRib :: Rib -> IO PrefixTable
 getLocRib rib = do
@@ -182,7 +191,7 @@ ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> IO R
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
     | null pfxs = return (Rib' prefixTable adjRibOutTables ) 
     | otherwise = do
-          print ("ribUpdateMany'",peerData,pathAttributes,pfxs)
+          -- print ("ribUpdateMany'",peerData,pathAttributes,pfxs)
           let routeData = makeRouteData' peerData pathAttributes routeId
               ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
           updateRibOutWithPeerData peerData routeData updates adjRibOutTables

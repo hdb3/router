@@ -63,7 +63,7 @@ main = do
     -- ribUpdater rib internalPeer ( makeUpdateSimple attrs2 prefixes2 [] )
     pr rib
     pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
-    pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
+    -- pullAllUpdates externalPeer rib >>= ( \v -> putStrLn $ "externalPeer AdjRibOut" ++ show v )
 
     putStrLn "\ndel internalPeer"
     delPeer rib internalPeer
