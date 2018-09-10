@@ -68,7 +68,7 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 -- this function finds the best route for a specicif prefix
 -- if the requirement is bulk look up then another function might be better.....
 queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
-queryPrefixTable table (IPrefix iprefix) = maybe Nothing (Just . slHead) (IntMap.lookup iprefix table)
+queryPrefixTable table (IPrefix iprefix) = fmap slHead (IntMap.lookup iprefix table)
 
 {-
   Withdraw Operations

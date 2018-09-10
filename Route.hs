@@ -19,7 +19,7 @@ lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
 lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO [ ParsedUpdate ]
 lookupRoute rib peer (iprefixes, 0 ) = return [ originateWithdraw $ toPrefixes iprefixes ]
 lookupRoute rib peer ([], routeId ) = do
-    putStrLn ("empty prefix list in lookupRoute")
+    putStrLn "empty prefix list in lookupRoute"
     return []
 
 lookupRoute rib peer (iprefixes, routeId ) = do
