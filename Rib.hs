@@ -167,7 +167,12 @@ ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
 ribUpdater rib routeData update = modifyMVar_ rib (ribUpdater' routeData update)
 
 ribUpdater' :: PeerData -> ParsedUpdate -> Rib' -> IO Rib'
-ribUpdater' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri >> ribWithdrawMany' peerData withdrawn
+-- TODO write the monadic style in a way that works????!!!
+-- ribUpdater' peerData ParsedUpdate{..} = ribUpdateMany' peerData puPathAttributes hash nlri >>= ribWithdrawMany' peerData withdrawn
+ribUpdater' peerData ParsedUpdate{..} rib0 = do
+    rib1 <- ribUpdateMany' peerData puPathAttributes hash nlri rib0
+    rib2 <- ribWithdrawMany' peerData withdrawn rib1 
+    return rib2
 
 -- TODO - convert ribUpdateMany/ribWithdrawMany to IPrefix based, for consistency...
 ribUpdateMany :: Rib -> PeerData -> [PathAttribute] -> Int -> [Prefix] -> IO()
@@ -177,6 +182,7 @@ ribUpdateMany' :: PeerData -> [PathAttribute] -> Int -> [Prefix] -> Rib' -> IO R
 ribUpdateMany' peerData pathAttributes routeId pfxs (Rib' prefixTable adjRibOutTables )
     | null pfxs = return (Rib' prefixTable adjRibOutTables ) 
     | otherwise = do
+          print ("ribUpdateMany'",peerData,pathAttributes,pfxs)
           let routeData = makeRouteData' peerData pathAttributes routeId
               ( prefixTable' , updates ) = PrefixTable.update prefixTable (fromPrefixes pfxs) routeData
           updateRibOutWithPeerData peerData routeData updates adjRibOutTables
