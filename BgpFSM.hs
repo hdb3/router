@@ -2,16 +2,14 @@
 module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import System.IO.Error(catchIOError)
-import System.IO(Handle,stdout,hFlush)
-import qualified Data.ByteString as B
+import System.IO(Handle)
 import qualified Data.ByteString.Lazy as L
-import Data.Binary(encode,decode,decodeOrFail)
+import Data.Binary(encode)
 import Control.Concurrent
 import Control.Exception
-import Control.Monad(when,unless)
+import Control.Monad(when)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
-import Data.Int(Int64)
 
 import Common
 import BGPparse
@@ -19,11 +17,8 @@ import BGPData
 import GetBGPMsg
 import RFC4271
 import Open
-import Capabilities
 import Collision
 import Update
-import PathAttributes
-import Prefixes
 import Rib
 import Route
 import PrefixTableUtils
@@ -184,7 +179,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm in
             registerEstablished cd remoteBGPid peerName
-        addPeer rib peerData -- shoudl update it with the received parameters!!!!
+        addPeer rib peerData
         forkIO $ keepAliveLoop rib peerData  (getKeepAliveTimer osm)
         return (Established,bsock,osm)
 
@@ -196,7 +191,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
                 report rib
-                -- sendQueuedUpdates rib peerData 1
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe
@@ -206,7 +200,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                     )
                     (\parsedUpdate -> do
                       let routeData = Rib.makeRouteData peerData parsedUpdate
-                      -- let routeData = Rib.makeRouteData peerData (puPathAttributes parsedUpdate) (hash parsedUpdate)
                       Rib.ribUpdater rib peerData parsedUpdate
                       return (Established,bsock',osm)
                     )
@@ -246,24 +239,20 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             rc
 
     keepAliveLoop rib peer timer = do
-        -- threadDelay $ 1000000 * timer
         running <- catch
-            -- (do snd BGPKeepalive
-                -- return True)
-            ( do sendQueuedUpdates rib peer (1000000 * timer)
+            ( do sendQueuedUpdates rib peer timer
                  return True
             )
             (\(FSMException s) -> do
-                -- putStrLn "keepAliveLoop exiting on snd failure"
                 -- this is perfectly normal event when the fsm closes down as it doesn't stop the keepAliveLoop explicitly
-                -- TODO - integrate keepAliveLoop with update dissemination....
                 return False
             )
         when running
             ( keepAliveLoop rib peer timer )
 
+-- TODO merge sendQueuedUpdates in keepAliveLoop?
     sendQueuedUpdates rib peer timeout = do
-        updates <- pullAllUpdates timeout peer rib
+        updates <- pullAllUpdates (1000000 * timeout) peer rib
         if null updates then
             snd BGPKeepalive
         else do routes <- lookupRoutes rib peer updates

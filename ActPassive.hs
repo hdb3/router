@@ -3,29 +3,18 @@ module Main where
 
 import Control.Concurrent
 import qualified Control.Exception as E
-import Control.Monad (unless, forever, void)
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString as B
+import Control.Monad (forever)
 import Network.Socket
-import Network.Socket.ByteString.Lazy (recv, send)
-import Data.Binary(encode,decode)
-import System.IO(Handle,openBinaryFile,IOMode( WriteMode ))
-import System.Timeout
-import Data.Int(Int64)
+import System.IO(openBinaryFile,IOMode( WriteMode ))
 import qualified Data.IP
 import qualified Data.Map.Strict as Data.Map
 
 import Common
-import BGPparse
 import BGPData
-import GetBGPMsg
 import BgpFSM
-import Capabilities
 import Collision
 import Args2
 import Rib
-import BGPReader
-import Update
 
 main :: IO ()
 main = do config <- getConfig

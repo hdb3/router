@@ -2,19 +2,13 @@ module Args2 where
 import System.Environment
 import System.Exit(die)
 import Control.Exception
-import Data.List(intercalate)
 import Data.Word
 import Data.IP
--- import Network.Socket
 
-import Common
-import BgpFSM
-import BGPparse
 import Capabilities
 import BGPData
 import LocalAddresses
 
---defaultParameterString = ["192.168.1.2,179","30,40,192.168.1.1,CapAS4,65520,CapGracefulRestart,False,0","0,0,127.0.0.1"]
 helpMessage = "usage:  localBGPparameters remoteBGPparameters [ remoteBGPparameters ]*\n\
                \where localBGPparameters = AS,BGPID,HoldTime\n\
                \and   remoteBGPparameters = AS,BGPID,optionalcapabilities\n"

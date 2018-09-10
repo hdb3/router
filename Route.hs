@@ -1,32 +1,14 @@
 module Route where
-import Network.Socket
-import System.IO.Error(catchIOError)
-import System.IO(Handle)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
-import Data.Binary(encode,decode,decodeOrFail)
-import Control.Concurrent
-import Control.Exception
-import Control.Monad(when,unless,liftM)
 import Control.Monad.Extra(concatMapM)
-import Data.Maybe(fromJust,isJust,catMaybes)
-import Data.Either(either)
-import Data.Int(Int64)
 
-import Common
 import BGPparse
 import BGPData
-import GetBGPMsg
 import RFC4271
-import Open
-import Capabilities
-import Collision
 import Update
 import PathAttributes
 import PathAttributeUtils
 import Prefixes
 import Rib
-import PrefixTableUtils
 import AdjRIBOut
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]

@@ -8,12 +8,10 @@ import Data.Hashable
 import GHC.Generics(Generic)
 import Data.Binary.Get
 import Data.Binary.Put
-import Data.Word
 import Data.Int
 import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
-import qualified Data.ByteString.Lazy as L
 
 import Common
 

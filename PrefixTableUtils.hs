@@ -13,10 +13,9 @@ module PrefixTableUtils where
  - hence a fast implementation is essential
 -}
 
-import Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey)
+import Data.IntMap.Strict(toList)
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
-import qualified Data.Tuple
 import Data.IP
 
 import Common

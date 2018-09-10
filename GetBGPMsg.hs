@@ -8,9 +8,7 @@ import Data.Bits
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
-import Data.Word
 import Data.Either(isLeft)
-import Data.Maybe(isJust)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import Network.Socket(Socket)

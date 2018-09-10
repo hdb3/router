@@ -15,13 +15,9 @@ module PrefixTable where
 -}
 
 import qualified Data.IntMap.Strict as IntMap
--- import qualified Data.IntMap.Strict(IntMap(),empty,insertLookupWithKey,toList,updateLookupWithKey) as IntMap
 import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
-import qualified Data.Tuple
-import Data.IP
 
-import Common
 import BGPData
 import Prefixes (IPrefix(..))
 
@@ -72,7 +68,6 @@ updatePrefixTable pt (IPrefix ipfx) route = (newPrefixTable, isNewBestRoute) whe
 -- this function finds the best route for a specicif prefix
 -- if the requirement is bulk look up then another function might be better.....
 queryPrefixTable :: PrefixTable -> IPrefix -> Maybe RouteData
--- queryPrefixTable _ _ = Nothing
 queryPrefixTable table (IPrefix iprefix) = maybe Nothing (Just . slHead) (IntMap.lookup iprefix table)
 
 {-

@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Common(module Data.IP, module Common, module Hexdump) where
-import Data.List(delete,sort,group,sortOn,foldl')
+import Data.List(delete,sortOn,foldl')
 import Data.IP -- from package iproute
 import Network.Socket (PortNumber) -- from package network
 import Data.Binary
@@ -11,15 +11,11 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Char8 as C8
 import Data.Monoid
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
-import qualified Data.Sequence as Seq
 import qualified Data.HashMap.Strict
 import qualified Data.Map.Strict as DMS
 import Data.Hashable
-import Data.Foldable(toList)
 import Numeric(showHex)
 import FarmHash(hash64)
-import Control.Concurrent
-import Control.Monad
 
 -- Debug stuff
 --
