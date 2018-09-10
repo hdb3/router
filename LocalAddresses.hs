@@ -4,7 +4,6 @@ module LocalAddresses where
 import Network.Info -- package network-info
 import Data.List(sortOn)
 import Data.IP
-import Control.Monad(liftM)
 
 fromNetworkIPv4 (Network.Info.IPv4 hostAddress) = Data.IP.fromHostAddress hostAddress
 
@@ -22,18 +21,18 @@ privateAddresses addr | addr `isMatchedTo` "10.0.0.0/8" = True
                       | otherwise = False
 
 getValidAddress :: IO Data.IP.IPv4
-getValidAddress = liftM head getValidAddresses
+getValidAddress = fmap head getValidAddresses
 getValidAddresses = do
     interfaces <- getNetworkInterfaces
     return $ filter acceptAddresses $ map ( fromNetworkIPv4 . Network.Info.ipv4 ) interfaces
 
 getPrivateAddress :: IO Data.IP.IPv4
-getPrivateAddress = liftM head getPrivateAddresses
-getPrivateAddresses = liftM (filter privateAddresses) getValidAddresses
+getPrivateAddress = fmap head getPrivateAddresses
+getPrivateAddresses = fmap (filter privateAddresses) getValidAddresses
 
 getPublicAddress :: IO Data.IP.IPv4
-getPublicAddress = liftM head getPublicAddresses
-getPublicAddresses = liftM (filter publicAddresses) getValidAddresses
+getPublicAddress = fmap head getPublicAddresses
+getPublicAddresses = fmap (filter publicAddresses) getValidAddresses
 
 preferredInterfaces = ["virbr0"]
 preferred int = elem (Network.Info.name int) preferredInterfaces

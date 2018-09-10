@@ -60,7 +60,7 @@ instance {-# OVERLAPPING #-} Show [Prefix] where
     show = shorten
 
 instance {-# OVERLAPPING #-} Show [IPrefix] where
-    show = shorten . (map toPrefix)
+    show = shorten . map toPrefix
 
 instance Show Prefix where
     show = show.toAddrRange
@@ -68,7 +68,7 @@ instance Show Prefix where
 instance Show IPrefix where
     show = show.toAddrRange.toPrefix
 
-realShow = show . (map toAddrRange)
+realShow = show . map toAddrRange
 shorten pfxs = if length pfxs < 3 then realShow pfxs else show (take 2 pfxs) ++ "(+" ++ show (length pfxs - 2) ++ ")"
 
 subnet :: Prefix -> Word8

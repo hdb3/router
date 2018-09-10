@@ -22,7 +22,7 @@ dequeueN n mvar  = do
 enqueue :: MVar ([a],[a] ) -> a -> IO ()
 enqueue mvar item = do
     maybeFifo <- tryTakeMVar mvar
-    let (h,t) = (fromMaybe ([],[]) maybeFifo)
+    let (h,t) = fromMaybe ([],[]) maybeFifo
     -- note this will not block as long the calling thread is the only producer
     putMVar mvar (item:h,t)
 

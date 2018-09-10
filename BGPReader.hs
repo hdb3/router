@@ -5,7 +5,6 @@ import System.Exit(die)
 import System.Environment(getArgs)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get(runGet)
-import Control.Monad(liftM)
 
 import Common
 import Update
@@ -54,7 +53,7 @@ readGroupedRib :: IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])
 readGroupedRib = do rawRib <- readRib' 
                     return $ map normalise $ applyBogonFilter $ groupBy_ rawRib
 pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
-pathReadRib path = liftM ( applyPathFilter . map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
+pathReadRib path = fmap ( applyPathFilter . map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
 --pathReadRib path = bgpReader path >>= map normalise . applyBogonFilter . groupBy_
 
 readRib' = do

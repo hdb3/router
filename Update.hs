@@ -37,11 +37,8 @@ diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
     diagnose _ (Right _) _ = ""
     diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
--- BGPUpdate { withdrawn :: L.ByteString, attributes :: L.ByteString, nlri :: L.ByteString }
-
 ungetUpdate :: ParsedUpdate -> BGPMessage
 ungetUpdate ParsedUpdate{..} = BGPUpdate { withdrawn = encode withdrawn , attributes = encode puPathAttributes , nlri = encode nlri } 
--- ungetUpdate ( ParsedUpdate puPathAttributes puNlri puWithdrawn _ ) = BGPUpdate { withdrawn = encode puWithdrawn , attributes = encode puPathAttributes , nlri = encode puNlri } 
 
 getUpdate :: BGPMessage -> ParsedUpdate
 getUpdate BGPUpdate{..} = ParsedUpdate { puPathAttributes = a , nlri = n , withdrawn = w,
@@ -61,8 +58,8 @@ processUpdate ( BGPUpdate w a n ) =
     -- else Nothing
     else error $
         "parsing failed: " ++
-        ( parseErrorMesgs parsedResult) ++
-        (diagoseResult parsedResult (a,n,w))
+        parseErrorMesgs parsedResult ++
+        diagoseResult parsedResult (a,n,w)
 {- informative error message is:
         "parsing failed: "
         parseErrorMesgs parsedResult
@@ -80,7 +77,6 @@ makeUpdateSimple :: [PathAttribute] -> [Prefix] -> [Prefix] -> ParsedUpdate
 makeUpdateSimple p n w  = head $ makeUpdate n w p
 
 makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> [ParsedUpdate]
---makeUpdate a b c = [makeUpdate' a b c]
 makeUpdate = makeSegmentedUpdate
 makeUpdate' nlri withdrawn attributes = ParsedUpdate attributes nlri withdrawn ( myHash $ encode attributes)
 
@@ -98,9 +94,9 @@ makeSegmentedUpdate nlri withdrawn attributes = result where
                                                     withdraws = map (\pfxs -> makeUpdate' [] pfxs attributes) (tail chunkedWithdrawn)
                                                     result = if availablePrefixSpace >= L.length (encode (head chunkedNlri))
                                                                                         + L.length (encode (head chunkedWithdrawn))
-                                                             then [(makeUpdate' (head chunkedNlri) (head chunkedWithdrawn) attributes)] ++ withdraws ++ updates
-                                                             else [(makeUpdate' [] (head chunkedWithdrawn) attributes),
-                                                                   (makeUpdate' (head chunkedNlri) [] attributes)] ++ withdraws ++ updates
+                                                             then [makeUpdate' (head chunkedNlri) (head chunkedWithdrawn) attributes] ++ withdraws ++ updates
+                                                             else [makeUpdate' [] (head chunkedWithdrawn) attributes,
+                                                                   makeUpdate' (head chunkedNlri) [] attributes] ++ withdraws ++ updates
 
 
 igpUpdate = originateUpdate _BGP_ORIGIN_IGP []
