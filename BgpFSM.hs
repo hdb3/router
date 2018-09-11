@@ -124,9 +124,11 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             notify@BGPNotify{} -> do
                print notify
                idle "stateConnected -> exit rcv notify"
-            _ -> do
+            update@BGPUpdate{} -> do
                 snd $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
-                idle "stateConnected - FSM error"
+                idle "stateConnected - recvd Update - FSM error"
+            z -> do
+                idle $ "stateConnected - network exception - " ++ show z
 
     stateOpenSent :: F
     stateOpenSent (bsock,osm) = do
