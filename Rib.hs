@@ -5,7 +5,7 @@ import Control.Concurrent
 -- import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
 -- import Data.Maybe(fromJust)
-import Control.Monad(void)
+import Control.Monad(when,void)
 -- import Control.Monad.Extra(concatMapM)
 import Data.List(intercalate)
 
@@ -124,6 +124,8 @@ updateRibOutWithPeerData originPeer routeData updates adjRib = do
     let updateWithKey destinationPeer table = if (destinationPeer /= originPeer) && ( isExternal destinationPeer || isExternal originPeer )
                                then insertAdjRIBTable (updates, routeId routeData ) table
                                else ( return ())
+    when (null updates)
+         (putStrLn $ "null updates in updateRibOutWithPeerData: " ++ show originPeer ++ " / " ++ show routeData)
     void $ sequence $ Data.Map.mapWithKey updateWithKey adjRib
 
 makeRouteData :: PeerData -> ParsedUpdate -> RouteData

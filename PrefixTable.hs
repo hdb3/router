@@ -101,7 +101,7 @@ withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateF
 -- NOTE - this is the null function which simple accumulates all prefixes
     nullUpdateFunction :: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
     nullUpdateFunction peerData prefixList prefix prefixTableEntry = (prefixList',prefixTableEntry') where
-        prefixList' = (IPrefix prefix) : prefixList
+        prefixList' = IPrefix prefix : prefixList
         prefixTableEntry' = prefixTableEntry
 -- the needed function uses the 'peerData' entry of the routes in the sorted list:
 -- it deletes the entry corresponding to the target peer, if it exists
@@ -120,7 +120,7 @@ withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateF
                                                          -- however!!!! this can MAKE an empty list which we cannot delet in this operation
                                                          -- so we need a final preen before returning the Map to the RIB!!!!
             p route = peer == BGPData.peerData route
-            prefixList' = (IPrefix prefix) : prefixList
+            prefixList' = IPrefix prefix : prefixList
 
 groomPrefixTable :: PrefixTable -> PrefixTable
 groomPrefixTable = IntMap.filter ( not . null )
