@@ -125,7 +125,7 @@ updateRibOutWithPeerData originPeer routeData updates adjRib = do
                                then insertAdjRIBTable (updates, routeId routeData ) table
                                else ( return ())
     when (null updates)
-         (putStrLn $ "null updates in updateRibOutWithPeerData: " ++ show originPeer ++ " / " ++ show routeData)
+         (putStrLn $ "null updates in updateRibOutWithPeerData: " ++ show originPeer ++ " / " ++ if (0==routeId routeData) then "nullRoute" else show routeData)
     void $ sequence $ Data.Map.mapWithKey updateWithKey adjRib
 
 makeRouteData :: PeerData -> ParsedUpdate -> RouteData
