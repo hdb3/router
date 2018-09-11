@@ -56,7 +56,7 @@ start peers = do
     putStrLn "ActPassive ready"
 
     forkIO $ reaper commons
-    forkIO $ listener commons 
+    -- forkIO $ listener commons 
     mapM_ (forkIO . connectImmediate commons) peers
     putStrLn "ActPassive running"
     idle
@@ -141,7 +141,7 @@ connectTo delay commons@Commons{..} peerData = do
 startFSM Commons{..} (conn,peerAddress,peerData) = do
     putStrLn $ "starting session for " ++ show (getIPv4 peerAddress)
     logfile <- getLogFile
-    let delayOpenTimer = 10
+    let delayOpenTimer = 3
     let config = BgpFSMconfig conn collisionDetector peerAddress delayOpenTimer exitMVar logfile peerData rib
     threadId <- forkIO (bgpFSM config)
     threadMap <- takeMVar sessions

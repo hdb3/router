@@ -62,9 +62,9 @@ showFifo m = do
 -- calls with timeouts....
 
 dequeueTimeout :: Int -> Fifo t -> IO [t]
-dequeueTimeout t mvar = let t' = t * 10000000 in
-    do resMaybe <- timeout t' (dequeue mvar)
-       maybe
-           (return [])
-           return
-           resMaybe
+dequeueTimeout t mvar = do
+     resMaybe <- timeout t (dequeue mvar)
+     maybe
+         (return [])
+         return
+         resMaybe
