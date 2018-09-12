@@ -1,18 +1,23 @@
 {-# LANGUAGE RecordWildCards #-}
 module Session where
 
+import Foreign.C.Error -- (Errno(..),getErrno)
 import Control.Concurrent
 -- import qualified Control.Exception as E
 -- import Control.Monad (when,forever)
 import Network.Socket
--- import System.IO(openBinaryFile,IOMode( WriteMode ))
+import System.IO
 import qualified Data.IP
 -- import qualified Data.Map.Strict as Data.Map
 -- import System.IO.Error(catchIOError)
+import System.IO.Error
+import GHC.IO.Exception(ioe_description)
 
 
 type App = (Network.Socket.Socket -> IO ())
 type Peer = (Data.IP.IPv4, App )
+seconds = 1000000
+respawnDelay = 10 * seconds
 
 session :: PortNumber -> [Peer] -> IO ()
 session port peers = do
@@ -20,12 +25,29 @@ session port peers = do
 
 run :: PortNumber -> Peer -> IO ()
 run port (ip,app) = do
-    sock <- socket AF_INET Stream defaultProtocol
-    Network.Socket.connect sock ( SockAddrInet port (Data.IP.toHostAddress ip))
-    peerAddress <- getPeerName sock
-    putStrLn $ "connected outbound to : " ++ (show peerAddress)
-    app sock
-    putStrLn $ "app terminated for : " ++ (show peerAddress)
+    catchIOError ( do
+        sock <- socket AF_INET Stream defaultProtocol
+        Network.Socket.connect sock ( SockAddrInet port (Data.IP.toHostAddress ip))
+        peerAddress <- getPeerName sock
+        putStrLn $ "connected outbound to : " ++ (show peerAddress)
+        app sock
+        putStrLn $ "app terminated for : " ++ (show peerAddress)
+        )
+        (\e -> do
+            Errno errno <- getErrno
+            hPutStrLn stderr $ "Exception connecting to " ++ (show ip) ++ " - " ++ (errReport errno e)
+        )
+    threadDelay respawnDelay
+    run port (ip,app)
+
+errReport 2 e = ioe_description e
+errReport errno e = unlines
+    [ "*** UNKNOWN exception, please record this"
+    , ioeGetErrorString e
+    , "error " ++ ioeGetErrorString e
+    , "errno " ++ show errno
+    , "description " ++ ( ioe_description e )
+    ]
 
 {-
 idleTimeout = 60 * 1000000
