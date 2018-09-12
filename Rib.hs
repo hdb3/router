@@ -5,7 +5,7 @@ import Control.Concurrent
 -- import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
 -- import Data.Maybe(fromJust)
-import Control.Monad(when,void)
+import Control.Monad(unless,when,void)
 -- import Control.Monad.Extra(concatMapM)
 import Data.List(intercalate)
 
@@ -64,7 +64,8 @@ delPeer' peer Rib' {..} = do
     let (prefixTable',iprefixes) = withdrawPeer prefixTable peer
     -- schedule the withdraw dissemination
     -- NOTE - this does not change the AdjRIBMap
-    updateRibOutWithPeerData peer nullRoute iprefixes adjRib
+    unless (null iprefixes)
+         ( updateRibOutWithPeerData peer nullRoute iprefixes adjRib)
     -- now remove this peer completely from the AdjRIBMap
     -- it is liekly that this could be done before the previous action.....
     -- but the semantics should be identical as long as we didn't try to send withdraw messages to the peer which has gone away...
