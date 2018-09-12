@@ -4,18 +4,20 @@ module Session where
 import Foreign.C.Error -- (Errno(..),getErrno)
 import Control.Concurrent
 -- import qualified Control.Exception as E
--- import Control.Monad (when,forever)
+import Control.Monad (when,forever)
 import Network.Socket
 import System.IO
 import qualified Data.IP
--- import qualified Data.Map.Strict as Data.Map
+import qualified Data.Map.Strict as Data.Map
 -- import System.IO.Error(catchIOError)
 import System.IO.Error
 import GHC.IO.Exception(ioe_description)
+import Data.Maybe
 
 
 type App = (Network.Socket.Socket -> IO ())
 type Peer = (Data.IP.IPv4, App )
+
 seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
@@ -23,27 +25,42 @@ idleDelay = 100 * seconds
 session :: PortNumber -> [Peer] -> IO ()
 session port peers = do
 -- TODO make this a monad to hide the logger plumbing
-    logMVar <- newEmptyMVar
-    forkIO ( logger logMVar )
-    threads <- mapM ( forkIO . run logMVar port ) peers
+    logger <- getLogger
+    forkIO (listener logger port peers (snd $ head peers) )
+    threads <- mapM ( forkIO . run logger port ) peers
     idle
 
-run :: MVar (String) -> PortNumber -> Peer -> IO ()
-run logMVar port (ip,app) = do
+listener :: Logger -> PortNumber -> [Peer] -> App -> IO ()
+listener logger port apps defaultApp = do
+    logger "listener"
+    let peerMap = Data.Map.fromList apps
+    listeningSocket <- socket AF_INET Stream defaultProtocol 
+    setSocketOption listeningSocket ReuseAddr 1
+    bind listeningSocket ( SockAddrInet port 0 )
+    listen listeningSocket 100
+    forever $ do
+        (sock, SockAddrInet remotePort remoteIPv4) <- accept listeningSocket
+        logger $ "listener - connect request from " ++ show (Data.IP.fromHostAddress remoteIPv4)
+        let app = fromMaybe defaultApp (Data.Map.lookup (Data.IP.fromHostAddress remoteIPv4) peerMap)
+        -- TODO wrap the app in a wrapper to catch the exit and/or exceptions...
+        forkIO (defaultApp sock)
+
+run :: Logger -> PortNumber -> Peer -> IO ()
+run logger port (ip,app) = do
     catchIOError ( do
         sock <- socket AF_INET Stream defaultProtocol
         Network.Socket.connect sock ( SockAddrInet port (Data.IP.toHostAddress ip))
         peerAddress <- getPeerName sock
-        putStrLn $ "connected outbound to : " ++ (show peerAddress)
+        logger $ "connected outbound to : " ++ (show peerAddress)
         app sock
-        putStrLn $ "app terminated for : " ++ (show peerAddress)
+        logger $ "app terminated for : " ++ (show peerAddress)
         )
         (\e -> do
             Errno errno <- getErrno
-            putMVar logMVar $ "Exception connecting to " ++ (show ip) ++ " - " ++ (errReport errno e)
+            logger $ "Exception connecting to " ++ (show ip) ++ " - " ++ (errReport errno e)
         )
     threadDelay respawnDelay
-    run logMVar port (ip,app)
+    run logger port (ip,app)
 
 errReport 2 e = ioe_description e
 errReport errno e = unlines
@@ -54,9 +71,14 @@ errReport errno e = unlines
     , "description " ++ ( ioe_description e )
     ]
 
-logger log = do
-    takeMVar log >>= (hPutStrLn stderr)
-    logger log
+type Logger = (String -> IO ())
+getLogger = do
+    let logThread mvar = do
+        takeMVar mvar >>= (hPutStrLn stderr)
+        logThread mvar
+    logMVar <- newEmptyMVar
+    forkIO ( logThread logMVar )
+    return (putMVar logMVar)
 
 idle = do
     threadDelay idleDelay
