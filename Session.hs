@@ -18,13 +18,18 @@ type App = (Network.Socket.Socket -> IO ())
 type Peer = (Data.IP.IPv4, App )
 seconds = 1000000
 respawnDelay = 10 * seconds
+idleDelay = 100 * seconds
 
 session :: PortNumber -> [Peer] -> IO ()
 session port peers = do
-    mapM_ ( run port ) peers
+-- TODO make this a monad to hide the logger plumbing
+    logMVar <- newEmptyMVar
+    forkIO ( logger logMVar )
+    threads <- mapM ( forkIO . run logMVar port ) peers
+    idle
 
-run :: PortNumber -> Peer -> IO ()
-run port (ip,app) = do
+run :: MVar (String) -> PortNumber -> Peer -> IO ()
+run logMVar port (ip,app) = do
     catchIOError ( do
         sock <- socket AF_INET Stream defaultProtocol
         Network.Socket.connect sock ( SockAddrInet port (Data.IP.toHostAddress ip))
@@ -35,10 +40,10 @@ run port (ip,app) = do
         )
         (\e -> do
             Errno errno <- getErrno
-            hPutStrLn stderr $ "Exception connecting to " ++ (show ip) ++ " - " ++ (errReport errno e)
+            putMVar logMVar $ "Exception connecting to " ++ (show ip) ++ " - " ++ (errReport errno e)
         )
     threadDelay respawnDelay
-    run port (ip,app)
+    run logMVar port (ip,app)
 
 errReport 2 e = ioe_description e
 errReport errno e = unlines
@@ -49,8 +54,15 @@ errReport errno e = unlines
     , "description " ++ ( ioe_description e )
     ]
 
+logger log = do
+    takeMVar log >>= (hPutStrLn stderr)
+    logger log
+
+idle = do
+    threadDelay idleDelay
+    idle
+
 {-
-idleTimeout = 60 * 1000000
 
 start peers = do
     putStrLn "ActPassive starting"
@@ -83,10 +95,6 @@ watcher rib s = do
         ( putStrLn $ "watcher: " ++ s' )
     watcher rib s' 
 
-idle = do
-    threadDelay 100000000 -- 100 second spin
-                            -- could put some diagnstics here if wanted.......
-    idle
 
 reaper commons@Commons{..} = 
     forever $ do
