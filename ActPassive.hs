@@ -19,6 +19,14 @@ import Rib
 import BGPReader(pathReadRib)
 import Update(makeUpdate)
 
+-- TODO
+-- introduce 'managed' threads for all session like threads
+-- and call the BgpFSM in those threads from this module
+-- rather than dispatching without return to BgpFSM
+--
+-- This will e.g., avoid forking from within a forked process for the outbound connections
+-- Also, report on the thread state as well as the RIB in the diagnostic loop
+
 main :: IO ()
 main = do
     peers <- getConfig
@@ -59,10 +67,18 @@ start peers = do
     forkIO $ listener commons 
     mapM_ (forkIO . connectImmediate commons) peers
     putStrLn "ActPassive running"
-    idle
+    -- idle
+    watcher rib ""
+
+watcher rib s = do
+    threadDelay 1000000 -- 1 second spin
+    s' <- showRib rib
+    when (s /= s')
+        ( putStrLn $ "watcher: " ++ s' )
+    watcher rib s' 
 
 idle = do
-    threadDelay 100000000 -- 1 second spin
+    threadDelay 100000000 -- 100 second spin
                             -- could put some diagnstics here if wanted.......
     idle
 
