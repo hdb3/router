@@ -23,6 +23,9 @@ import Rib
 import Route
 import PrefixTableUtils
 
+-- TODO - modify the putStrLn's to at least report the connected peer. but..
+-- better: implement a logger
+
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
 type FSMExit = ( ThreadId, SockAddr, Either String String )
 
@@ -192,7 +195,6 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                -- report rib
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe
@@ -258,21 +260,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         if null updates then
             snd BGPKeepalive
         else do routes <- lookupRoutes rib peer updates
-                putStr "\nReady to send routes....:"
+                putStr $ "Ready to send routes to " ++ show (peerIPv4 peer)
                 if 11 > length updates then do
                     print $ map fst updates
                 else do
-                    putStr "\nReady to send routes....:"
                     print $ map fst (take 10 updates)
                     putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 mapM_ snd routes
-
-    report rib = do
-        prefixTable <- Rib.getLocRib rib
-        when ( 10 > length prefixTable )
-            ( do putStrLn $ "Prefix Table (" ++ show (length prefixTable) ++ ")"
-                 putStrLn $ showPrefixTableByRoute prefixTable
-                 putStrLn $ showPrefixTable prefixTable
-            )
-        putStr $ "\rprefixTable contains " ++ show ( length prefixTable ) ++ " prefixes"
-
