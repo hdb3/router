@@ -56,7 +56,7 @@ start peers = do
     putStrLn "ActPassive ready"
 
     forkIO $ reaper commons
-    -- forkIO $ listener commons 
+    forkIO $ listener commons 
     mapM_ (forkIO . connectImmediate commons) peers
     putStrLn "ActPassive running"
     idle
