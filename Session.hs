@@ -22,11 +22,12 @@ seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
-session :: PortNumber -> [Peer] -> IO ()
-session port peers = do
+
+session :: PortNumber -> App -> [Peer] -> IO ()
+session port defaultApp peers = do
 -- TODO make this a monad to hide the logger plumbing
     logger <- getLogger
-    forkIO (listener logger port peers (snd $ head peers) )
+    forkIO (listener logger port peers defaultApp)
     threads <- mapM ( forkIO . run logger port ) peers
     idle
 
