@@ -4,7 +4,7 @@ module Session where
 import Foreign.C.Error -- (Errno(..),getErrno)
 import Control.Concurrent
 -- import qualified Control.Exception as E
-import Control.Monad (when,forever)
+import Control.Monad (void,when,forever)
 import Network.Socket
 import System.IO
 import qualified Data.IP
@@ -23,7 +23,7 @@ respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
 
-session :: PortNumber -> App -> [Peer] -> IO ()
+session :: PortNumber -> Maybe App -> [Peer] -> IO ()
 session port defaultApp peers = do
 -- TODO make this a monad to hide the logger plumbing
     logger <- getLogger
@@ -31,7 +31,7 @@ session port defaultApp peers = do
     threads <- mapM ( forkIO . run logger port ) peers
     idle
 
-listener :: Logger -> PortNumber -> [Peer] -> App -> IO ()
+listener :: Logger -> PortNumber -> [Peer] -> Maybe App -> IO ()
 listener logger port apps defaultApp = do
     logger "listener"
     let peerMap = Data.Map.fromList apps
@@ -42,9 +42,27 @@ listener logger port apps defaultApp = do
     forever $ do
         (sock, SockAddrInet remotePort remoteIPv4) <- accept listeningSocket
         logger $ "listener - connect request from " ++ show (Data.IP.fromHostAddress remoteIPv4)
-        let app = fromMaybe defaultApp (Data.Map.lookup (Data.IP.fromHostAddress remoteIPv4) peerMap)
+        -- lookup may return Nothing, in which case thedefaultApp is used, unless that is nothing....
+        let
+            -- lookedup = Data.Map.lookup (Data.IP.fromHostAddress remoteIPv4) peerMap
+            -- maybeApp = maybe defaultApp Just lookedup
+            maybeApp = maybe defaultApp
+                             Just
+                             ( Data.Map.lookup (Data.IP.fromHostAddress remoteIPv4) peerMap )
+        maybe
+            (do logger "no default application given"
+                close sock)
+            ( \app -> void $ forkIO (app sock))
+            ( maybe defaultApp
+                    Just
+                    ( Data.Map.lookup (Data.IP.fromHostAddress remoteIPv4) peerMap )
+            )
+
+        -- maybe
+            -- (close sock)
+            -- ( \app -> void $ forkIO (app sock))
+            -- maybeApp
         -- TODO wrap the app in a wrapper to catch the exit and/or exceptions...
-        forkIO (defaultApp sock)
 
 run :: Logger -> PortNumber -> Peer -> IO ()
 run logger port (ip,app) = do

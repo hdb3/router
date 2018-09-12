@@ -14,6 +14,7 @@ echo name sock = do
     send sock "hello friend\n"
     reply <- recv sock 4096
     putStrLn $ "my friend said: \"" ++ reply ++ "\""
+    close sock
 
 
 main = do 
@@ -24,4 +25,5 @@ main = do
             , ("192.168.122.113" , "yang")
             , ("192.168.122.178" , "yung")
             ]
-    session 5000 (echo "default app") peers
+    session 5000 Nothing peers
+    -- session 5000 (Just (echo "default app")) peers
