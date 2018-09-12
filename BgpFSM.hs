@@ -192,7 +192,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
             BGPKeepalive -> do
                 logFlush bsock0
                 putStrLn "established - rcv keepalive"
-                report rib
+                -- report rib
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe
