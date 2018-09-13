@@ -15,7 +15,6 @@ import Foreign.C.Error
 
 
 type App = (Socket -> IO ())
-type Peer = (IPv4, App )
 type RaceCheck = (IPv4 -> IO Bool)
 type RaceCheckUnblock = (IPv4 -> IO ())
 type Logger = (String -> IO ())
@@ -24,9 +23,8 @@ data State = State { port :: PortNumber
                    , raceCheckBlock :: RaceCheck
                    , raceCheckNonBlock :: RaceCheck
                    , raceCheckUnblock :: RaceCheckUnblock
-                   , defaultApp :: Maybe App
-                   , peers :: [Peer]
-                   , peerMap :: Data.Map.Map IPv4 App
+                   , defaultApp :: App
+                   , peers :: [IPv4]
                    }
 
 seconds = 1000000
@@ -39,7 +37,6 @@ mkState port defaultApp peers = do
     let raceCheckNonBlock = raceCheck False mapMVar
         raceCheckBlock = raceCheck True mapMVar
         raceCheckUnblock = raceCheckUnblocker mapMVar
-        peerMap = Data.Map.fromList peers
     return State {..}
 
 getLogger = do
@@ -89,7 +86,7 @@ raceCheck blocking mapMVar address = do
           )
           maybePeerMVar
 
-session :: PortNumber -> Maybe App -> [Peer] -> IO ()
+session :: PortNumber -> App -> [IPv4] -> IO ()
 session port defaultApp peers = do
 -- TODO make this a monad to hide the logger plumbing
     state <- mkState port defaultApp peers
@@ -117,15 +114,7 @@ listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = do
             logger $ "listener - connect reject due to race"
             closeSock sock
         else do
-            -- lookup may return Nothing, in which case thedefaultApp is used, unless that is nothing....
-            -- NOTE - arguably this is more complex than it need be - the defauly app could be non-optional
-            -- but simply close the socket itself, as this does.
-            let runnable = fromMaybe
-                    (\_ -> logger "no default application given")
-                    ( maybe defaultApp
-                            Just
-                            ( Data.Map.lookup (fromHostAddress remoteIPv4) peerMap ))
-            forkIO $ wrap state runnable sock 
+            forkIO $ wrap state defaultApp sock 
             raceCheckUnblock ip
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
@@ -142,18 +131,18 @@ wrap state@State{..} app sock = do
         (\e -> do Errno errno <- getErrno
                   logger $ "Exception in session with " ++ show ip ++ " - " ++ errReport errno e )
 
-run :: State -> Peer -> IO ()
-run state@State{..} (ip,app) = do
+run :: State -> IPv4 -> IO ()
+run state@State{..} ip = do
     unblocked <- raceCheckBlock ip
     when unblocked
          ( do sock <- connectTo port ip
               maybe ( return () )
-                    (wrap state app)
+                    (wrap state defaultApp)
                     sock
               raceCheckUnblock ip )
     unless unblocked ( logger $ "run blocked for " ++ show ip )
     threadDelay respawnDelay
-    run state (ip,app)
+    run state ip
     where
     connectTo port ip =
         catchIOError
@@ -165,9 +154,8 @@ run state@State{..} (ip,app) = do
             return Nothing )
 
 
-errReport 2 e = ioe_description e
-errReport 107 e = ioe_description e
-errReport errno e = unlines
+errReport errno e | errno `elem` [2,107] = ioe_description e ++ " (" ++ show errno ++ ")"
+                  | otherwise = unlines
     [ "*** UNKNOWN exception, please record this"
     , ioeGetErrorString e
     , "error " ++ ioeGetErrorString e
