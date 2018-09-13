@@ -46,7 +46,6 @@ errReport errno e = unlines
 echo (sock,addr) = do
     putStrLn "echo starting"
     peerAddress  <- getPeerName' sock
-    -- let peerAddress = SockAddrInet 0 0
     localAddress <- getSocketName sock
     putStrLn $ "echo - local address: " ++ show localAddress ++ " peer address: " ++ show peerAddress
     send sock $ C.pack $ "hello friend\n"
