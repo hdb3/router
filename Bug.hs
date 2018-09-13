@@ -20,7 +20,6 @@ import Foreign.C.Error
 
 
 type App = (Network.Socket.Socket -> IO ())
-type Peer = (IPv4, App )
 
 logger = hPutStrLn stderr
 
@@ -28,10 +27,9 @@ seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
-session :: PortNumber -> Maybe App -> [Peer] -> IO ()
-session port defaultApp peers = do
--- TODO make this a monad to hide the logger plumbing
-    forkIO (listener port peers defaultApp)
+session :: PortNumber -> App -> IO ()
+session port app = do
+    forkIO (listener port app )
     idle
     where
         idle = do
@@ -39,10 +37,9 @@ session port defaultApp peers = do
             idle
 
 
-listener :: PortNumber -> [Peer] -> Maybe App -> IO ()
-listener port apps defaultApp = do
+listener :: PortNumber -> App -> IO ()
+listener port app = do
     logger "listener"
-    let peerMap = Data.Map.fromList apps
     listeningSocket <- socket AF_INET Stream defaultProtocol 
     setSocketOption listeningSocket ReuseAddr 1
     bind listeningSocket ( SockAddrInet port 0 )
@@ -50,19 +47,10 @@ listener port apps defaultApp = do
     forever $ do
         (sock, SockAddrInet remotePort remoteIPv4) <- accept listeningSocket
         logger $ "listener - connect request from " ++ show (fromHostAddress remoteIPv4)
-        -- threadDelay respawnDelay
         -- peerAddress <- getPeerName' sock
         -- let ip = fromPeerAddress peerAddress
         let ip = fromHostAddress remoteIPv4
-        -- lookup may return Nothing, in which case thedefaultApp is used, unless that is nothing....
-        -- NOTE - arguably this is more complex than it need be - the defauly app could be non-optional
-        -- but simply close the socket itself, as this does.
-        let runnable = fromMaybe
-                (\_ -> logger "no default application given")
-                ( maybe defaultApp
-                        Just
-                        ( Data.Map.lookup (fromHostAddress remoteIPv4) peerMap ))
-        forkIO $ wrap runnable sock 
+        forkIO $ wrap app sock 
         close sock
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
@@ -114,10 +102,4 @@ echo name sock = do
 
 
 main = do 
-    let peers = map (\(a,b) -> (a, echo b))  
-            [ ("192.168.122.236" , "yin")
-            -- , ("192.168.122.60" , "yang")
-            , ("192.168.122.178" , "yung")
-            ]
-    session 5000 Nothing [("192.168.122.236", echo "abc")]
-    -- session 5000 (Just (echo "default app")) peers
+    session 5000 (echo "abc")
