@@ -7,9 +7,9 @@ import Session
 import Data.Char(toUpper)
 
 -- echo :: App
-echo name sock = do
+echo name (sock,peerAddress) = do
     putStrLn $ "echo starting with name " ++ name
-    peerAddress  <- getPeerName sock
+    -- peerAddress  <- getPeerName sock
     localAddress <- getSocketName sock
     putStrLn $ "echo - local address: " ++ show localAddress ++ " peer address: " ++ show peerAddress
     send sock "hello friend\n"

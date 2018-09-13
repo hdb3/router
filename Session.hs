@@ -14,7 +14,7 @@ import GHC.IO.Exception(ioe_description)
 import Foreign.C.Error
 
 
-type App = (Socket -> IO ())
+type App = ((Socket,SockAddr) -> IO ())
 type RaceCheck = (IPv4 -> IO Bool)
 type RaceCheckUnblock = (IPv4 -> IO ())
 type Logger = (String -> IO ())
@@ -125,7 +125,7 @@ wrap state@State{..} app sock = do
     let ip = fromPeerAddress peerAddress
     catchIOError
         ( do logger $ "connected to : " ++ show ip
-             app sock
+             app ( sock , peerAddress )
              closeSock sock
              logger $ "app terminated for : " ++ show ip )
         (\e -> do Errno errno <- getErrno
