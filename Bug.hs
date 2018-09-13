@@ -2,63 +2,46 @@
 {-#LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Network.Socket
-import qualified Data.IP
 import Data.Char(toUpper)
-
-
+import System.Environment(getArgs)
 import Data.Maybe
 import Control.Concurrent
 import Control.Monad (void,unless,when,forever)
-import Network.Socket
+import Network.Socket(SockAddr(..))
 import System.IO
 import Data.IP
 import qualified Data.Map.Strict as Data.Map
 import System.IO.Error
 import GHC.IO.Exception(ioe_description)
 import Foreign.C.Error
-
-
-type App = (Network.Socket.Socket -> IO ())
+import Network.Simple.TCP
 
 logger = hPutStrLn stderr
-
-seconds = 1000000
-respawnDelay = 10 * seconds
-idleDelay = 100 * seconds
-
-session :: PortNumber -> App -> IO ()
-session port app = do
-    forkIO (listener port app )
-    idle
-    where
-        idle = do
-            threadDelay idleDelay
-            idle
-
-
-listener :: PortNumber -> App -> IO ()
-listener port app = do
-    logger "listener"
+main = do 
+    fork <- inArgs "fork"
+    putStrLn $ "Fork: " ++ show fork
+    let port = 5000
+        app = echo
     listeningSocket <- socket AF_INET Stream defaultProtocol 
     setSocketOption listeningSocket ReuseAddr 1
     bind listeningSocket ( SockAddrInet port 0 )
     listen listeningSocket 100
     forever $ do
         (sock, SockAddrInet remotePort remoteIPv4) <- accept listeningSocket
-        logger $ "listener - connect request from " ++ show (fromHostAddress remoteIPv4)
-        -- peerAddress <- getPeerName' sock
-        -- let ip = fromPeerAddress peerAddress
-        let ip = fromHostAddress remoteIPv4
-        forkIO $ wrap app sock 
+        SockAddrInet _ addr <- getPeerName' sock
+        let ip = fromHostAddress addr
+        let ip' = fromHostAddress remoteIPv4
+        logger $ "listener - connect request from " ++ show ip
+        if fork then
+            void $ forkIO $ app sock 
+        else
+            app sock 
+
         close sock
 
-fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
-
-
 wrap app sock = do
-    peerAddress <- getPeerName' sock
-    let ip = fromPeerAddress peerAddress
+    SockAddrInet _ addr <- getPeerName' sock
+    let ip = fromHostAddress addr
     catchIOError
         ( do logger $ "connected to : " ++ show ip
              app sock
@@ -85,21 +68,20 @@ errReport errno e = unlines
     , "description " ++ ioe_description e
     ]
 
-
-
--- echo :: App
-echo name sock = do
-    putStrLn $ "echo starting with name " ++ name
-    peerAddress  <- getPeerName sock
+echo sock = do
+    putStrLn "echo starting"
+    peerAddress  <- getPeerName' sock
+    -- let peerAddress = SockAddrInet 0 0
     localAddress <- getSocketName sock
     putStrLn $ "echo - local address: " ++ show localAddress ++ " peer address: " ++ show peerAddress
     send sock "hello friend\n"
     reply <- recv sock 4096
-    putStrLn $ "my friend said: \"" ++ reply ++ "\""
-    send sock $ "you said " ++ (map toUpper reply)
-    send sock "Goodbye!"
+    putStrLn $ "my friend said: \"" ++ reply ++ "\"\n"
+    send sock $ "you said " ++ (map toUpper reply) ++ "\n"
+    send sock "Goodbye!\n"
     return ()
 
-
-main = do 
-    session 5000 (echo "abc")
+inArgs :: String -> IO Bool
+inArgs s = do
+    args <- getArgs
+    return ( map toUpper s `elem` map (map toUpper) args)
