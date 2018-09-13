@@ -4,7 +4,8 @@ module Session where
 import Data.Maybe
 import Control.Concurrent
 import Control.Monad (void,unless,when,forever)
-import Network.Socket
+import Network.Socket(getPeerName,PortNumber,SockAddr(..))
+import Network.Simple.TCP
 import System.IO
 import Data.IP
 import qualified Data.Map.Strict as Data.Map
@@ -13,7 +14,7 @@ import GHC.IO.Exception(ioe_description)
 import Foreign.C.Error
 
 
-type App = (Network.Socket.Socket -> IO ())
+type App = (Socket -> IO ())
 type Peer = (IPv4, App )
 type RaceCheck = (IPv4 -> IO Bool)
 type RaceCheckUnblock = (IPv4 -> IO ())
@@ -23,18 +24,22 @@ data State = State { port :: PortNumber
                    , raceCheckBlock :: RaceCheck
                    , raceCheckNonBlock :: RaceCheck
                    , raceCheckUnblock :: RaceCheckUnblock
+                   , defaultApp :: Maybe App
+                   , peers :: [Peer]
+                   , peerMap :: Data.Map.Map IPv4 App
                    }
 
 seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
-mkState port = do
+mkState port defaultApp peers = do
     logger <- getLogger
     mapMVar <- newMVar Data.Map.empty
     let raceCheckNonBlock = raceCheck False mapMVar
         raceCheckBlock = raceCheck True mapMVar
         raceCheckUnblock = raceCheckUnblocker mapMVar
+        peerMap = Data.Map.fromList peers
     return State {..}
 
 getLogger = do
@@ -87,35 +92,30 @@ raceCheck blocking mapMVar address = do
 session :: PortNumber -> Maybe App -> [Peer] -> IO ()
 session port defaultApp peers = do
 -- TODO make this a monad to hide the logger plumbing
-    state <- mkState port
-    forkIO (listener state peers defaultApp)
-    -- threads <- mapM ( forkIO . run state ) peers
+    state <- mkState port defaultApp peers
+    forkIO (listener state )
+    threads <- mapM ( forkIO . run state ) peers
     idle
     where
         idle = do
             threadDelay idleDelay
             idle
 
-
-listener :: State -> [Peer] -> Maybe App -> IO ()
-listener state@State{..} apps defaultApp = do
+listener :: State -> IO ()
+listener state@State{..} = do
     logger "listener"
-    let peerMap = Data.Map.fromList apps
-    listeningSocket <- socket AF_INET Stream defaultProtocol 
-    setSocketOption listeningSocket ReuseAddr 1
-    bind listeningSocket ( SockAddrInet port 0 )
-    listen listeningSocket 100
+    (listeningSocket,_) <- bindSock HostIPv4 (show port )
+    listenSock listeningSocket 100
     forever $ do
-        (sock, SockAddrInet remotePort remoteIPv4) <- accept listeningSocket
-        logger $ "listener - connect request from " ++ show (fromHostAddress remoteIPv4)
-        -- threadDelay respawnDelay
-        -- peerAddress <- getPeerName' sock
-        -- let ip = fromPeerAddress peerAddress
+        accept listeningSocket ( listenClient state )
+
+listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = do
         let ip = fromHostAddress remoteIPv4
+        logger $ "listener - connect request from " ++ show ip
         unblocked <- raceCheckNonBlock ip
         if not unblocked then do
             logger $ "listener - connect reject due to race"
-            close sock
+            closeSock sock
         else do
             -- lookup may return Nothing, in which case thedefaultApp is used, unless that is nothing....
             -- NOTE - arguably this is more complex than it need be - the defauly app could be non-optional
@@ -126,32 +126,21 @@ listener state@State{..} apps defaultApp = do
                             Just
                             ( Data.Map.lookup (fromHostAddress remoteIPv4) peerMap ))
             forkIO $ wrap state runnable sock 
-            close sock
             raceCheckUnblock ip
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
 
 
--- wrap :: State -> App -> Either Network.Socket.Socket SockAddr -> IO ()
 wrap state@State{..} app sock = do
-    peerAddress <- getPeerName' sock
+    peerAddress <- getPeerName sock
     let ip = fromPeerAddress peerAddress
     catchIOError
         ( do logger $ "connected to : " ++ show ip
              app sock
+             closeSock sock
              logger $ "app terminated for : " ++ show ip )
         (\e -> do Errno errno <- getErrno
                   logger $ "Exception in session with " ++ show ip ++ " - " ++ errReport errno e )
-    close sock
-
-
-getPeerName' sock = 
-    catchIOError
-        ( getPeerName sock )
-        (\e -> do Errno errno <- getErrno
-                  hPutStrLn stderr $ "Exception in getPeerName - " ++ errReport errno e 
-                  return $ SockAddrInet 0 0 )
-
 
 run :: State -> Peer -> IO ()
 run state@State{..} (ip,app) = do
@@ -168,8 +157,7 @@ run state@State{..} (ip,app) = do
     where
     connectTo port ip =
         catchIOError
-        ( do sock <- socket AF_INET Stream defaultProtocol
-             Network.Socket.connect sock ( SockAddrInet port (toHostAddress ip))
+        ( do (sock,_) <- connectSock (show ip) (show port)
              return $ Just sock )
         (\e -> do
             Errno errno <- getErrno
@@ -178,6 +166,7 @@ run state@State{..} (ip,app) = do
 
 
 errReport 2 e = ioe_description e
+errReport 107 e = ioe_description e
 errReport errno e = unlines
     [ "*** UNKNOWN exception, please record this"
     , ioeGetErrorString e
