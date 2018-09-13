@@ -21,12 +21,9 @@ echo name sock = do
 
 
 main = do 
-    -- session 5000 [("192.168.122.179" , echo)]
-    -- session 5000 echo [("192.168.122.179" , echo) , ("192.168.122.113" , echo) , ("192.168.122.178" , echo)]
-    let peers = map (\(a,b) -> (a, echo b))  
-            [ ("192.168.122.236" , "yin")
-            , ("192.168.122.60" , "yang")
-            , ("192.168.122.178" , "yung")
+    let peers = 
+            [ "192.168.122.236"
+            , "192.168.122.60"
+            , "192.168.122.178"
             ]
-    session 5000 Nothing peers
-    -- session 5000 (Just (echo "default app")) peers
+    session 5000 (echo "default app") peers
