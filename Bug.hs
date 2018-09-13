@@ -21,33 +21,17 @@ import Foreign.C.Error
 
 type App = (Network.Socket.Socket -> IO ())
 type Peer = (IPv4, App )
-type Logger = (String -> IO ())
-data State = State { port :: PortNumber
-                   , logger :: Logger
-                   }
+
+logger = hPutStrLn stderr
 
 seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
-mkState port = do
-    logger <- getLogger
-    mapMVar <- newMVar Data.Map.empty
-    return State {..}
-
-getLogger = do
-    let logThread mvar = do
-        takeMVar mvar >>= hPutStrLn stderr
-        logThread mvar
-    logMVar <- newEmptyMVar
-    forkIO ( logThread logMVar )
-    return (putMVar logMVar)
-
 session :: PortNumber -> Maybe App -> [Peer] -> IO ()
 session port defaultApp peers = do
 -- TODO make this a monad to hide the logger plumbing
-    state <- mkState port
-    forkIO (listener state peers defaultApp)
+    forkIO (listener port peers defaultApp)
     idle
     where
         idle = do
@@ -55,8 +39,8 @@ session port defaultApp peers = do
             idle
 
 
-listener :: State -> [Peer] -> Maybe App -> IO ()
-listener state@State{..} apps defaultApp = do
+listener :: PortNumber -> [Peer] -> Maybe App -> IO ()
+listener port apps defaultApp = do
     logger "listener"
     let peerMap = Data.Map.fromList apps
     listeningSocket <- socket AF_INET Stream defaultProtocol 
@@ -78,14 +62,13 @@ listener state@State{..} apps defaultApp = do
                 ( maybe defaultApp
                         Just
                         ( Data.Map.lookup (fromHostAddress remoteIPv4) peerMap ))
-        forkIO $ wrap state runnable sock 
+        forkIO $ wrap runnable sock 
         close sock
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
 
 
--- wrap :: State -> App -> Either Network.Socket.Socket SockAddr -> IO ()
-wrap state@State{..} app sock = do
+wrap app sock = do
     peerAddress <- getPeerName' sock
     let ip = fromPeerAddress peerAddress
     catchIOError
