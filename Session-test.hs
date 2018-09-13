@@ -4,6 +4,7 @@ module Main where
 import Network.Socket
 import qualified Data.IP
 import Session
+import Data.Char(toUpper)
 
 -- echo :: App
 echo name sock = do
@@ -14,15 +15,17 @@ echo name sock = do
     send sock "hello friend\n"
     reply <- recv sock 4096
     putStrLn $ "my friend said: \"" ++ reply ++ "\""
-    close sock
+    send sock $ "you said " ++ (map toUpper reply)
+    send sock "Goodbye!"
+    return ()
 
 
 main = do 
     -- session 5000 [("192.168.122.179" , echo)]
     -- session 5000 echo [("192.168.122.179" , echo) , ("192.168.122.113" , echo) , ("192.168.122.178" , echo)]
     let peers = map (\(a,b) -> (a, echo b))  
-            [ ("192.168.122.179" , "yin")
-            , ("192.168.122.113" , "yang")
+            [ ("192.168.122.236" , "yin")
+            -- , ("192.168.122.60" , "yang")
             , ("192.168.122.178" , "yung")
             ]
     session 5000 Nothing peers
