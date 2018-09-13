@@ -38,22 +38,8 @@ main = do
 
 idleTimeout = 60 * 1000000
 
-{-
-data Global = Global { rib :: Rib.Rib
-                     , peerMap :: Data.Map.Map IPv4 PeerData
-                     ,exitMVar :: MVar (ThreadId, SockAddr, Either String String)
-                     ,collisionDetector :: CollisionDetector
-                     ,sessions :: MVar ( Data.Map.Map ThreadId PeerData )
-                     ,gd :: GlobalData
-                     ,ld :: PeerData
-                     ,listenAddress :: SockAddr
-                     , peers :: [PeerData]
-                     , config :: BgpFSMconfig
-                     }
--}
-
 start peers = do
-    putStrLn "ActPassive starting"
+    putStrLn "Router starting"
     print peers
 
     let gd = globalData (head peers)
@@ -69,7 +55,7 @@ start peers = do
     let delayOpenTimer = 3
         -- config = BgpFSMconfig undefined collisionDetector undefined delayOpenTimer exitMVar Nothing undefined rib
         global = Global {..}
-    putStrLn "ActPassive ready"
+    putStrLn "Router ready"
 
     forkIO $ reaper global
     forkIO $ listener global 
