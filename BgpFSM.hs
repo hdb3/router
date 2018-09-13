@@ -2,7 +2,7 @@
 module BgpFSM(bgpFSM,BgpFSMconfig(..)) where
 import Network.Socket
 import System.IO.Error(catchIOError)
-import System.IO(Handle)
+import System.IO(hFlush,Handle)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode)
 import Control.Concurrent
@@ -10,6 +10,7 @@ import Control.Exception
 import Control.Monad(when)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
+import qualified Data.Map.Strict as Data.Map
 
 import Common
 import BGPparse
@@ -22,12 +23,13 @@ import Update
 import Rib
 import Route
 import PrefixTableUtils
+import Global
 
 -- TODO - modify the putStrLn's to at least report the connected peer. but..
 -- better: implement a logger
 
 type F = (BufferedSocket,OpenStateMachine) -> IO (State,BufferedSocket,OpenStateMachine)
-type FSMExit = ( ThreadId, SockAddr, Either String String )
+-- type FSMExit = ( ThreadId, SockAddr, Either String String )
 
 data State = StateConnected | StateOpenSent | StateOpenConfirm | ToEstablished | Established | Idle deriving (Show,Eq)
 
@@ -36,28 +38,36 @@ newtype FSMException = FSMException String
 
 instance Exception FSMException
 
-data BgpFSMconfig = BgpFSMconfig {
-                                  sock :: Socket,
-                                  collisionDetector :: CollisionDetector,
-                                  peerName :: SockAddr,
-                                  delayOpenTimer :: Int,
-                                  exitMVar :: MVar FSMExit
-                                  , logFile :: Maybe Handle
-                                  , peerData :: PeerData
-                                  , rib :: Rib.Rib
-                                  }
-bgpFSM :: BgpFSMconfig -> IO ()
+-- data BgpFSMconfig = BgpFSMconfig {
+                                  -- sock :: Socket,
+                                  -- collisionDetector :: CollisionDetector,
+                                  -- peerName :: SockAddr,
+                                  -- delayOpenTimer :: Int,
+                                  -- exitMVar :: MVar FSMExit
+                                  -- , logFile :: Maybe Handle
+                                  -- , peerData :: PeerData
+                                  -- , rib :: Rib.Rib
+                                  -- }
+bgpFSM :: Global -> ( Socket , SockAddr) -> IO ()
 
-bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
+bgpFSM Global{..} ( sock , peerName ) =
+                          do threadId <- myThreadId
                              putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
+                             logFile <- getLogFile
+                             -- let peerData = fromJust $ Data.Map.lookup (getIPv4 peerName) peerMap
+                             -- TODO this where to handle an unconfigured peer....
                              fsmExitStatus <-
                                  catch
                                  (fsm (StateConnected,bsock0,osm) )
-                                 (\(FSMException s) ->
+                                 (\(FSMException s) -> do
+                                     -- TODO make all finalisation stuff in one place
+                                     -- after catching any/all exceptions.....
+                                     -- and bracketed by corresponding initilisation....
+                                     delPeer rib peerData
                                      return $ Left s
                                  )
                              close sock
-                             logFlush bsock0
+                             -- fmap hFlush logFile
                              deregister cd
                              putMVar exitMVar (threadId , peerName, fsmExitStatus )
                              either
@@ -65,7 +75,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                                  (\s -> putStrLn $ "BGPfsm normal exit" ++ s)
                                  fsmExitStatus
                              where
-    bsock0 = newBufferedSocket sock logFile
+    getIPv4 (SockAddrInet portNumber hostAddress) = fromHostAddress hostAddress
+    peerData = fromJust $ Data.Map.lookup (getIPv4 peerName) peerMap
+    bsock0 = newBufferedSocket sock Nothing
     exit s = throw $ FSMException s
     initialHoldTimer = 120
     cd = collisionDetector
@@ -83,8 +95,9 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
 
     fsm :: (State,BufferedSocket,OpenStateMachine) -> IO (Either String String)
     fsm (s,b,o) | s == Idle = do
-                                logFlush bsock0
+                                -- hFlush logFile
                                 let s = "FSM exiting" ++ rcvStatus (result b)
+                                delPeer rib peerData
                                 return $ Right s
                 | otherwise = do
         (s',b',o') <- f s (b,o)
@@ -193,7 +206,7 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
         (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
-                logFlush bsock0
+                -- hFlush logFile
                 putStrLn "established - rcv keepalive"
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
@@ -267,3 +280,10 @@ bgpFSM BgpFSMconfig{..} = do threadId <- myThreadId
                     print $ map fst (take 10 updates)
                     putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 mapM_ snd routes
+
+getLogFile = do
+    t <- utcSecs
+    -- TODO make unique names because multiple peers may start at the same time....
+    -- handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
+    return Nothing
+    -- return $ Just handle

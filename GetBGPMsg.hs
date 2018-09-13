@@ -27,11 +27,6 @@ rcvStatus (BGPByteString (Right bs)) = toHex' bs
 data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
 newBufferedSocket ::  Socket -> Maybe Handle -> BufferedSocket
 newBufferedSocket sock h = BufferedSocket sock L.empty (BGPByteString $ Right L.empty) h
-logFlush :: BufferedSocket -> IO()
-logFlush BufferedSocket{..} = maybe
-                                  (return())
-                                  hFlush
-                                  inputFile
 
 -- convenince functions...
 -- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
