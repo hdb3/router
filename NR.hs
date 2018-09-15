@@ -52,8 +52,10 @@ start peers = do
     let global = Global {..}
         app = bgpFSM global
 
-    putStrLn "Router ready"
     session 179 app configuredPeers
+    putStrLn "Router ready"
+    idle where idle = do threadDelay 10000000
+                         idle
 
 insertStatic rib local = do
     -- pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]

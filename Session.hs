@@ -1,12 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiWayIf #-}
 module Session where
 
 import Data.Maybe
 import Control.Concurrent
 import Control.Monad (void,unless,when,forever)
 import Network.Socket(getPeerName,PortNumber,SockAddr(..))
+import qualified Network.Socket as NS
 import Network.Simple.TCP
 import System.IO
+import System.Exit(die)
 import Data.IP
 import qualified Data.Map.Strict as Data.Map
 import System.IO.Error
@@ -31,12 +34,34 @@ seconds = 1000000
 respawnDelay = 10 * seconds
 idleDelay = 100 * seconds
 
+session :: PortNumber -> App -> [IPv4] -> IO ()
+session port defaultApp peers = do
+-- TODO make this a monad to hide the logger plumbing
+    state <- mkState port defaultApp peers
+    listener state
+    mapM_ ( forkIO . run state ) peers
+
+{-
 mkState port defaultApp peers = do
     logger <- getLogger
     mapMVar <- newMVar Data.Map.empty
     let raceCheckNonBlock = raceCheck False mapMVar
         raceCheckBlock = raceCheck True mapMVar
         raceCheckUnblock = raceCheckUnblocker mapMVar
+    return State {..}
+-}
+
+mkState port defaultApp peers = do
+    logger <- getLogger
+    mapMVar <- newMVar Data.Map.empty
+    let raceCheckNonBlock port = do result <- raceCheck False mapMVar port
+                                    putStrLn $ "raceCheckNonBlock: " ++ show port ++ " : " ++ show result
+                                    return result
+        raceCheckBlock port    = do result <- raceCheck True mapMVar port
+                                    putStrLn $ "raceCheckBlock: " ++ show port ++ " : " ++ show result
+                                    return result
+        raceCheckUnblock port  = do putStrLn $ "raceCheckUnblocker: " ++ show port
+                                    raceCheckUnblocker mapMVar port
     return State {..}
 
 getLogger = do
@@ -86,27 +111,34 @@ raceCheck blocking mapMVar address = do
           )
           maybePeerMVar
 
-session :: PortNumber -> App -> [IPv4] -> IO ()
-session port defaultApp peers = do
--- TODO make this a monad to hide the logger plumbing
-    state <- mkState port defaultApp peers
-    forkIO (listener state )
-    threads <- mapM ( forkIO . run state ) peers
-    idle
-    where
-        idle = do
-            threadDelay idleDelay
-            idle
-
 listener :: State -> IO ()
 listener state@State{..} = do
-    logger "listener"
-    (listeningSocket,_) <- bindSock HostIPv4 (show port )
-    listenSock listeningSocket 100
-    forever $ do
-        accept listeningSocket ( listenClient state )
+    -- eSock <- tryIOError ( bindSock HostIPv4 (show port ) )
+    -- NOTE - the reason for using the lower level functions rather than network-simple
+    --        is that bindSock from network-simple masks the errno by attemptin to close the socket
+    --        This makes it impossible to provide accurate feedback (although the descriptive text in the
+    --        exception IS correct).
+    eSock <- tryIOError ( bindSock' port 0 )
+    either
+        ( \e -> do Errno errno <- getErrno
+                   if | errno == 13 -> die "permission error binding port (are you su?)"
+                      | errno `elem` [98] -> do hPutStrLn stderr "waiting to bind port"
+                                                threadDelay (10 * seconds)
+                                                listener state
+                      | otherwise -> error $ errReport' errno e )
+        ( \(listeningSocket,_) -> void $ forkIO $ do listenSock listeningSocket 100
+                                                     forever  ( accept listeningSocket ( listenClient state )))
+        eSock
+    where
+    bindSock' port ip = let addr = NS.SockAddrInet port ip in do
+        sock <- NS.socket NS.AF_INET NS.Stream NS.defaultProtocol
+        NS.setSocketOption sock NS.ReuseAddr 1
+        NS.setSocketOption sock NS.NoDelay 1
+        NS.bind sock addr
+        return ( sock , addr )
 
-listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = do
+
+listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = forkIO $ do
         let ip = fromHostAddress remoteIPv4
         logger $ "listener - connect request from " ++ show ip
         unblocked <- raceCheckNonBlock ip
@@ -114,11 +146,10 @@ listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = do
             logger $ "listener - connect reject due to race"
             closeSock sock
         else do
-            forkIO $ wrap state defaultApp sock 
+            wrap state defaultApp sock 
             raceCheckUnblock ip
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
-
 
 wrap state@State{..} app sock = do
     peerAddress <- getPeerName sock
@@ -134,13 +165,13 @@ wrap state@State{..} app sock = do
 run :: State -> IPv4 -> IO ()
 run state@State{..} ip = do
     unblocked <- raceCheckBlock ip
-    when unblocked
-         ( do sock <- connectTo port ip
-              maybe ( return () )
-                    (wrap state defaultApp)
-                    sock
-              raceCheckUnblock ip )
-    unless unblocked ( logger $ "run blocked for " ++ show ip )
+    if unblocked then
+         do sock <- connectTo port ip
+            maybe ( return () )
+                  (wrap state defaultApp)
+                  sock
+            raceCheckUnblock ip
+    else logger $ "run blocked for " ++ show ip
     threadDelay respawnDelay
     run state ip
     where
@@ -153,11 +184,12 @@ run state@State{..} ip = do
             logger $ "Exception connecting to " ++ show ip ++ " - " ++ errReport errno e
             return Nothing )
 
-
 errReport errno e | errno `elem` [2,107] = ioe_description e ++ " (" ++ show errno ++ ")"
-                  | otherwise = unlines
+                  | otherwise = errReport' errno e
+
+errReport' errno e = unlines
     [ "*** UNKNOWN exception, please record this"
-    , ioeGetErrorString e
+    -- , ioeGetErrorString e
     , "error " ++ ioeGetErrorString e
     , "errno " ++ show errno
     , "description " ++ ioe_description e

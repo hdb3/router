@@ -207,7 +207,7 @@ bgpFSM Global{..} ( sock , peerName ) =
         case msg of 
             BGPKeepalive -> do
                 -- hFlush logFile
-                putStrLn "established - rcv keepalive"
+                -- putStrLn "established - rcv keepalive"
                 return (Established,bsock',osm)
             update@BGPUpdate{} ->
                 maybe
