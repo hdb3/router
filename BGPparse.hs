@@ -33,6 +33,15 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
                   | BGPError String
                   | BGPEndOfStream
                     deriving (Show,Eq)
+
+identify :: BGPMessage -> String
+identify BGPOpen{} = "BGPOpen"
+identify BGPKeepalive{} = "BGPKeepalive"
+identify BGPNotify{} = "BGPNotify"
+identify BGPUpdate{} = "BGPUpdate"
+identify BGPTimeout{} = "BGPTimeout"
+identify BGPError{} = "BGPError"
+identify BGPEndOfStream{} = "BGPEndOfStream"
 isKeepalive :: BGPMessage -> Bool
 isKeepalive BGPKeepalive = True
 isKeepalive _ = False
