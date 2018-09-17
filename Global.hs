@@ -1,13 +1,9 @@
 module Global where
 
 import Control.Concurrent
-import qualified Control.Exception as E
-import Control.Monad (when,forever)
 import Network.Socket
-import System.IO(Handle,openBinaryFile,IOMode( WriteMode ))
 import qualified Data.IP
 import qualified Data.Map.Strict as Data.Map
-import System.IO.Error(catchIOError)
 
 import Common
 import BGPData

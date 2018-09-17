@@ -14,6 +14,8 @@ import qualified Data.ByteString as B
 import Network.Socket(Socket)
 import qualified Network.Socket.ByteString.Lazy as L
 import Control.Monad(when,unless,fail)
+import Data.ByteString.Builder
+import Data.Monoid((<>))
 
 import Common
 
@@ -122,5 +124,9 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
     put = putn
     get = getn
 
+-- simple replacement for Binary instance of BGPByteString
+wireFormat :: L.ByteString -> L.ByteString
+wireFormat bs = toLazyByteString $ lazyByteString lBGPMarker <> word16BE (fromIntegral $ 18 + L.length bs) <> lazyByteString bs 
+
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ encode (BGPByteString $ Right bgpMsg)
+sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ wireFormat bgpMsg
