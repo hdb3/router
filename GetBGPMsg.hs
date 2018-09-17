@@ -3,7 +3,7 @@ module GetBGPMsg where
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
-import System.IO(Handle,hClose,hFlush)
+import System.IO(Handle,hClose,hFlush,IOMode(ReadWriteMode))
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
@@ -11,7 +11,7 @@ import Data.Binary.Put
 import Data.Either(isLeft)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import Network.Socket(Socket)
+import Network.Socket(socketToHandle, Socket)
 import qualified Network.Socket.ByteString.Lazy as L
 import Control.Monad(when,unless,fail)
 import Data.ByteString.Builder
@@ -26,9 +26,10 @@ newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving E
 rcvStatus (BGPByteString (Left status)) = show status
 rcvStatus (BGPByteString (Right bs)) = toHex' bs
 
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
-newBufferedSocket ::  Socket -> Maybe Handle -> BufferedSocket
-newBufferedSocket sock h = BufferedSocket sock L.empty (BGPByteString $ Right L.empty) h
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
+newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
+newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
+                              return $ BufferedSocket sock handle L.empty (BGPByteString $ Right L.empty) h
 
 -- convenince functions...
 -- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
@@ -56,14 +57,14 @@ getNext b = catchIOError (getNext' b)
                                    return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock buffer (BGPByteString result) handle)
+getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
                                           -- possibly should not have this check at all...
                                           -- if the application wants to try again?
                                           | isLeft result && result /= Left Timeout = ignore
                                           | bufferLength < 19 = getMore
                                           | bufferLength < len = getMore
                                           | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
-                                          | otherwise = return $ BufferedSocket sock newBuffer (BGPByteString $ Right newMsg) handle
+                                          | otherwise = return $ BufferedSocket sock sHandle newBuffer (BGPByteString $ Right newMsg) handle
                                           where
     bufferLength = L.length buffer
     marker = L.take 16 buffer
