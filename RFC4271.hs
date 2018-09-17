@@ -95,9 +95,32 @@ instance EnumWord8 EnumNotificationCode where
          Malformed AS_PATH                 11      See Section 6.3
 
 -}
+
+
+{-
+RFC4486:
+
+   The following subcodes are defined for the Cease NOTIFICATION
+   message:
+
+      Subcode     Symbolic Name
+
+         1        Maximum Number of Prefixes Reached
+         2        Administrative Shutdown
+         3        Peer De-configured
+         4        Administrative Reset
+         5        Connection Rejected
+         6        Other Configuration Change
+         7        Connection Collision Resolution
+         8        Out of Resources
+-}
+
 _NotificationHeaderSubcodeConnectionNotSynchronized      = 1 :: Word8
 _NotificationHeaderSubcodeBadMessageLength               = 2 :: Word8
 _NotificationHeaderSubcodeBadMessageType                 = 3 :: Word8
+
+_NotificationCeaseSubcodeConnectionRejected              = 5 :: Word8
+_NotificationCeaseSubcodeConnectionCollisionResolution   = 7 :: Word8
 
 type NotificationSubcode = Word8
 data EnumNotificationOpenSubcode = InvalidOpenSubcode | UnsupportedVersionNumber | BadPeerAS | BadBGPIdentifier | UnsupportedOptionalParameter | UnacceptableHoldTime
