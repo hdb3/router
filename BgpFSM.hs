@@ -76,7 +76,6 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                              close sock
                              -- fmap hFlush logFile
                              deregister collisionDetector
-                             putMVar exitMVar (threadId , peerName, fsmExitStatus )
                              either
                                  (\s -> putStrLn $ "BGPfsm exception exit" ++ s)
                                  (\s -> putStrLn $ "BGPfsm normal exit" ++ s)
