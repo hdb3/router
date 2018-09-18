@@ -30,4 +30,5 @@ OverlapReader
 ASPathReader
 ASReader
 ActPassive
+NR
 *.bgp
