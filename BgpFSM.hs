@@ -168,7 +168,9 @@ runFSM Global{..} bsock0 peerData  = do
                   bgpSnd bsock resp
                   putStrLn "stateOpenSent -> stateOpenConfirm"
                   return (StateOpenConfirm,bsock',osm')
-              else idle "stateOpenSent - open rejected error"
+              else do
+                    bgpSnd bsock resp
+                    idle "stateOpenSent - event: open rejected error"
           notify@BGPNotify{} -> do
              idle "stateOpenSent - rcv notify"
           _ -> do
