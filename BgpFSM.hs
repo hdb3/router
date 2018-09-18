@@ -63,14 +63,15 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                                      (do bgpSnd bsock0 $ BGPNotify NotificationCease _NotificationCeaseSubcodeConnectionRejected L.empty
                                          return  $ Left "connection rejected for unconfigured peer" )
                                      (\peerData -> do
-                                         catch
+                                         exitStatus <- catch
                                              (runFSM global bsock0 peerData )
                                              (\(FSMException s) -> do
                                                  -- TODO make all finalisation stuff in one place
                                                  -- after catching any/all exceptions.....
                                                  -- and bracketed by corresponding initilisation....
-                                                 delPeer rib peerData
                                                  return $ Left s)
+                                         delPeer rib peerData
+                                         return exitStatus
                                      )
                                      maybePeer
                              close sock
