@@ -9,6 +9,15 @@ import Capabilities
 import BGPData
 import LocalAddresses
 
+
+{-
+  this version of Args returns a list of BGP peers represented using the BGPData PeerData type
+  this implicitly defines the global values for holdTime, AS and BGPid
+
+  TODO - stop using PeerData - all we are passing is a list of IP address/AS number pairs
+       - albeit optionally augmented with per peer BGP capabilites
+
+-}
 helpMessage = "usage:  localBGPparameters remoteBGPparameters [ remoteBGPparameters ]*\n\
                \where localBGPparameters = AS,BGPID,HoldTime\n\
                \and   remoteBGPparameters = AS,BGPID,optionalcapabilities\n"
@@ -63,6 +72,8 @@ myWords "" = []
 myWords (',':ws) = myWords ws
 myWords ws = w : myWords ws' where
     (w,ws') = break (',' ==) ws
+
+-- TODO make CApabilities an instance of Read?
 
 parseCapabilities [] = []
 parseCapabilities ("CapAS4":as:cx) = CapAS4 (read as) : parseCapabilities cx

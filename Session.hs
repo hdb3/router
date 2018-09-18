@@ -4,7 +4,7 @@ module Session where
 
 import Data.Maybe
 import Control.Concurrent
-import Control.Monad (void,unless,when,forever)
+import Control.Monad (void,forever)
 import Network.Socket(getPeerName,PortNumber,SockAddr(..))
 import qualified Network.Socket as NS
 import Network.Simple.TCP

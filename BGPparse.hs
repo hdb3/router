@@ -34,6 +34,10 @@ data BGPMessage = BGPOpen { myAutonomousSystem :: Word16, holdTime :: Word16, bg
                   | BGPEndOfStream
                     deriving (Show,Eq)
 
+toAS2 :: Word32 -> Word16
+toAS2 as | as < 0x10000 = fromIntegral as
+         | otherwise = 23456
+
 identify :: BGPMessage -> String
 identify BGPOpen{} = "BGPOpen"
 identify BGPKeepalive{} = "BGPKeepalive"
