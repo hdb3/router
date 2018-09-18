@@ -24,12 +24,15 @@ data Global = Global { rib :: Rib.Rib
                      , peers :: [PeerData]
                      -- , config :: BgpFSMconfig
                      , delayOpenTimer :: Int
+                     , initialHoldTimer :: Int
+                     , defaultPeerData :: Maybe PeerData -- used to configure dynamic peers
                      }
 
 
 
 type FSMExit = ( ThreadId, SockAddr, Either String String )
 
+-- TODO - remove - should no longer be referenced....
 data BgpFSMconfig = BgpFSMconfig {
                                   sock :: Socket
                                   , peerName :: SockAddr

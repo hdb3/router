@@ -95,6 +95,7 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
         remoteBGPID = bgpID remoteOffer'
         requiredBGPID = bgpID required
         nullBGPID = fromHostAddress 0
+        nullAS = 0
 
         keepalive = Just BGPKeepalive
 
@@ -110,7 +111,7 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
                         else Nothing
 
         checkmyAS :: Maybe BGPMessage
-        checkmyAS = if 0 == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
+        checkmyAS = if nullAS == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
                     then Nothing
                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadPeerAS) L.empty)
 
