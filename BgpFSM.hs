@@ -202,7 +202,7 @@ runFSM Global{..} bsock0 peerData  = do
         putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
         let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
             remoteAS = myAutonomousSystem $ fromJust $ remoteOffer osm
-            peerData' = peerData { peerAS = fromIntegral remoteAS , peerBGPid = remoteBGPid , BGPData.isExternal = remoteBGPid /= myBGPid gd }
+            peerData' = peerData { peerAS = fromIntegral remoteAS , peerBGPid = remoteBGPid , BGPData.isExternal = fromIntegral remoteAS /= myAS gd }
         peerName <- getPeerName (rawSocket bsock)
         registerEstablished collisionDetector remoteBGPid peerName
         -- VERY IMPORTANT TO USE THE NEW VALUE peerData' AS THIS IS THE ONLY ONE WHICH CONTAINS ACCURATE REMOTE IDENTITY FOR DYNAMIC PEERS!!!!
