@@ -13,7 +13,7 @@ import qualified Data.Map.Strict as Data.Map
 
 import Common
 import BGPData
-import BgpFSM hiding (exitMVar)
+import BgpFSM
 import Collision
 import Args2
 import Rib
@@ -86,7 +86,6 @@ buildGlobal gd peers holdTime = do
         defaultPeerData = Just $ buildDefaultPeerData gd holdTime
         
     collisionDetector <- mkCollisionDetector
-    exitMVar <- newEmptyMVar
     sessions <- newMVar Data.Map.empty
     rib <- Rib.newRib ld
     return Global {..}

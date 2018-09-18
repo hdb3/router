@@ -11,14 +11,12 @@ import Rib
 
 data Global = Global { rib :: Rib.Rib
                      , peerMap :: Data.Map.Map IPv4 PeerData
-                     ,exitMVar :: MVar (ThreadId, SockAddr, Either String String)
                      ,collisionDetector :: CollisionDetector
                      ,sessions :: MVar ( Data.Map.Map ThreadId PeerData )
                      ,gd :: GlobalData
                      ,ld :: PeerData
                      ,listenAddress :: SockAddr
                      , peers :: [PeerData]
-                     -- , config :: BgpFSMconfig
                      , delayOpenTimer :: Int
                      , initialHoldTimer :: Int
                      , defaultPeerData :: Maybe PeerData -- used to configure dynamic peers

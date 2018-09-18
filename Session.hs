@@ -142,12 +142,12 @@ listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = forkIO
         let ip = fromHostAddress remoteIPv4
         logger $ "listener - connect request from " ++ show ip
         unblocked <- raceCheckNonBlock ip
-        if not unblocked then do
-            logger $ "listener - connect reject due to race"
-            closeSock sock
-        else do
+        if unblocked then do
             wrap state defaultApp sock 
             raceCheckUnblock ip
+        else do
+            logger $ "listener - connect reject due to race"
+            closeSock sock
 
 fromPeerAddress (SockAddrInet _ ip) = fromHostAddress ip
 
