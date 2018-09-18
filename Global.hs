@@ -2,16 +2,12 @@ module Global where
 
 import Control.Concurrent
 import Network.Socket
-import qualified Data.IP
 import qualified Data.Map.Strict as Data.Map
 
 import Common
 import BGPData
 import Collision
-import Args2
 import Rib
-import BGPReader(pathReadRib)
-import Update(makeUpdate)
 
 data Global = Global { rib :: Rib.Rib
                      , peerMap :: Data.Map.Map IPv4 PeerData
@@ -31,12 +27,3 @@ data Global = Global { rib :: Rib.Rib
 
 
 type FSMExit = ( ThreadId, SockAddr, Either String String )
-
--- TODO - remove - should no longer be referenced....
-data BgpFSMconfig = BgpFSMconfig {
-                                  sock :: Socket
-                                  , peerName :: SockAddr
-                                  -- , logFile :: Maybe Handle
-                                  -- , peerData :: PeerData
-                                  }
-
