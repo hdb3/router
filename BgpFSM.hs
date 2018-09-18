@@ -230,7 +230,6 @@ runFSM Global{..} bsock0 peerData  = do
                       -- TODO - don't use the now obselete value of peerData
                       -- which now should be peerData'
                       -- let routeData = Rib.makeRouteData peerData parsedUpdate
-                      print peerData
                       Rib.ribUpdater rib peerData parsedUpdate
                       return (Established,st{bsock=bsock'})
                     )
@@ -289,10 +288,12 @@ runFSM Global{..} bsock0 peerData  = do
         if null updates then
             bgpSnd bsock BGPKeepalive
         else do routes <- lookupRoutes rib peer updates
-                putStr $ "Ready to send routes to " ++ show (peerIPv4 peer)
+                -- putStr $ "Ready to send routes to " ++ show (peerIPv4 peer)
                 if 11 > length updates then do
+                    putStr $ "sending routes to " ++ show (peerIPv4 peer)
                     print $ map fst updates
                 else do
+                    putStr $ "sending routes to " ++ show (peerIPv4 peer)
                     print $ map fst (take 10 updates)
                     putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 mapM_ (bgpSnd bsock) routes
