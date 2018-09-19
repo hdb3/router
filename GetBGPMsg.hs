@@ -57,7 +57,12 @@ getNext b = catchIOError (getNext' b)
                                    return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
+getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle) = do
+    nextMsg <- getNextMsg sHandle
+    return  $ BufferedSocket sock sHandle buffer (BGPByteString $ Right nextMsg) handle
+    where
+
+{-
                                           -- possibly should not have this check at all...
                                           -- if the application wants to try again?
                                           | isLeft result && result /= Left Timeout = ignore
@@ -89,6 +94,7 @@ getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
                 (\h -> L.hPut h more)
                 handle
             getNext' $ bs {buf = buffer `L.append` more}
+-}
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
@@ -101,7 +107,8 @@ getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
         else do
             let (m,l) = L.splitAt 16 header
             body <-  L.hGet sHandle (fromIntegral $ getWord16 l - 18)
-            return $ L.append header body
+            -- return $ L.append header body
+            return body
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff
