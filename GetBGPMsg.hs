@@ -26,20 +26,14 @@ newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving E
 rcvStatus (BGPByteString (Left status)) = show status
 rcvStatus (BGPByteString (Right bs)) = toHex' bs
 
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, result :: BGPByteString, inputFile :: Maybe Handle }
 newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
 newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
-                              return $ BufferedSocket sock handle L.empty (BGPByteString $ Right L.empty) h
+                              return $ BufferedSocket sock handle (BGPByteString $ Right L.empty) h
 
--- convenince functions...
--- get' :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
--- get' b t = do (next,bytes) <- get b t
---               return (next, decode bytes :: BGPMessage)
 getMsg :: BufferedSocket -> Int -> IO (BufferedSocket,BGPByteString)
 getMsg b t = do next <- getNextTimeout t b
                 return (next,result next)
-
--- core functions...
 
 getNextTimeout :: Int -> BufferedSocket -> IO BufferedSocket
 getNextTimeout' t = getNext
@@ -52,49 +46,14 @@ getNextTimeout t bsock = let t' = t * 1000000 in
 
 getNext:: BufferedSocket -> IO BufferedSocket
 getNext b = catchIOError (getNext' b)
-                         (\e -> do -- can get rid of error to screen if the response is displayed elsewhere
-                                   putStrLn $ "IOError in get: " ++ show (e :: IOError)
-                                   return (b {result = BGPByteString $ Left (Error (show e))} ))
+                         (\e -> return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle) = do
+getNext' bs@(BufferedSocket sock sHandle (BGPByteString result) handle) = do
     nextMsg <- getNextMsg sHandle
-    return  $ BufferedSocket sock sHandle buffer (BGPByteString $ Right nextMsg) handle
+    return  $ BufferedSocket sock sHandle (BGPByteString $ Right nextMsg) handle
     where
 
-{-
-                                          -- possibly should not have this check at all...
-                                          -- if the application wants to try again?
-                                          | isLeft result && result /= Left Timeout = ignore
-                                          | bufferLength < 19 = getMore
-                                          | bufferLength < len = getMore
-                                          | marker /= lBGPMarker = return $ bs {result = BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"}
-                                          | otherwise = return $ BufferedSocket sock sHandle newBuffer (BGPByteString $ Right newMsg) handle
-                                          where
-    bufferLength = L.length buffer
-    marker = L.take 16 buffer
-    len = fromIntegral $ getWord16 (L.take 2 $ L.drop 16 buffer)
-    (rawMsg,newBuffer) = L.splitAt len buffer
-    newMsg = L.drop 18 rawMsg 
-    ignore = do putStrLn "getNext called on finished stream"
-                return bs
-    getMore = do
-        --more <- L.hGet sHandle 4096
-        more <- getNextMsg sHandle
-        -- putStrLn $ "<" ++ toHex' more ++ ">"
-        if L.null more then do
-            maybe
-                (return () )
-                hClose
-                handle
-            return $  bs {result= BGPByteString $ Left EndOfStream }
-        else do
-            maybe
-                (return () )
-                (\h -> L.hPut h more)
-                handle
-            getNext' $ bs {buf = buffer `L.append` more}
--}
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
@@ -107,11 +66,11 @@ getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle) =
         else do
             let (m,l) = L.splitAt 16 header
             body <-  L.hGet sHandle (fromIntegral $ getWord16 l - 18)
-            -- return $ L.append header body
             return body
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff
+
 instance Binary BGPByteString where 
 
     put (BGPByteString (Right bs)) | msgLength > 4096 = fail $ "trying to put an overlong BGPByteString, " ++ show msgLength ++ " bytes"
@@ -148,6 +107,4 @@ wireFormat :: L.ByteString -> L.ByteString
 wireFormat bs = toLazyByteString $ lazyByteString lBGPMarker <> word16BE (fromIntegral $ 18 + L.length bs) <> lazyByteString bs 
 
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-
---sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ wireFormat bgpMsg
 sndBgpMessage bsock bgpMsg = L.hPut (handle bsock) $ wireFormat bgpMsg
