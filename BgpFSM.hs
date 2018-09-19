@@ -7,7 +7,7 @@ import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode)
 import Control.Concurrent
 import Control.Exception
-import Control.Monad(when)
+import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
@@ -65,6 +65,11 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                              -- TDOD throuuigh testing around delPeer
                              -- TODO REAL SOON - FIX....
                              -- maybe (return()) (delPeer rib) maybePeer
+                             peers <- getPeersInRib rib
+                             let myPD = filter (\pd -> peerIPv4 pd == fromHostAddress remoteIP) peers
+                             unless (null myPD) (do print myPD
+                                                    delPeer rib (head myPD)) 
+                             print myPD
                              close sock
                              -- fmap hFlush logFile
                              deregister collisionDetector
