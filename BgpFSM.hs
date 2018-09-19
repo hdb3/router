@@ -84,10 +84,10 @@ bgpFSM global@Global{..} ( sock , peerName ) =
 
 
 bgpSnd :: BufferedSocket -> BGPMessage -> IO()
-bgpSnd bsock msg | 4079 > L.length (encode msg) = catchIOError ( sndBgpMessage bsock (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
+bgpSnd bsock msg | 4079 > L.length (encode msg) = catchIOError ( sndRawMessage bsock (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
 
 get :: BufferedSocket -> Int -> IO BGPMessage
-get b t = do bytes <- getMsg b t
+get b t = do bytes <- getRawMsg b t
              return $ decodeBGPByteString bytes
 
 runFSM :: Global -> BufferedSocket -> PeerData -> IO (Either String String)
