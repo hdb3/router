@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances,BangPatterns,RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances,BangPatterns #-}
 module GetBGPMsg where
 
 import System.Timeout(timeout)
@@ -19,6 +19,8 @@ import Data.Monoid((<>))
 
 import Common
 
+!lBGPMarker = L.replicate 16 0xff
+!_BGPMarker = B.replicate 16 0xff
 data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
 newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
@@ -26,13 +28,13 @@ newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving E
 rcvStatus (BGPByteString (Left status)) = show status
 rcvStatus (BGPByteString (Right bs)) = toHex' bs
 
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, inputFile :: Maybe Handle }
 newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
 newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
-                              return $ BufferedSocket sock handle L.empty (BGPByteString $ Right L.empty) h
+                              return $ BufferedSocket sock handle h
 
-getMsg :: BufferedSocket -> Int -> IO BGPByteString
-getMsg b t = getNextTimeout t b
+getRawMsg :: BufferedSocket -> Int -> IO BGPByteString
+getRawMsg b t = getNextTimeout t b
 
 getNextTimeout :: Int -> BufferedSocket -> IO BGPByteString
 getNextTimeout t bsock = let t' = t * 1000000 in
@@ -47,33 +49,25 @@ getNext b = catchIOError (getNext' b)
                          (\e -> return (BGPByteString $ Left (Error (show e)) ))
              
 getNext':: BufferedSocket -> IO BGPByteString
-getNext' bs@(BufferedSocket sock sHandle a b handle) = do
-    getNextMsg
-    -- result <- getNextMsg
-    -- return  $ BufferedSocket sock sHandle a result handle
+getNext' (BufferedSocket _ sHandle _) = do
+    header <- L.hGet sHandle 18
+    if  L.length header < 18 then 
+        return $ BGPByteString $ Left EndOfStream
+    else do
+        let (m,l) = L.splitAt 16 header
+            l' = fromIntegral $ getWord16 l
+        if m /= lBGPMarker then return $ BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"
+        else if l' < 19 || l' > 4096 then return $ BGPByteString $ Left $ Error "Bad length in GetBGPByteString"
+        else do
+            let bl = l' - 18
+            body <- L.hGet sHandle bl
+            if  L.length body /= fromIntegral bl then return $ BGPByteString $ Left EndOfStream
+            else return $ BGPByteString $ Right body
     where
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
     getWord16' (l0:l1:_) = l1 .|. unsafeShiftL l0 8
-
-    getNextMsg = do
-        header <- L.hGet sHandle 18
-        if  L.length header < 18 then 
-            return $ BGPByteString $ Left EndOfStream
-        else do
-            let (m,l) = L.splitAt 16 header
-                l' = fromIntegral $ getWord16 l
-            if m /= lBGPMarker then return $ BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"
-            else if l' < 19 || l' > 4096 then return $ BGPByteString $ Left $ Error "Bad length in GetBGPByteString"
-            else do
-                let bl = l' - 18
-                body <- L.hGet sHandle bl
-                if  L.length body /= fromIntegral bl then return $ BGPByteString $ Left EndOfStream
-                else return $ BGPByteString $ Right body
-
-!lBGPMarker = L.replicate 16 0xff
-!_BGPMarker = B.replicate 16 0xff
 
 instance Binary BGPByteString where 
 
@@ -110,5 +104,5 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
 wireFormat :: L.ByteString -> L.ByteString
 wireFormat bs = toLazyByteString $ lazyByteString lBGPMarker <> word16BE (fromIntegral $ 18 + L.length bs) <> lazyByteString bs 
 
-sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndBgpMessage bsock bgpMsg = L.hPut (handle bsock) $ wireFormat bgpMsg
+sndRawMessage :: BufferedSocket -> L.ByteString -> IO ()
+sndRawMessage bsock bgpMsg = L.hPut (handle bsock) $ wireFormat bgpMsg
