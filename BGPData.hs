@@ -11,6 +11,7 @@ import Data.Hashable
 
 import PathAttributes(PathAttribute)
 import Capabilities
+import Config
 
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
@@ -25,10 +26,11 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  peerIPv4 :: IPv4
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
-                         ,  propHoldTime :: Word16
-                         ,  reqHoldTime :: Word16
-                         ,  offerCapabilies :: [ Capability ]
-                         ,  requireCapabilies :: [ Capability ]
+                         ,  peerConfig :: PeerConfig
+                         --,  propHoldTime :: Word16
+                         --,  reqHoldTime :: Word16
+                         --,  offerCapabilies :: [ Capability ]
+                         --,  requireCapabilies :: [ Capability ]
                          }
 
 data RouteData =  RouteData { peerData :: PeerData
@@ -54,10 +56,11 @@ localPeer gd = PeerData { globalData = gd
                     ,  peerIPv4 = "127.0.0.1"
                     ,  localIPv4 = "127.0.0.1"
                     ,  localPref = 0
-                    ,  propHoldTime = 300
-                    ,  reqHoldTime = 0
-                    ,  offerCapabilies = [ CapAS4 (myAS gd) ]
-                    ,  requireCapabilies = []
+                    -- ,  propHoldTime = 300
+                    -- ,  reqHoldTime = 0
+                    -- ,  offerCapabilies = [ CapAS4 (myAS gd) ]
+                    -- ,  requireCapabilies = []
+                    , peerConfig = dummyPeerConfig
                     }
 
 {-
@@ -66,7 +69,7 @@ localPeer gd = PeerData gd False (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd
 -- localPeer gd = PeerData gd false (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 0 0 [] [] 
 -}
 dummyPeerData :: PeerData
-dummyPeerData = PeerData dummyGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 100 0 [] []
+dummyPeerData = PeerData dummyGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 dummyPeerConfig -- 100 0 [] []
 dummyGlobalData :: GlobalData
 dummyGlobalData = GlobalData 64512 "127.0.0.1"
 --instance Show GlobalData where
