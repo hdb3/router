@@ -61,11 +61,10 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                              maybePeer <- initialisePeer global sock
                              fsmExitStatus <-
                                          catch
-                                             -- TODO maybe should be catchIO?
                                              (runFSM global sock maybePeer )
                                              (\(FSMException s) -> do
                                                  return $ Left s)
-                                         -- delPeer rib peerData
+                             -- TDOD throuuigh testing around delPeer
                              maybe (return()) (delPeer rib) maybePeer
                              close sock
                              -- fmap hFlush logFile
@@ -86,10 +85,7 @@ bgpSnd :: Handle -> BGPMessage -> IO()
 bgpSnd h msg | 4079 > L.length (encode msg) = catchIOError ( sndRawMessage h (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
 
 get :: Handle -> Int -> IO BGPMessage
-get b t = do bytes <- getRawMsg b t
-             return $ decodeBGPByteString bytes
--- TODO?:
--- get b t = getRawMsg b t >>= return $ decodeBGPByteString bytes
+get b t = getRawMsg b t >>= return . decodeBGPByteString
 
 runFSM :: Global -> Socket -> Maybe PeerData -> IO (Either String String)
 runFSM Global{..} sock maybePeerData  = do
@@ -101,12 +97,8 @@ runFSM Global{..} sock maybePeerData  = do
     where
 
     fsm :: (State,FSMState) -> IO (Either String String)
-    fsm (s,st) | s == Idle = do
-                                -- hFlush logFile
-                                -- delPeer rib peerData
-                                -- it appears that the line above is redndant...
-                                return $ Right "FSM normal exit"
-                | otherwise = do
+    fsm (s,st) | s == Idle = return $ Right "FSM normal exit"
+               | otherwise = do
         (s',st') <- f s st
         fsm (s',st') where
             f StateConnected = stateConnected
@@ -119,7 +111,6 @@ runFSM Global{..} sock maybePeerData  = do
                 return (Idle, undefined )
 
     stateConnected :: F
--- data FSMState = St { bsock :: BufferedSocket, osm :: OpenStateMachine , peerData :: PeerData }
     stateConnected st@St{..} = do
         msg <- get handle delayOpenTimer
         case msg of 
@@ -210,7 +201,7 @@ runFSM Global{..} sock maybePeerData  = do
         -- it would be much better to remove the temptation to use conficured data by forcing a new type for relevant purposes, and dscarding the
         -- preconfigured values as soon as possible
         addPeer rib peerData'
-        forkIO $ keepAliveLoop handle rib peerData'  (getKeepAliveTimer osm)
+        forkIO $ sendLoop handle rib peerData'  (getKeepAliveTimer osm)
         return (Established,st{peerData=peerData'})
 
     established :: F
@@ -227,9 +218,6 @@ runFSM Global{..} sock maybePeerData  = do
                          idle "established - Update parse error"
                     )
                     (\parsedUpdate -> do
-                      -- TODO - don't use the now obselete value of peerData
-                      -- which now should be peerData'
-                      -- let routeData = Rib.makeRouteData peerData parsedUpdate
                       Rib.ribUpdater rib peerData parsedUpdate
                       return (Established,st)
                     )
@@ -270,7 +258,8 @@ runFSM Global{..} sock maybePeerData  = do
                 )
             rc
 
-    keepAliveLoop handle rib peer timer = do
+-- TODO rename 'send loop'
+    sendLoop handle rib peer timer = do
         running <- catch
             ( do sendQueuedUpdates handle rib peer timer
                  return True
@@ -280,9 +269,8 @@ runFSM Global{..} sock maybePeerData  = do
                 return False
             )
         when running
-            ( keepAliveLoop handle rib peer timer )
+            ( sendLoop handle rib peer timer )
 
--- TODO merge sendQueuedUpdates in keepAliveLoop?
     sendQueuedUpdates handle rib peer timeout = do
         updates <- pullAllUpdates (1000000 * timeout) peer rib
         if null updates then
