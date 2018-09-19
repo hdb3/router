@@ -25,14 +25,6 @@ data RcvStatus =   Timeout | EndOfStream | Error String deriving (Eq,Show)
 
 newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving Eq
 
-rcvStatus (BGPByteString (Left status)) = show status
-rcvStatus (BGPByteString (Right bs)) = toHex' bs
-
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, inputFile :: Maybe Handle }
-newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
-newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
-                              return $ BufferedSocket sock handle h
-
 getRawMsg :: Handle -> Int -> IO BGPByteString
 getRawMsg h t = getNextTimeout t h
 
