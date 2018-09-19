@@ -26,10 +26,10 @@ newtype BGPByteString = BGPByteString (Either RcvStatus L.ByteString) deriving E
 rcvStatus (BGPByteString (Left status)) = show status
 rcvStatus (BGPByteString (Right bs)) = toHex' bs
 
-data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, result :: BGPByteString, inputFile :: Maybe Handle }
+data BufferedSocket = BufferedSocket {rawSocket :: Socket, handle :: Handle, buf :: L.ByteString, result :: BGPByteString, inputFile :: Maybe Handle }
 newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
 newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
-                              return $ BufferedSocket sock handle (BGPByteString $ Right L.empty) h
+                              return $ BufferedSocket sock handle L.empty (BGPByteString $ Right L.empty) h
 
 getMsg :: BufferedSocket -> Int -> IO (BufferedSocket,BGPByteString)
 getMsg b t = do next <- getNextTimeout t b
@@ -49,24 +49,29 @@ getNext b = catchIOError (getNext' b)
                          (\e -> return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock sHandle _ handle) = do
-    nextMsg <- getNextMsg sHandle
-    return  $ BufferedSocket sock sHandle (BGPByteString $ Right nextMsg) handle
+getNext' bs@(BufferedSocket sock sHandle a b handle) = do
+    result <- getNextMsg
+    return  $ BufferedSocket sock sHandle a result handle
     where
-
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
     getWord16' (l0:l1:_) = l1 .|. unsafeShiftL l0 8
 
-    getNextMsg h = do
+    getNextMsg = do
         header <- L.hGet sHandle 18
         if  L.length header < 18 then 
-            return L.empty
+            return $ BGPByteString $ Left EndOfStream
         else do
             let (m,l) = L.splitAt 16 header
-            body <-  L.hGet sHandle (fromIntegral $ getWord16 l - 18)
-            return body
+                l' = fromIntegral $ getWord16 l
+            if m /= lBGPMarker then return $ BGPByteString $ Left $ Error "Bad marker in GetBGPByteString"
+            else if l' < 19 || l' > 4096 then return $ BGPByteString $ Left $ Error "Bad length in GetBGPByteString"
+            else do
+                let bl = l' - 18
+                body <- L.hGet sHandle bl
+                if  L.length body /= fromIntegral bl then return $ BGPByteString $ Left EndOfStream
+                else return $ BGPByteString $ Right body
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff
