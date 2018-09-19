@@ -2,12 +2,12 @@
 module BgpFSM(bgpFSM) where
 import Network.Socket
 import System.IO.Error(catchIOError)
-import System.IO(IOMode( ReadWriteMode ),hFlush,Handle)
+import System.IO(IOMode( ReadWriteMode ),Handle)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode)
 import Control.Concurrent
 import Control.Exception
-import Control.Monad(when,void)
+import Control.Monad(when)
 import Data.Maybe(fromJust,isJust)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map

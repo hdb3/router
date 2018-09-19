@@ -3,16 +3,13 @@ module GetBGPMsg where
 
 import System.Timeout(timeout)
 import System.IO.Error(catchIOError)
-import System.IO(Handle,hClose,hFlush,IOMode(ReadWriteMode))
+import System.IO(Handle)
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
-import Data.Either(isLeft)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import Network.Socket(socketToHandle, Socket)
-import qualified Network.Socket.ByteString.Lazy as L
 import Control.Monad(when,unless,fail)
 import Data.ByteString.Builder
 import Data.Monoid((<>))
