@@ -49,7 +49,7 @@ getNext b = catchIOError (getNext' b)
                          (\e -> return (b {result = BGPByteString $ Left (Error (show e))} ))
              
 getNext':: BufferedSocket -> IO BufferedSocket
-getNext' bs@(BufferedSocket sock sHandle (BGPByteString result) handle) = do
+getNext' bs@(BufferedSocket sock sHandle _ handle) = do
     nextMsg <- getNextMsg sHandle
     return  $ BufferedSocket sock sHandle (BGPByteString $ Right nextMsg) handle
     where
