@@ -74,7 +74,9 @@ getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
     ignore = do putStrLn "getNext called on finished stream"
                 return bs
     getMore = do
-        more <- L.recv sock 4096
+        --more <- L.hGet sHandle 4096
+        more <- getNextMsg sHandle
+        -- putStrLn $ "<" ++ toHex' more ++ ">"
         if L.null more then do
             maybe
                 (return () )
@@ -91,6 +93,15 @@ getNext' bs@(BufferedSocket sock sHandle buffer (BGPByteString result) handle)
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
     getWord16' :: [Word16] -> Word16
     getWord16' (l0:l1:_) = l1 .|. unsafeShiftL l0 8
+
+    getNextMsg h = do
+        header <- L.hGet sHandle 18
+        if  L.length header < 18 then 
+            return L.empty
+        else do
+            let (m,l) = L.splitAt 16 header
+            body <-  L.hGet sHandle (fromIntegral $ getWord16 l - 18)
+            return $ L.append header body
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff
@@ -130,4 +141,6 @@ wireFormat :: L.ByteString -> L.ByteString
 wireFormat bs = toLazyByteString $ lazyByteString lBGPMarker <> word16BE (fromIntegral $ 18 + L.length bs) <> lazyByteString bs 
 
 sndBgpMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ wireFormat bgpMsg
+
+--sndBgpMessage bsock bgpMsg = L.sendAll (rawSocket bsock) $ wireFormat bgpMsg
+sndBgpMessage bsock bgpMsg = L.hPut (handle bsock) $ wireFormat bgpMsg
