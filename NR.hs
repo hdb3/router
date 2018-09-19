@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DuplicateRecordFields,RecordWildCards #-}
 module Main where
 
 import Network.Socket
@@ -11,11 +11,12 @@ import Control.Concurrent
 -- import System.IO(openBinaryFile,IOMode( WriteMode ))
 import qualified Data.Map.Strict as Data.Map
 
+import Config
 import Common
 import BGPData
 import BgpFSM
 import Collision
-import Args2
+-- import Args2
 import Rib
 import BGPReader(pathReadRib)
 import Update(makeUpdate)
@@ -24,29 +25,26 @@ import Capabilities
 
 main :: IO ()
 main = do
-    peers <- getConfig
-    either
-        putStrLn
-        start
-        peers
+    configString <- readFile "bgp.conf"
+    let rawConfig = read configString :: Config
+    print rawConfig
+    let config = buildPeerConfigs rawConfig
+    print config
 
-start peers = do
     putStrLn "Router starting"
-    print peers
 
-    -- note that the global data is the same in every peer relcord - we simply use the first in the list
-    let gd = globalData (head peers)
-        holdTime = propHoldTime (head peers)
-    global <- buildGlobal gd peers holdTime
-
-    insertStatic rib ld
-
+    global <- buildGlobal config
+    
     let
         app = bgpFSM global
-        configuredPeers = map peerIPv4 peers
 
-    session 179 app configuredPeers
+    putStrLn $ "connecting to " ++ show (activePeers config)
+    session 179 app (activePeers config)
     putStrLn "Router ready"
+    -- threadDelay 30000000
+    -- putStrLn "insert routes"
+    -- insertStatic (rib global) (ld global)
+    -- putStrLn "done"
     idle where idle = do threadDelay 10000000
                          idle
 
@@ -55,35 +53,29 @@ insertStatic rib local = do
     updates <- pathReadRib "bgpdata/full.bgp"
     -- ribUpdater :: Rib -> PeerData -> ParsedUpdate -> IO()
     -- makeUpdate :: [Prefix] -> [Prefix] -> [PathAttribute] -> ParsedUpdate
-    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000 updates)
+    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000000 updates)
     -- mapM print updates'
-    -- mapM (ribUpdater rib local) updates'
+    mapM (ribUpdater rib local) updates'
     return ()
 
-buildDefaultPeerData gd holdTime = PeerData { globalData = gd
-                                   ,  isExternal = undefined
-                                   ,  peerAS = 0
-                                   ,  peerBGPid = fromHostAddress 0
-                                   ,  peerIPv4 = undefined
-                                   ,  localIPv4 = undefined
-                                   ,  localPref = 0
-                                   ,  propHoldTime = holdTime
-                                   ,  reqHoldTime = holdTime
-                                   ,  offerCapabilies = [ CapAS4 (myAS gd) ]
-                                   ,  requireCapabilies = [ CapAS4 0 ] -- note that the effect here is to demand that CapAS4 is present, without specifying the peer AS expected
-                                   }
-
-
-
-buildGlobal gd peers holdTime = do
-    let
-        listenAddress = SockAddrInet bgpPort 0 -- listen on all intefaces by default...
+buildGlobal c@Config{..} = do
+    let --TODO - consider simply sending most of the Config on the Global record directly - it is already parsed...
+        config = c
+        gd = GlobalData { myAS = configAS , myBGPid = configBGPID }
         ld = localPeer gd
-        configuredPeers = map peerIPv4 peers
-        peerMap = Data.Map.fromList $ map (\pd -> (peerIPv4 pd,pd)) peers
-        delayOpenTimer = 3 -- how long to wair for an Open before sending one ourselves - avoid collisions in simple cases - probably should only be used on incoming sessions (TODO)
-        initialHoldTimer = 100 -- note this is not the same as generic holdTime - this is how long to wait before aborting the initial OPEN exchange - RFC4271 reccommends 300 secs I think??
-        defaultPeerData = Just $ buildDefaultPeerData gd holdTime
+        holdTime = configOfferedHoldTime
+        delayOpenTimer = configDelayOpenTimer
+        initialHoldTimer = configInitialHoldTimer
+
+        -- TODO  - configure this in configuration file
+        listenAddress = SockAddrInet bgpPort 0 -- listen on all intefaces by default...
+
+        configuredPeers = configEnabledPeers
+
+        -- TODO the map creation should be in Config...
+        peerMap = Data.Map.fromList $ map (\pc -> (peerConfigIPv4 pc,pc)) configConfiguredPeers
+
+        -- defaultPeerData = Just $ buildDefaultPeerData gd holdTime
         
     collisionDetector <- mkCollisionDetector
     sessions <- newMVar Data.Map.empty

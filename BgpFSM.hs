@@ -8,7 +8,7 @@ import Data.Binary(encode)
 import Control.Concurrent
 import Control.Exception
 import Control.Monad(when)
-import Data.Maybe(fromJust,isJust)
+import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
 
@@ -24,11 +24,17 @@ import Update
 import Rib
 import Route
 import Global
+import Config
 
 -- TODO - modify the putStrLn's to at least report the connected peer. but..
 -- better: implement a logger
 
-data FSMState = St { handle :: Handle, sock :: Socket, osm :: OpenStateMachine , peerData :: PeerData }
+data FSMState = St { handle :: Handle
+                   , sock :: Socket
+                   , osm :: OpenStateMachine 
+                   , peerConfig :: PeerConfig
+                   , maybePD :: Maybe PeerData
+                   , rcvdOpen :: MVar BGPMessage }
 
 type F = FSMState -> IO (State, FSMState)
 
@@ -44,28 +50,21 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                           do threadId <- myThreadId
                              putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
                              logFile <- getLogFile
-                             let 
-                                 initialisePeer :: Global -> Socket -> IO (Maybe PeerData)
-                                 initialisePeer Global{..} sock = do
-                                     SockAddrInet localPort localIP <- getSocketName sock
-                                     SockAddrInet remotePort remoteIP <- getPeerName sock
-                                     let 
-                                         updatePeerData pd = pd { BGPData.globalData = gd
-                                                                ,  BGPData.peerIPv4 = fromHostAddress remoteIP
-                                                                ,  BGPData.localIPv4 = fromHostAddress localIP }
-                                     return $ maybe 
-                                                   ( fmap updatePeerData defaultPeerData )
-                                                   Just
-                                                   ( Data.Map.lookup (fromHostAddress remoteIP) peerMap )
 
-                             maybePeer <- initialisePeer global sock
+                             SockAddrInet _ remoteIP <- getPeerName sock
+                             let maybePeer = maybe 
+                                                 ( if configAllowDynamicPeers config then Just (fillConfig config (fromHostAddress remoteIP))
+                                                   else Nothing)
+                                                 Just
+                                                 ( Data.Map.lookup (fromHostAddress remoteIP) peerMap )
                              fsmExitStatus <-
                                          catch
                                              (runFSM global sock maybePeer )
                                              (\(FSMException s) -> do
                                                  return $ Left s)
                              -- TDOD throuuigh testing around delPeer
-                             maybe (return()) (delPeer rib) maybePeer
+                             -- TODO REAL SOON - FIX....
+                             -- maybe (return()) (delPeer rib) maybePeer
                              close sock
                              -- fmap hFlush logFile
                              deregister collisionDetector
@@ -75,11 +74,16 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                                  fsmExitStatus
 
 
-
-initialiseOSM :: PeerData -> OpenStateMachine
-initialiseOSM BGPData.PeerData{..} =
-    makeOpenStateMachine ( BGPOpen { myAutonomousSystem = toAS2 $ myAS globalData , holdTime = propHoldTime , bgpID = myBGPid globalData , caps = offerCapabilies} )
-                         ( BGPOpen { myAutonomousSystem = toAS2 $ peerAS , holdTime = reqHoldTime , bgpID = peerBGPid , caps = requireCapabilies} )
+initialiseOSM :: Global -> PeerConfig -> OpenStateMachine
+initialiseOSM Global{..} PeerConfig{..} =
+    makeOpenStateMachine ( BGPOpen { myAutonomousSystem = toAS2 $ myAS gd
+                                   , holdTime = (configOfferedHoldTime config)
+                                   , bgpID = myBGPid gd
+                                   , caps = peerConfigOfferedCapabilities} )
+                         ( BGPOpen { myAutonomousSystem = toAS2 $ fromMaybe 0 peerConfigAS
+                                   , holdTime = 0
+                                   , bgpID = fromMaybe (fromHostAddress 0) peerConfigBGPID
+                                   , caps = peerConfigRequiredCapabilities} )
 
 bgpSnd :: Handle -> BGPMessage -> IO()
 bgpSnd h msg | 4079 > L.length (encode msg) = catchIOError ( sndRawMessage h (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
@@ -87,13 +91,21 @@ bgpSnd h msg | 4079 > L.length (encode msg) = catchIOError ( sndRawMessage h (en
 get :: Handle -> Int -> IO BGPMessage
 get b t = getRawMsg b t >>= return . decodeBGPByteString
 
-runFSM :: Global -> Socket -> Maybe PeerData -> IO (Either String String)
-runFSM Global{..} sock maybePeerData  = do
+runFSM :: Global -> Socket -> Maybe PeerConfig -> IO (Either String String)
+runFSM g@Global{..} sock maybePeerConfig  = do
+-- The 'Maybe PeerData' allows the FSM to handle unwanted connections, i.e. send BGP Notification
+-- thereby absolving the caller from having and BGP protocol awareness
     handle <- socketToHandle sock ReadWriteMode
     maybe (do bgpSnd handle $ BGPNotify NotificationCease _NotificationCeaseSubcodeConnectionRejected L.empty
               return  $ Left "connection rejected for unconfigured peer" )
-          ( \peerData -> fsm (StateConnected, St{sock = sock, handle = handle, osm = initialiseOSM peerData, peerData = peerData}))
-          maybePeerData
+          ( \peerConfig -> do ro <- newEmptyMVar
+                              fsm (StateConnected, St{sock = sock
+                                                     , handle = handle
+                                                     , osm = initialiseOSM g peerConfig
+                                                     , peerConfig = peerConfig
+                                                     , maybePD = Nothing
+                                                     , rcvdOpen = ro}))
+          maybePeerConfig
     where
 
     fsm :: (State,FSMState) -> IO (Either String String)
@@ -192,20 +204,30 @@ runFSM Global{..} sock maybePeerData  = do
     toEstablished st@St{..} = do
         putStrLn "transition -> established"
         putStrLn $ "hold timer: " ++ show (getNegotiatedHoldTime osm) ++ " keep alive timer: " ++ show (getKeepAliveTimer osm)
-        let remoteBGPid = bgpID $ fromJust $ remoteOffer osm
-            remoteAS = myAutonomousSystem $ fromJust $ remoteOffer osm
-            peerData' = peerData { peerAS = fromIntegral remoteAS , peerBGPid = remoteBGPid , BGPData.isExternal = fromIntegral remoteAS /= myAS gd }
-        peerName <- getPeerName sock
-        registerEstablished collisionDetector remoteBGPid peerName
+        -- only now can we create the peer data record becasue we have the remote AS/BGPID available and confirmed
+        SockAddrInet _ localIP <- getSocketName sock
+        peerName @(SockAddrInet _ remoteIP) <- getPeerName sock
+
+        let globalData = gd
+            peerAS = fromIntegral $ myAutonomousSystem $ fromJust $ remoteOffer osm
+            peerBGPid = bgpID $ fromJust $ remoteOffer osm
+            peerIPv4 = fromHostAddress remoteIP
+            localIPv4 = fromHostAddress localIP
+            localPref = 0 -- TODO - source this somewhere sensible - config?
+            peerConfig = peerConfig
+            isExternal = peerAS /= myAS gd
+            peerData = BGPData.PeerData { .. }
+        registerEstablished collisionDetector peerBGPid peerName
         -- VERY IMPORTANT TO USE THE NEW VALUE peerData' AS THIS IS THE ONLY ONE WHICH CONTAINS ACCURATE REMOTE IDENTITY FOR DYNAMIC PEERS!!!!
         -- it would be much better to remove the temptation to use conficured data by forcing a new type for relevant purposes, and dscarding the
         -- preconfigured values as soon as possible
-        addPeer rib peerData'
-        forkIO $ sendLoop handle rib peerData'  (getKeepAliveTimer osm)
-        return (Established,st{peerData=peerData'})
+        addPeer rib peerData
+        forkIO $ sendLoop handle rib peerData  (getKeepAliveTimer osm)
+        return (Established,st{maybePD=Just peerData})
 
     established :: F
     established st@St{..} = do
+        let peerData = fromJust maybePD
         msg <- get handle (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
