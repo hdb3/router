@@ -86,9 +86,9 @@ bgpFSM global@Global{..} ( sock , peerName ) =
 bgpSnd :: BufferedSocket -> BGPMessage -> IO()
 bgpSnd bsock msg | 4079 > L.length (encode msg) = catchIOError ( sndBgpMessage bsock (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
 
-get :: BufferedSocket -> Int -> IO (BufferedSocket,BGPMessage)
-get b t = do (next,bytes) <- getMsg b t
-             return (next, decodeBGPByteString bytes )
+get :: BufferedSocket -> Int -> IO BGPMessage
+get b t = do bytes <- getMsg b t
+             return $ decodeBGPByteString bytes
 
 runFSM :: Global -> BufferedSocket -> PeerData -> IO (Either String String)
 runFSM Global{..} bsock0 peerData  = do
@@ -121,13 +121,13 @@ runFSM Global{..} bsock0 peerData  = do
     stateConnected :: F
 -- data FSMState = St { bsock :: BufferedSocket, osm :: OpenStateMachine , peerData :: PeerData }
     stateConnected st@St{..} = do
-        (bsock',msg) <- get bsock delayOpenTimer
+        msg <- get bsock delayOpenTimer
         case msg of 
             BGPTimeout -> do
                 putStrLn "stateConnected - event: delay open expiry"
                 bgpSnd bsock (localOffer osm)
                 putStrLn "stateConnected -> stateOpenSent"
-                return (StateOpenSent,st { bsock=bsock'})
+                return (StateOpenSent,st )
             open@BGPOpen{} -> do
                 let osm' = updateOpenStateMachine osm open
                     resp = getResponse osm'
@@ -140,7 +140,7 @@ runFSM Global{..} bsock0 peerData  = do
                     putStrLn "stateConnected -> stateOpenConfirm"
                     bgpSnd bsock (localOffer osm)
                     bgpSnd bsock resp
-                    return (StateOpenConfirm , st {bsock=bsock',osm=osm'} )
+                    return (StateOpenConfirm , st {osm=osm'} )
                 else do
                     bgpSnd bsock resp
                     idle "stateConnected - event: open rejected error"
@@ -155,7 +155,7 @@ runFSM Global{..} bsock0 peerData  = do
 
     stateOpenSent :: F
     stateOpenSent st@St{..} = do
-        (bsock',msg) <- get bsock initialHoldTimer
+        msg <- get bsock initialHoldTimer
         case msg of 
           BGPTimeout -> do
               bgpSnd bsock $ BGPNotify NotificationHoldTimerExpired 0 L.empty
@@ -171,7 +171,7 @@ runFSM Global{..} bsock0 peerData  = do
               else if isKeepalive resp then do 
                   bgpSnd bsock resp
                   putStrLn "stateOpenSent -> stateOpenConfirm"
-                  return (StateOpenConfirm,st{bsock=bsock',osm=osm'})
+                  return (StateOpenConfirm,st{osm=osm'})
               else do
                     bgpSnd bsock resp
                     idle "stateOpenSent - event: open rejected error"
@@ -183,14 +183,14 @@ runFSM Global{..} bsock0 peerData  = do
 
     stateOpenConfirm :: F
     stateOpenConfirm st@St{..} = do
-        (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
+        msg <- get bsock (getNegotiatedHoldTime osm)
         case msg of 
             BGPTimeout -> do
                 bgpSnd bsock $ BGPNotify NotificationHoldTimerExpired 0 L.empty
                 idle "stateOpenConfirm - error initial Hold Timer expiry"
             BGPKeepalive -> do
                 putStrLn "stateOpenConfirm - rcv keepalive"
-                return (ToEstablished,st{bsock=bsock'})
+                return (ToEstablished,st)
             notify@BGPNotify{} -> do
                 idle "stateOpenConfirm - rcv notify"
             _ -> do
@@ -215,11 +215,11 @@ runFSM Global{..} bsock0 peerData  = do
 
     established :: F
     established st@St{..} = do
-        (bsock',msg) <- get bsock (getNegotiatedHoldTime osm)
+        msg <- get bsock (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
                 -- hFlush logFile
-                return (Established,st{bsock=bsock'})
+                return (Established,st)
             update@BGPUpdate{} ->
                 maybe
                     ( do
@@ -231,7 +231,7 @@ runFSM Global{..} bsock0 peerData  = do
                       -- which now should be peerData'
                       -- let routeData = Rib.makeRouteData peerData parsedUpdate
                       Rib.ribUpdater rib peerData parsedUpdate
-                      return (Established,st{bsock=bsock'})
+                      return (Established,st)
                     )
                     ( processUpdate update )
 

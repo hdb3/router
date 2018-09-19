@@ -31,27 +31,26 @@ newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
 newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
                               return $ BufferedSocket sock handle L.empty (BGPByteString $ Right L.empty) h
 
-getMsg :: BufferedSocket -> Int -> IO (BufferedSocket,BGPByteString)
-getMsg b t = do next <- getNextTimeout t b
-                return (next,result next)
+getMsg :: BufferedSocket -> Int -> IO BGPByteString
+getMsg b t = getNextTimeout t b
 
-getNextTimeout :: Int -> BufferedSocket -> IO BufferedSocket
-getNextTimeout' t = getNext
+getNextTimeout :: Int -> BufferedSocket -> IO BGPByteString
 getNextTimeout t bsock = let t' = t * 1000000 in
              do resMaybe <- timeout t' (getNext bsock)
                 maybe
-                    (return (bsock {result = BGPByteString $ Left Timeout} ))
+                    (return (BGPByteString $ Left Timeout ))
                     return
                     resMaybe
 
-getNext:: BufferedSocket -> IO BufferedSocket
+getNext:: BufferedSocket -> IO BGPByteString
 getNext b = catchIOError (getNext' b)
-                         (\e -> return (b {result = BGPByteString $ Left (Error (show e))} ))
+                         (\e -> return (BGPByteString $ Left (Error (show e)) ))
              
-getNext':: BufferedSocket -> IO BufferedSocket
+getNext':: BufferedSocket -> IO BGPByteString
 getNext' bs@(BufferedSocket sock sHandle a b handle) = do
-    result <- getNextMsg
-    return  $ BufferedSocket sock sHandle a result handle
+    getNextMsg
+    -- result <- getNextMsg
+    -- return  $ BufferedSocket sock sHandle a result handle
     where
     getWord16 :: L.ByteString -> Word16
     getWord16 lbs = getWord16' $ map fromIntegral (L.unpack lbs)
