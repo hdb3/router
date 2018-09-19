@@ -33,10 +33,10 @@ newBufferedSocket ::  Socket -> Maybe Handle -> IO BufferedSocket
 newBufferedSocket sock h = do handle <- socketToHandle sock ReadWriteMode
                               return $ BufferedSocket sock handle h
 
-getRawMsg :: BufferedSocket -> Int -> IO BGPByteString
-getRawMsg b t = getNextTimeout t b
+getRawMsg :: Handle -> Int -> IO BGPByteString
+getRawMsg h t = getNextTimeout t h
 
-getNextTimeout :: Int -> BufferedSocket -> IO BGPByteString
+getNextTimeout :: Int -> Handle -> IO BGPByteString
 getNextTimeout t bsock = let t' = t * 1000000 in
              do resMaybe <- timeout t' (getNext bsock)
                 maybe
@@ -44,13 +44,13 @@ getNextTimeout t bsock = let t' = t * 1000000 in
                     return
                     resMaybe
 
-getNext:: BufferedSocket -> IO BGPByteString
-getNext b = catchIOError (getNext' b)
+getNext:: Handle -> IO BGPByteString
+getNext h = catchIOError (getNext' h)
                          (\e -> return (BGPByteString $ Left (Error (show e)) ))
              
-getNext':: BufferedSocket -> IO BGPByteString
-getNext' (BufferedSocket _ sHandle _) = do
-    header <- L.hGet sHandle 18
+getNext':: Handle -> IO BGPByteString
+getNext' h = do
+    header <- L.hGet h 18
     if  L.length header < 18 then 
         return $ BGPByteString $ Left EndOfStream
     else do
@@ -60,7 +60,7 @@ getNext' (BufferedSocket _ sHandle _) = do
         else if l' < 19 || l' > 4096 then return $ BGPByteString $ Left $ Error "Bad length in GetBGPByteString"
         else do
             let bl = l' - 18
-            body <- L.hGet sHandle bl
+            body <- L.hGet h bl
             if  L.length body /= fromIntegral bl then return $ BGPByteString $ Left EndOfStream
             else return $ BGPByteString $ Right body
     where
@@ -104,5 +104,5 @@ instance {-# OVERLAPPING #-} Binary [BGPByteString] where
 wireFormat :: L.ByteString -> L.ByteString
 wireFormat bs = toLazyByteString $ lazyByteString lBGPMarker <> word16BE (fromIntegral $ 18 + L.length bs) <> lazyByteString bs 
 
-sndRawMessage :: BufferedSocket -> L.ByteString -> IO ()
-sndRawMessage bsock bgpMsg = L.hPut (handle bsock) $ wireFormat bgpMsg
+sndRawMessage :: Handle -> L.ByteString -> IO ()
+sndRawMessage h bgpMsg = L.hPut h $ wireFormat bgpMsg
