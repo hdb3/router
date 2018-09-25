@@ -23,7 +23,7 @@ import qualified Data.ByteString.Base16 as Base16 -- from package base16-bytestr
 import Hexdump -- from package pretty-hex
 
 zpad n s | n <= length s = s
-         | otherwise = '0' : s
+         | otherwise = zpad n $ '0' : s
 hex8 :: Word8 -> String
 hex8 x = zpad 2 $ Numeric.showHex x ""
 hex16 :: Word16 -> String
