@@ -10,7 +10,6 @@ import Data.IP(IPv4)
 import Data.Hashable
 
 import PathAttributes(PathAttribute)
-import Capabilities
 import Config
 
 data GlobalData = GlobalData { myAS :: Word32 

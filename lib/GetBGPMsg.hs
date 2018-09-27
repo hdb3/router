@@ -14,7 +14,7 @@ import Control.Monad(when,unless,fail)
 import Data.ByteString.Builder
 import Data.Monoid((<>))
 
-import Common
+import LibCommon
 
 !lBGPMarker = L.replicate 16 0xff
 !_BGPMarker = B.replicate 16 0xff

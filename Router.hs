@@ -2,26 +2,18 @@
 module Main where
 
 import Network.Socket
--- import qualified Data.IP
 import Session
--- import Data.Char(toUpper)
 import Control.Concurrent
--- import qualified Control.Exception as E
--- import Control.Monad (when,forever)
--- import System.IO(openBinaryFile,IOMode( WriteMode ))
 import qualified Data.Map.Strict as Data.Map
 
 import Config
-import Common
 import BGPData
 import BgpFSM
 import Collision
--- import Args2
 import Rib
 import BGPReader(pathReadRib)
 import Update(makeUpdate)
 import Global
-import Capabilities
 
 main :: IO ()
 main = do
@@ -68,7 +60,7 @@ buildGlobal c@Config{..} = do
         initialHoldTimer = configInitialHoldTimer
 
         -- TODO  - configure this in configuration file
-        listenAddress = SockAddrInet bgpPort 0 -- listen on all intefaces by default...
+        listenAddress = SockAddrInet 179 0 -- listen on all intefaces by default...
 
         configuredPeers = configEnabledPeers
 

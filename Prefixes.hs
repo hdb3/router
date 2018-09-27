@@ -13,7 +13,8 @@ import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
 
-import Common
+import LibCommon
+--import Common
 
 -- IMPORTANT Note re byte ordering
 -- x86 byte ordering is inverted w.r.t. network order,

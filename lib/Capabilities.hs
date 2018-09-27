@@ -12,7 +12,7 @@ import Data.Binary.Put
 import Data.ByteString.Builder
 import Data.Monoid((<>))
 
-import Common
+import LibCommon
 
 --
 -- ref https://www.iana.org/assignments/capability-codes/capability-codes.xml

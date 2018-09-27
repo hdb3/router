@@ -5,8 +5,8 @@ module PathAttributeUtils where
 import Data.Word
 import Data.IP
 import Data.Maybe(fromJust,fromMaybe)
+import Data.List(delete)
 
-import Common
 import PathAttributes
 
 prePendAS :: ASNumber a => a -> [PathAttribute] -> [PathAttribute]

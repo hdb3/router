@@ -13,7 +13,7 @@ import qualified Data.ByteString.Lazy as L
 import Control.Monad
 
 import Codes
-import Common
+import LibCommon
 import ASPath
 
 data ExtendedCommunities = ExtendedCommunities deriving (Show,Eq)
@@ -150,7 +150,7 @@ instance Binary PathAttribute where
                                                      return (fromIntegral l :: Int)  
                                              else do l <- getWord8
                                                      return (fromIntegral l :: Int)  
-             unless (flagCheck flags code) (fail $ "Bad Flags - flags=0x" ++ hex8 flags ++ " code=" ++ show code' ++ " (" ++ show code ++ ")")
+             unless (flagCheck flags code) (fail $ "Bad Flags - flags=" ++ show flags ++ " code=" ++ show code' ++ " (" ++ show code ++ ")")
 
              if | TypeCodePathAttributeOrigin == code -> do 
                  unless (len == 1) (fail "Bad Length")
@@ -247,6 +247,12 @@ instance {-# OVERLAPPING #-} Binary [LargeCommunity] where
     put = putn
     get = getn
 
+getMany :: Binary a => Int -> Get [a]
+getMany n = go [] n
+     where
+     go xs 0 = return $! reverse xs
+     go xs i = do x <- get
+                  x `seq` go (x:xs) (i-1)
 identify :: PathAttribute -> PathAttributeTypeCode
 identify PathAttributeOrigin{} = TypeCodePathAttributeOrigin
 identify PathAttributeASPath{} = TypeCodePathAttributeASPath
