@@ -49,7 +49,7 @@ getConfig' localIPv4 args = pds where
     (myAS, myBGPid, myHoldTime) = parseLocalParams (head args)
 
     gd = GlobalData myAS myBGPid
-    pd = PeerData gd undefined undefined undefined undefined localIPv4 localPref myHoldTime 0 offerCapabilies []
+    pd = PeerData gd undefined undefined undefined undefined localIPv4 localPref myHoldTime -- 0 offerCapabilies []
     pds = map (updatePeer pd) (tail args)
 
 
@@ -61,7 +61,7 @@ updatePeer pd arg = updatePeer' pd (parseRemoteParams arg)
                                                         pd { peerAS = remoteAS
                                                              , peerBGPid = remoteIPv4
                                                              , peerIPv4 = remoteIPv4
-                                                             , requireCapabilies = remoteCaps
+                                                             -- , requireCapabilies = remoteCaps
                                                              , isExternal = external
                                                             }
 
