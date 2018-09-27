@@ -10,7 +10,7 @@ import Control.Monad(unless)
 
 import RFC4271
 import Capabilities
-import Common
+import LibCommon
 import GetBGPMsg(BGPByteString(..),RcvStatus(..))
 
 _BGPOpen = 1 :: Word8

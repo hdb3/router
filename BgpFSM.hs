@@ -11,6 +11,7 @@ import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
+import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 
 import Common
 import BGPparse
@@ -319,3 +320,7 @@ getLogFile = do
     -- handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
     return Nothing
     -- return $ Just handle
+
+utcSecs = do
+    (TOD sec psec) <- getClockTime
+    return sec

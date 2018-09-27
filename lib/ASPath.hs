@@ -12,7 +12,7 @@ import Data.Attoparsec.ByteString -- from package attoparsec
 import Data.Attoparsec.Binary -- from package attoparsec-binary
 
 import Codes
-import Common
+import LibCommon
 
 -- data ASPath = ASPath deriving (Show,Eq)
 -- data Aggregator = Aggregator deriving (Show,Eq)
@@ -123,6 +123,9 @@ instance (ASNumber asn) => Binary (ASSegment asn) where
 
 
 decodeAS4 = fromRight' . parseOnly path . L.toStrict 
+    where
+    fromRight' (Right b ) = b
+
 type ASSegment2 = ASSegment Word16
 type ASSegment4 = ASSegment Word32
 

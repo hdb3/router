@@ -11,8 +11,12 @@ import PathAttributes
 import PathAttributeUtils
 import Prefixes
 import BGPparse
+import FarmHash(hash64)
 
 -- 'hash' will become 'routeId' when it is inserted into the RouteData record....
+myHash :: L.ByteString -> Int
+myHash = fromIntegral . hash64 . L.toStrict
+
 data ParsedUpdate = ParsedUpdate { puPathAttributes :: [PathAttribute], nlri :: [Prefix], withdrawn :: [Prefix], hash :: Int } deriving Show
 
 parseUpdate a n w = (decodedAttributes,decodedNlri,decodedWithdrawn)

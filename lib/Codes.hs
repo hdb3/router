@@ -2,7 +2,7 @@ module Codes where
 import Data.Word
 import Data.Bits
 
-import Common
+import LibCommon
 
 data PathAttributeTypeCode = TypeCodePathAttributeOrigin | TypeCodePathAttributeASPath | TypeCodePathAttributeNextHop | TypeCodePathAttributeMultiExitDisc |
                              TypeCodePathAttributeLocalPref | TypeCodePathAttributeAtomicAggregate | TypeCodePathAttributeAggregator |
