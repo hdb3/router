@@ -29,6 +29,12 @@ data Rib' = Rib' {
                  , adjRib :: AdjRIB
                  }
 
+getPeersInRib :: Rib -> IO [PeerData]
+getPeersInRib rib = do
+    (Rib' _ adjRib ) <- readMVar rib
+    return $ Data.Map.keys adjRib
+
+
 showAdjRIBMapEntry :: (PeerData,AdjRIBTable) -> IO String
 showAdjRIBMapEntry (peerData, adjRIBTable) = do
     s <- showAdjRIBTable adjRIBTable

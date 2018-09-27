@@ -63,7 +63,7 @@ data Capability = CapMultiprotocol Word16 Word8
                 | CapAS4 Word32
                 | CapRouteRefresh
                 | CapCiscoRefresh
-                  deriving (Show,Eq)
+                  deriving (Show,Eq,Read)
 
 eq_ :: Capability -> Capability -> Bool
 eq_ (CapMultiprotocol _ _) (CapMultiprotocol _ _) = True
