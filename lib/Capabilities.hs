@@ -21,6 +21,7 @@ _CapCodeMultiprotocol = 1
 _CapCodeRouteRefresh = 2
 _CapCodeGracefulRestart = 64
 _CapCodeAS4 = 65
+_CapCodeLLGR = 71
 _CapCodeCiscoRefresh = 128
 {-
  The Capability Value field is defined as:
@@ -62,6 +63,7 @@ data Capability = CapMultiprotocol Word16 Word8
                 | CapGracefulRestart Bool Word16
                 | CapAS4 Word32
                 | CapRouteRefresh
+                | CapLLGR
                 | CapCiscoRefresh
                   deriving (Show,Eq,Read)
 
@@ -70,6 +72,7 @@ eq_ (CapMultiprotocol _ _) (CapMultiprotocol _ _) = True
 eq_ (CapGracefulRestart _ _) (CapGracefulRestart _ _) = True
 eq_ (CapAS4 _) (CapAS4 _) = True
 eq_ CapRouteRefresh CapRouteRefresh = True
+eq_ CapLLGR CapLLGR = True
 eq_ CapCiscoRefresh CapCiscoRefresh = True
 eq_ _ _ = False
 
@@ -116,6 +119,8 @@ instance Binary Capability where
     get = label "Capability" $ do
         t <- getWord8
         l <- getWord8
+        -- this is not very fail safe, e.g. length should allow passing over unknown codes
+        -- and also validating known ones for their length (which could be variable in more than one case!!!!
         if | t == _CapCodeMultiprotocol -> do
                       afi <- getWord16be
                       _ <- getWord8
@@ -130,6 +135,7 @@ instance Binary Capability where
                                     return $ CapAS4 as -- surely not the most elegant way to say this!!!!
            | t == _CapCodeRouteRefresh -> return CapRouteRefresh
            | t == _CapCodeCiscoRefresh -> return CapCiscoRefresh
+           | t == _CapCodeLLGR -> if (l == 0) then return CapLLGR else error "LLGR with non null payload not handled"
            | otherwise        -> do error $ "Unexpected type code: " ++ show t
                                     return undefined
 
@@ -144,17 +150,17 @@ parseOptionalParameters :: L.ByteString -> [ Capability ]
 
 parseOptionalParameters bs = concatMap (decode . value) capabilityParameters where
                                  parameters = decode bs :: [TLV] 
-                                 capabilityParameters = filter ((2 ==) . code) parameters
+                                 capabilityParameters = filter ((2 ==) . typeCode) parameters
 
-data TLV = TLV { code :: Word8 , value :: L.ByteString }
+data TLV = TLV { typeCode :: Word8 , value :: L.ByteString }
 instance Binary TLV where
-    put TLV{..} = putWord8 code <> putWord8 (fromIntegral (L.length value)) <> putLazyByteString value
+    put TLV{..} = putWord8 typeCode <> putWord8 (fromIntegral (L.length value)) <> putLazyByteString value
 
     get = label "TLV" $ do
-             code <- get
+             typeCode <- get
              n <- get :: Get Word8
              bs <- getLazyByteString (fromIntegral n)
-             return $ TLV code bs
+             return $ TLV typeCode bs
 
 instance {-# OVERLAPPING #-} Binary [TLV] where
     put = putn
