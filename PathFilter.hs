@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module PathFilter where
 
-import PathAttributes
-import PathAttributeUtils
+import BGPlib
 
 applyPathFilter :: [((a, [PathAttribute]),b)] -> [((a, [PathAttribute]),b)]
 applyPathFilter = map applyPathFilterOnce

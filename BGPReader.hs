@@ -8,13 +8,10 @@ import Data.Binary.Get(runGet)
 
 import Common
 import Update
-import BGPparse
+import BGPlib
 import qualified Rib
-import GetBGPMsg
-import BGPData(dummyPeerData)
 import PrefixTableUtils(getRIB)
 import qualified Prefixes
-import qualified PathAttributes
 import qualified BGPData
 import BogonFilter
 import PathFilter
@@ -28,14 +25,14 @@ bgpReader path = do
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
     let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
-    rib <- Rib.newRib dummyPeerData
+    rib <- Rib.newRib BGPData.dummyPeerData
     mapM_ (updateRib rib) updates
     rib' <- Rib.getLocRib rib
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = Rib.makeRouteData dummyPeerData parsedUpdate
-                Rib.ribUpdater rib dummyPeerData parsedUpdate
+                let routeData = Rib.makeRouteData BGPData.dummyPeerData parsedUpdate
+                Rib.ribUpdater rib BGPData.dummyPeerData parsedUpdate
 
 -- readRib: a convenience function for simple applications
 -- the returned structure masks only derived or artificial data
@@ -44,15 +41,15 @@ updateRib rib parsedUpdate@ParsedUpdate{..} = do
 --  However, it only contains the last version of the table, so earlier updates in the stream which were superceded are not returned
 
 
-readRib :: IO [((Int, [PathAttributes.PathAttribute]), Prefixes.Prefix)]
+readRib :: IO [((Int, [PathAttribute]), Prefixes.Prefix)]
 readRib = readUngroupedRib
 readUngroupedRib = do rawRib <- readRib' 
                       return $ map normalise $ filter (bogonFilter . snd) rawRib
 
-readGroupedRib :: IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
+readGroupedRib :: IO [((Int, [PathAttribute]), [Prefixes.Prefix])]
 readGroupedRib = do rawRib <- readRib' 
                     return $ map normalise $ applyBogonFilter $ groupBy_ rawRib
-pathReadRib :: FilePath -> IO [((Int, [PathAttributes.PathAttribute]), [Prefixes.Prefix])]
+pathReadRib :: FilePath -> IO [((Int, [PathAttribute]), [Prefixes.Prefix])]
 pathReadRib path = fmap ( applyPathFilter . map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
 --pathReadRib path = bgpReader path >>= map normalise . applyBogonFilter . groupBy_
 

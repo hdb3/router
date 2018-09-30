@@ -1,12 +1,9 @@
 module Route where
 import Control.Monad.Extra(concatMapM)
 
-import BGPparse
+import BGPlib
 import BGPData
-import RFC4271
 import Update
-import PathAttributes
-import PathAttributeUtils
 import Prefixes
 import Rib
 import AdjRIBOut

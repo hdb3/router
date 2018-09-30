@@ -1,15 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances,FlexibleContexts, OverloadedStrings #-}
 module Main where
 import System.IO
 import qualified Data.List
+import Data.List(delete,sortOn,foldl')
+import qualified Data.Map.Strict as DMS
 import Data.IP
 import Data.Word
 
+import BGPlib
 import Common
 import Prefixes
-import BGPReader(readRib,Rib,readGroupedRib)
+import BGPReader
 import qualified Overlap
-import PathAttributes
 import PrefixTable
 import BGPData
 import PrefixTableUtils
@@ -33,7 +35,7 @@ main = do
         transitASes = concatMap (tail.reverse) simplerPaths 
         transitAScount = length $ Data.List.nub transitASes
         transitASDistribution = distribution_ 10 transitASes
-        -- transitASDistribution' = distribution transitASes
+
     putStrLn   "\nAS analysis"
     putStrLn $ "longestPath:  " ++ show longestPath
     putStrLn $ "longestPathWithoutPrepending:  " ++ show longestPathWithoutPrepending
@@ -98,3 +100,20 @@ showPath [ASSequence seq , ASSet set] = "SEQ+SET     " ++ show seq ++ " / " ++ s
 showPath [ASSequence seq] = "SEQ-       " ++ show seq
 showPath [] = "EMPTY       "
 showPath x = "UNKNOWN     " ++ show x
+
+-- unsure which implementation of 'distribution' is better.....
+
+distribution :: Ord a => [a] -> [(a,Int)]
+distribution = sortOn ( (0 -) . snd) . DMS.toList . mapped
+    where
+    mapped = foldl' f' DMS.empty
+    f' m k = DMS.insertWith (+) k 1 m
+
+
+distribution_ :: Integral a => Int -> [a] -> [(a,Int)]
+distribution_ n a | length (distribution a) > n = a1 ++ [rollUp a2]
+                  | otherwise = distribution a
+                  where
+    (a1,a2) = splitAt n (distribution a)
+    rollUp [] = (0,0)
+    rollUp ax = (0, sum (map snd a2))

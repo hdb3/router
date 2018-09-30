@@ -6,9 +6,9 @@ import Data.IP
 
 import Common
 import Prefixes
-import BGPReader(readRib,Rib)
+import BGPReader
 import qualified Overlap
-import qualified PathAttributes
+import qualified BGPlib
 
 main = do
 

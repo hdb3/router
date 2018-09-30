@@ -6,11 +6,8 @@ import Data.Binary
 import Data.Either
 
 import Common
-import RFC4271
-import PathAttributes
-import PathAttributeUtils
+import BGPlib
 import Prefixes
-import BGPparse
 import FarmHash(hash64)
 
 -- 'hash' will become 'routeId' when it is inserted into the RouteData record....

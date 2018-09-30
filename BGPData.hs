@@ -9,7 +9,7 @@ import Data.Word
 import Data.IP(IPv4)
 import Data.Hashable
 
-import PathAttributes(PathAttribute)
+import BGPlib
 import Config
 
 data GlobalData = GlobalData { myAS :: Word32 

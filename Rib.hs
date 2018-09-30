@@ -10,12 +10,11 @@ import Control.Monad(unless,when,void)
 import Data.List(intercalate)
 
 -- import Common
+import BGPlib
 import BGPData
 import Prefixes
 import PrefixTable
 import qualified PrefixTableUtils
-import PathAttributes
-import PathAttributeUtils
 import Update
 import AdjRIBOut
 
