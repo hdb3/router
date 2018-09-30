@@ -38,14 +38,14 @@ toAS2 :: Word32 -> Word16
 toAS2 as | as < 0x10000 = fromIntegral as
          | otherwise = 23456
 
-identify :: BGPMessage -> String
-identify BGPOpen{} = "BGPOpen"
-identify BGPKeepalive{} = "BGPKeepalive"
-identify BGPNotify{} = "BGPNotify"
-identify BGPUpdate{} = "BGPUpdate"
-identify BGPTimeout{} = "BGPTimeout"
-identify BGPError{} = "BGPError"
-identify BGPEndOfStream{} = "BGPEndOfStream"
+display :: BGPMessage -> String
+display BGPOpen{} = "BGPOpen"
+display BGPKeepalive{} = "BGPKeepalive"
+display BGPNotify{} = "BGPNotify"
+display BGPUpdate{} = "BGPUpdate"
+display BGPTimeout{} = "BGPTimeout"
+display BGPError{} = "BGPError"
+display BGPEndOfStream{} = "BGPEndOfStream"
 isKeepalive :: BGPMessage -> Bool
 isKeepalive BGPKeepalive = True
 isKeepalive _ = False

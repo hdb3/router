@@ -14,11 +14,11 @@ import qualified Data.Map.Strict as Data.Map
 import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 
 import Common
-import BGPparse
-import qualified BGPData
-import BGPData(PeerData,myBGPid,myAS,peerIPv4,peerBGPid,peerAS)
-import GetBGPMsg
-import RFC4271
+import BGPlib
+--import qualified BGPData
+import BGPData
+--import GetBGPMsg
+--import RFC4271
 import Open
 import Collision
 import Update

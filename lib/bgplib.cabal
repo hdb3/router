@@ -1,0 +1,20 @@
+name:                bgplib
+version:             0.1.0.0
+-- synopsis:            
+-- description:         
+license:             BSD3
+license-file:        LICENSE
+author:              nic
+maintainer:          you@xps13
+-- copyright:           
+category:            Network
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  other-modules:     PathAttributeUtils, PathAttributes, Capabilities, Codes, ASPath, LibCommon, RFC4271, GetBGPMsg, BGPparse
+  exposed-modules:       BGPlib
+  other-extensions:    MultiWayIf, FlexibleInstances, RecordWildCards, DataKinds, ConstrainedClassMethods, BangPatterns
+  build-depends:       base >=4.9 && <4.10, iproute >=1.7 && <1.8, binary >=0.8 && <0.9, bytestring >=0.10 && <0.11, attoparsec >=0.13 && <0.14, attoparsec-binary >=0.2 && <0.3
+  default-language:    Haskell2010

@@ -13,7 +13,7 @@ import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
 
-import LibCommon
+import BGPlib
 --import Common
 
 -- IMPORTANT Note re byte ordering

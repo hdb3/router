@@ -5,10 +5,7 @@ import qualified Data.ByteString.Lazy as L
 import Data.Maybe(isJust,fromJust)
 import Data.IP(fromHostAddress)
 
-import RFC4271
-import Capabilities(Capability(..),eq_)
-import BGPparse
-import LibCommon
+import BGPlib
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters

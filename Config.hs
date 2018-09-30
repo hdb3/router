@@ -6,7 +6,7 @@ module Config where
 import Data.List(nub,(\\))
 import Data.IP
 import Data.Word
-import Capabilities
+import BGPlib
 
 data Config = Config { configAS :: Word32
                      , configBGPID :: IPv4
