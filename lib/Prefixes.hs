@@ -14,8 +14,7 @@ import Data.IP
 import Data.String(IsString,fromString)
 import Control.Monad(liftM)
 
-import BGPlib
---import Common
+import LibCommon
 
 -- IMPORTANT Note re byte ordering
 -- x86 byte ordering is inverted w.r.t. network order,
