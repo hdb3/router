@@ -12,6 +12,7 @@ import Data.Int
 import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
+import Control.Monad(liftM)
 
 import BGPlib
 --import Common
@@ -78,6 +79,17 @@ subnet (Prefix (s,_)) = s
 ip :: Prefix -> Word32
 ip (Prefix (_,i)) = i
  
+instance {-# OVERLAPPING #-} Binary [AddrRange IPv4] where 
+    get = fmap (map toAddrRange) getPrefixes where
+        getPrefixes :: Get [Prefix]
+        getPrefixes = get
+    put = putPrefixes . liftM fromAddrRange where
+        putPrefixes :: [Prefix] -> Put
+        putPrefixes = put
+
+decodeAddrRange = map toAddrRange . decode
+encodeAddrRange = encode  . map fromAddrRange
+
 toAddrRange :: Prefix -> AddrRange IPv4
 toAddrRange (Prefix (subnet,ip)) = makeAddrRange (fromHostAddress $ byteSwap32 ip) (fromIntegral subnet)
 
