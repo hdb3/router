@@ -31,4 +31,5 @@ ASPathReader
 ASReader
 ActPassive
 NR
+Router
 *.bgp
