@@ -237,6 +237,8 @@ instance {-# OVERLAPPING #-} Binary [PathAttribute] where
     put = putn
     get = getn
 
+decodeAttributes = runGet ( get :: Get [PathAttribute] )
+
 instance {-# OVERLAPPING #-} Binary [Word64] where
 
     put = putn
