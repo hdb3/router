@@ -6,29 +6,25 @@ import System.Environment(getArgs)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get(runGet)
 
-import Common
-import Update
 import BGPlib
-import qualified Rib
-import PrefixTableUtils(getRIB)
-import qualified BGPData
+import BGPRib
 import BogonFilter
 import PathFilter
 
-bgpReader :: FilePath -> IO [(BGPData.RouteData, BGPlib.Prefix)]
+bgpReader :: FilePath -> IO [(BGPRib.RouteData, BGPlib.Prefix)]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
     let bgpByteStrings = runGet getBGPByteStrings stream
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
-    rib <- Rib.newRib BGPData.dummyPeerData
+    rib <- BGPRib.newRib BGPRib.dummyPeerData
     mapM_ (updateRib rib) updates
-    rib' <- Rib.getLocRib rib
+    rib' <- BGPRib.getLocRib rib
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                Rib.ribUpdater rib BGPData.dummyPeerData parsedUpdate
+                BGPRib.ribUpdater rib BGPRib.dummyPeerData parsedUpdate
 
 -- readRib: a convenience function for simple applications
 -- the returned structure masks only derived or artificial data
@@ -61,4 +57,4 @@ readRib' = do
         else
             return (take n rib)
 
-normalise (routeData,a) = ((BGPData.routeId routeData , BGPData.pathAttributes routeData) , a)
+normalise (routeData,a) = ((BGPRib.routeId routeData , BGPRib.pathAttributes routeData) , a)

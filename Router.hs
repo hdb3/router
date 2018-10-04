@@ -7,7 +7,6 @@ import Control.Concurrent
 import qualified Data.Map.Strict as Data.Map
 
 import Config
-import BGPData
 import BgpFSM
 import Collision
 import BGPRib

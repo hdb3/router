@@ -4,13 +4,11 @@ import Control.Concurrent
 import Network.Socket
 import qualified Data.Map.Strict as Data.Map
 
-import Common
-import BGPData
+import BGPRib
 import Config
 import Collision
-import Rib
 
-data Global = Global { rib :: Rib.Rib
+data Global = Global { rib :: BGPRib.Rib
                      , peerMap :: Data.Map.Map IPv4 PeerConfig
                      ,collisionDetector :: CollisionDetector
                      ,sessions :: MVar ( Data.Map.Map ThreadId PeerData )

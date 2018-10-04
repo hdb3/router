@@ -2,10 +2,7 @@ module Route where
 import Control.Monad.Extra(concatMapM)
 
 import BGPlib
-import BGPData
-import Update
-import Rib
-import AdjRIBOut
+import BGPRib
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
 lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
