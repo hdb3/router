@@ -93,7 +93,7 @@ queryRib rib prefix = do
 -- overloaded in a very non-Haskell way - requesting zero updates actually returns everything!
 pullAllUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
 pullAllUpdates t peer rib = do
-    (Rib' pt arot) <- readMVar rib
+    (Rib' _ arot) <- readMVar rib
     dequeueTimeout t (arot Data.Map.! peer)
 -- TODO write and use the function 'getAdjRibForPeer'
 
@@ -101,7 +101,7 @@ pullAllUpdates t peer rib = do
 
 pullUpdates :: Int -> PeerData -> Rib -> IO [AdjRIBEntry]
 pullUpdates n peer rib = do
-    (Rib' pt arot) <- readMVar rib
+    (Rib' _ arot) <- readMVar rib
     if n == 0
     then dequeueAll (arot Data.Map.! peer) 
     else  dequeueN n (arot Data.Map.! peer) 

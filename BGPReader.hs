@@ -19,18 +19,15 @@ bgpReader :: FilePath -> IO [(BGPData.RouteData, BGPlib.Prefix)]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
-    stream' <- L.hGetContents <$ openBinaryFile path ReadMode
     let bgpByteStrings = runGet getBGPByteStrings stream
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map getUpdate $ filter isUpdate bgpMessages
-    let updates' = map getUpdate $ filter isUpdate $ map decodeBGPByteString $ runGet getBGPByteStrings stream
     rib <- Rib.newRib BGPData.dummyPeerData
     mapM_ (updateRib rib) updates
     rib' <- Rib.getLocRib rib
     return (getRIB rib')
 
 updateRib rib parsedUpdate@ParsedUpdate{..} = do
-                let routeData = Rib.makeRouteData BGPData.dummyPeerData parsedUpdate
                 Rib.ribUpdater rib BGPData.dummyPeerData parsedUpdate
 
 -- readRib: a convenience function for simple applications

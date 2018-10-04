@@ -55,14 +55,11 @@ buildGlobal c@Config{..} = do
         config = c
         gd = GlobalData { myAS = configAS , myBGPid = configBGPID }
         ld = localPeer gd
-        holdTime = configOfferedHoldTime
         delayOpenTimer = configDelayOpenTimer
         initialHoldTimer = configInitialHoldTimer
 
         -- TODO  - configure this in configuration file
         listenAddress = SockAddrInet 179 0 -- listen on all intefaces by default...
-
-        configuredPeers = configEnabledPeers
 
         -- TODO the map creation should be in Config...
         peerMap = Data.Map.fromList $ map (\pc -> (peerConfigIPv4 pc,pc)) configConfiguredPeers

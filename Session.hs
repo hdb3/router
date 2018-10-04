@@ -65,9 +65,8 @@ mkState port defaultApp peers = do
     return State {..}
 
 getLogger = do
-    let logThread mvar = do
-        takeMVar mvar >>= hPutStrLn stderr
-        logThread mvar
+    let logThread mvar = do takeMVar mvar >>= hPutStrLn stderr
+                            logThread mvar
     logMVar <- newEmptyMVar
     forkIO ( logThread logMVar )
     return (putMVar logMVar)
