@@ -10,9 +10,8 @@ import Config
 import BGPData
 import BgpFSM
 import Collision
-import Rib
+import BGPRib
 import BGPReader(pathReadRib)
-import Update(makeUpdate)
 import Global
 
 main :: IO ()
@@ -68,5 +67,5 @@ buildGlobal c@Config{..} = do
         
     collisionDetector <- mkCollisionDetector
     sessions <- newMVar Data.Map.empty
-    rib <- Rib.newRib ld
+    rib <- BGPRib.newRib ld
     return Global {..}
