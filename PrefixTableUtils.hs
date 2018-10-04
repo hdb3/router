@@ -20,7 +20,7 @@ import Data.IP
 
 import Common
 import BGPData
-import Prefixes (IPrefix(..), toPrefix, Prefix)
+import BGPlib (IPrefix(..), toPrefix, Prefix)
 import PrefixTable(PrefixTable,slHead)
 
 -- ===================================================
