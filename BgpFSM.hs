@@ -12,7 +12,7 @@ import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
 
-import Common
+import BGPRib
 import BGPlib
 import BGPData
 import Open
