@@ -137,7 +137,7 @@ listener state@State{..} = do
         return ( sock , addr )
 
 
-listenClient state@State{..} (sock, SockAddrInet remotePort remoteIPv4) = forkIO $ do
+listenClient state@State{..} (sock, SockAddrInet _ remoteIPv4) = forkIO $ do
         let ip = fromHostAddress remoteIPv4
         logger $ "listener - connect request from " ++ show ip
         unblocked <- raceCheckNonBlock ip
