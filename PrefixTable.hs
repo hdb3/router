@@ -98,11 +98,6 @@ withdrawPeer prefixTable peerData = swapNgroom $ IntMap.mapAccumWithKey (updateF
     swapNgroom (pfxs,pt) = (groomPrefixTable pt,pfxs)
     updateFunction = activeUpdateFunction
 -- and the inner function has the shape: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
--- NOTE - this is the null function which simple accumulates all prefixes
-    nullUpdateFunction :: PeerData -> [IPrefix] -> Int -> PrefixTableEntry -> ([IPrefix], PrefixTableEntry)
-    nullUpdateFunction peerData prefixList prefix prefixTableEntry = (prefixList',prefixTableEntry') where
-        prefixList' = IPrefix prefix : prefixList
-        prefixTableEntry' = prefixTableEntry
 -- the needed function uses the 'peerData' entry of the routes in the sorted list:
 -- it deletes the entry corresponding to the target peer, if it exists
 -- if the deleted entry is the previous best then it adds the corresponding prefix to the accumulator

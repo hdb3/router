@@ -11,14 +11,10 @@ import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
-import System.Time ( ClockTime (TOD) , getClockTime ) -- from package old-time
 
 import Common
 import BGPlib
---import qualified BGPData
 import BGPData
---import GetBGPMsg
---import RFC4271
 import Open
 import Collision
 import Update
@@ -50,7 +46,6 @@ bgpFSM :: Global -> ( Socket , SockAddr) -> IO ()
 bgpFSM global@Global{..} ( sock , peerName ) =
                           do threadId <- myThreadId
                              putStrLn $ "Thread " ++ show threadId ++ " starting: peer is " ++ show peerName
-                             logFile <- getLogFile
 
                              SockAddrInet _ remoteIP <- getPeerName sock
                              let maybePeer = maybe 
@@ -72,7 +67,6 @@ bgpFSM global@Global{..} ( sock , peerName ) =
                                                     delPeer rib (head myPD)) 
                              print myPD
                              close sock
-                             -- fmap hFlush logFile
                              deregister collisionDetector
                              either
                                  (\s -> putStrLn $ "BGPfsm exception exit" ++ s)
@@ -153,10 +147,10 @@ runFSM g@Global{..} sock maybePeerConfig  = do
                 else do
                     bgpSnd handle resp
                     idle "stateConnected - event: open rejected error"
-            notify@BGPNotify{} -> do
+            BGPNotify{} -> do
                -- TODO - improve Notify analysis and display
                idle "stateConnected -> exit rcv notify"
-            update@BGPUpdate{} -> do
+            BGPUpdate{} -> do
                 bgpSnd handle $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
                 idle "stateConnected - recvd Update - FSM error"
             z -> do
@@ -184,7 +178,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
               else do
                     bgpSnd handle resp
                     idle "stateOpenSent - event: open rejected error"
-          notify@BGPNotify{} -> do
+          BGPNotify{} -> do
              idle "stateOpenSent - rcv notify"
           _ -> do
               bgpSnd handle $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
@@ -200,7 +194,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
             BGPKeepalive -> do
                 putStrLn "stateOpenConfirm - rcv keepalive"
                 return (ToEstablished,st)
-            notify@BGPNotify{} -> do
+            BGPNotify{} -> do
                 idle "stateOpenConfirm - rcv notify"
             _ -> do
                 bgpSnd handle $ BGPNotify NotificationFiniteStateMachineError 0 L.empty
@@ -220,7 +214,6 @@ runFSM g@Global{..} sock maybePeerConfig  = do
             peerIPv4 = fromHostAddress remoteIP
             localIPv4 = fromHostAddress localIP
             localPref = 0 -- TODO - source this somewhere sensible - config?
-            peerConfig = peerConfig
             isExternal = peerAS /= myAS gd
             peerData = BGPData.PeerData { .. }
         registerEstablished collisionDetector peerBGPid peerName
@@ -237,7 +230,6 @@ runFSM g@Global{..} sock maybePeerConfig  = do
         msg <- get handle (getNegotiatedHoldTime osm)
         case msg of 
             BGPKeepalive -> do
-                -- hFlush logFile
                 return (Established,st)
             update@BGPUpdate{} ->
                 maybe
@@ -251,7 +243,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
                     )
                     ( processUpdate update )
 
-            notify@BGPNotify{} -> do
+            BGPNotify{} -> do
                 idle "established - rcv notify"
             BGPEndOfStream -> idle "established: BGPEndOfStream"
             BGPTimeout -> do
@@ -292,7 +284,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
             ( do sendQueuedUpdates handle rib peer timer
                  return True
             )
-            (\(FSMException s) -> do
+            (\(FSMException _) -> do
                 -- this is perfectly normal event when the fsm closes down as it doesn't stop the keepAliveLoop explicitly
                 return False
             )
@@ -313,14 +305,3 @@ runFSM g@Global{..} sock maybePeerConfig  = do
                     print $ map fst (take 10 updates)
                     putStrLn $ "and " ++ show (length updates - 10) ++ " more"
                 mapM_ (bgpSnd handle) routes
-
-getLogFile = do
-    t <- utcSecs
-    -- TODO make unique names because multiple peers may start at the same time....
-    -- handle <- openBinaryFile ("trace/" ++ show t ++ ".bgp") WriteMode
-    return Nothing
-    -- return $ Just handle
-
-utcSecs = do
-    (TOD sec psec) <- getClockTime
-    return sec

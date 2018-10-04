@@ -28,14 +28,12 @@ parseErrorMesgs (a,n,w) = concat [getMsgA a,getMsgP n,getMsgP w]
           getMsgA (Right _) = ""
           getMsgA (Left(_,_,s)) = s
 validResult (a,n,w) = (f a,f n, f w) where f (Right (_, _, x)) = x
-validAttributes (a,n,w) = (null n && null a) || checkForRequiredPathAttributes a
-endOfRIB (a,n,w) = null a && null n && null w
 
 diagoseResult (a',n',w') (a,n,w) = diagnose "attributes" a' a ++
                                    diagnose "NLRI" n' n ++
                                    diagnose "withdrawn" w' w where
     diagnose _ (Right _) _ = ""
-    diagnose t (Left (_,n,s)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
+    diagnose t (Left (_,n,_)) x = "Error parsing " ++ t ++ " at position " ++ show n ++ "\n" ++ toHex' x
 
 ungetUpdate :: ParsedUpdate -> BGPMessage
 ungetUpdate ParsedUpdate{..} = BGPUpdate { withdrawn = encode withdrawn , attributes = encode puPathAttributes , nlri = encode nlri } 

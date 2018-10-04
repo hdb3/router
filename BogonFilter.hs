@@ -7,9 +7,8 @@ import BGPlib
 applyBogonFilter :: [(a, [Prefix])] -> [(a, [Prefix])]
 applyBogonFilter = filter p . map f where
     f (a,pfxs) = (a, filter bogonFilter pfxs)
-    p (a,[])   = False
+    p (_,[])   = False
     p _          = True
-    p' = not . p
 
 iPrefixBogonFilter :: IPrefix -> Bool
 iPrefixBogonFilter = bogonFilter . toPrefix

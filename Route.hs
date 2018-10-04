@@ -9,16 +9,15 @@ import AdjRIBOut
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
 lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
-                                -- mapM print routes
                                 return $ map ungetUpdate routes
 
 lookupRoute :: Rib -> PeerData -> AdjRIBEntry -> IO [ ParsedUpdate ]
-lookupRoute rib peer (iprefixes, 0 ) = return [ originateWithdraw $ toPrefixes iprefixes ]
-lookupRoute rib peer ([], routeId ) = do
+lookupRoute _ _ (iprefixes, 0 ) = return [ originateWithdraw $ toPrefixes iprefixes ]
+lookupRoute _ _ ([], _ ) = do
     putStrLn "empty prefix list in lookupRoute"
     return []
 
-lookupRoute rib peer (iprefixes, routeId ) = do
+lookupRoute rib peer (iprefixes, _ ) = do
     maybeRoute <- queryRib rib (head iprefixes)
     maybe (do putStrLn "failed lookup in lookupRoute"
               return []

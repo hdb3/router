@@ -10,7 +10,6 @@ import Data.IP(IPv4)
 import Data.Hashable
 
 import BGPlib
-import Config
 
 data GlobalData = GlobalData { myAS :: Word32 
                              , myBGPid :: IPv4
@@ -25,11 +24,6 @@ data PeerData = PeerData { globalData :: GlobalData
                          ,  peerIPv4 :: IPv4
                          ,  localIPv4 :: IPv4
                          ,  localPref :: Word32
-                         ,  peerConfig :: PeerConfig
-                         --,  propHoldTime :: Word16
-                         --,  reqHoldTime :: Word16
-                         --,  offerCapabilies :: [ Capability ]
-                         --,  requireCapabilies :: [ Capability ]
                          }
 
 data RouteData =  RouteData { peerData :: PeerData
@@ -55,24 +49,12 @@ localPeer gd = PeerData { globalData = gd
                     ,  peerIPv4 = "127.0.0.1"
                     ,  localIPv4 = "127.0.0.1"
                     ,  localPref = 0
-                    -- ,  propHoldTime = 300
-                    -- ,  reqHoldTime = 0
-                    -- ,  offerCapabilies = [ CapAS4 (myAS gd) ]
-                    -- ,  requireCapabilies = []
-                    , peerConfig = dummyPeerConfig
                     }
 
-{-
-localPeer :: GlobalData -> PeerData
-localPeer gd = PeerData gd False (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 undefined undefined undefined undefined 
--- localPeer gd = PeerData gd false (myAS gd) (myBGPid gd) (myBGPid gd) (myBGPid gd) 0 0 0 [] [] 
--}
 dummyPeerData :: PeerData
-dummyPeerData = PeerData dummyGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0 dummyPeerConfig -- 100 0 [] []
+dummyPeerData = PeerData dummyGlobalData True 64513 "127.0.0.2" "127.0.0.2" "127.0.0.1" 0
 dummyGlobalData :: GlobalData
 dummyGlobalData = GlobalData 64512 "127.0.0.1"
---instance Show GlobalData where
---    show gd = " router: " ++ show ( myBGPid gd )
 
 instance Show PeerData where
     show pd = " peer-AS=" ++ show (peerAS pd) ++ " peer-IP=" ++ show (peerBGPid pd)
