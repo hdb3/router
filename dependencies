@@ -1,1 +1,1 @@
-cabal install iproute pretty-hex base16-bytestring
+cabal update && cabal install old-time network iproute base16-bytestring pretty-hex attoparsec attoparsec-binary farmhash hashtables sorted-list network-info extra unordered-containers network-simple
