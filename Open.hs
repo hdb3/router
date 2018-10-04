@@ -1,15 +1,11 @@
 {-# LANGUAGE RecordWildCards #-} 
 module Open where
-import Data.Word
-import Data.Maybe(isJust,fromJust,catMaybes,listToMaybe)
-import Data.IP(fromHostAddress)
-import RFC4271
-import Capabilities(Capability,eq_)
 import Data.Binary
-import BGPparse
-import Collision
-import Common
 import qualified Data.ByteString.Lazy as L
+import Data.Maybe(isJust,fromJust)
+import Data.IP(fromHostAddress)
+
+import BGPlib
 
 -- parse/deparse the Open message, especially the optional parametes//capabilities
 -- the optional parameter field has a (8bit) length sub-field followed by 0 or more 'parameters
@@ -58,7 +54,10 @@ import qualified Data.ByteString.Lazy as L
 -- which is reported is determined by the orser of checks in the getResponse function
 --
 -- note: zero values are used to denote unenforced constraints in the 'required' section...
-data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage , remoteOffer :: Maybe BGPMessage, required :: BGPMessage} deriving Show
+data OpenStateMachine = OpenStateMachine {localOffer :: BGPMessage
+                                         , remoteOffer :: Maybe BGPMessage
+                                         , required :: BGPMessage
+                                         } deriving Show
 
 makeOpenStateMachine :: BGPMessage -> BGPMessage -> OpenStateMachine
 makeOpenStateMachine local required | isOpen local = OpenStateMachine local Nothing required
@@ -73,6 +72,13 @@ getNegotiatedHoldTime' OpenStateMachine {..} | isJust remoteOffer = min ( holdTi
 getKeepAliveTimer :: OpenStateMachine -> Int
 getKeepAliveTimer osm = 1 + fromIntegral (getNegotiatedHoldTime osm) `div` 3
 
+checkAS4Capability :: OpenStateMachine -> Bool
+checkAS4Capability OpenStateMachine {..} = hasAS4 (caps remoteOffer') && hasAS4 (caps localOffer)
+    where
+    remoteOffer' = fromJust remoteOffer
+    -- ugly - better done in Capabilities.hs
+    hasAS4 = any (eq_ (CapAS4 0))
+
 -- getResponse should not be called before an OPEN message has been received
 
 getResponse :: OpenStateMachine -> BGPMessage
@@ -86,14 +92,15 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
         remoteBGPID = bgpID remoteOffer'
         requiredBGPID = bgpID required
         nullBGPID = fromHostAddress 0
+        nullAS = 0
 
         keepalive = Just BGPKeepalive
 
         checkBgpID :: Maybe BGPMessage
         -- includes a sanity check that remote BGPID is different from the local value even if there is no explicit requirement
-        checkBgpID = if remoteBGPID == localBGPID then Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty)
-                     else if requiredBGPID == nullBGPID || requiredBGPID == remoteBGPID then Nothing
-                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty) 
+        checkBgpID | remoteBGPID == localBGPID = Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty)
+                   | requiredBGPID == nullBGPID || requiredBGPID == remoteBGPID = Nothing
+                   | otherwise = Just (BGPNotify NotificationOPENMessageError (encode8 BadBGPIdentifier) L.empty)
 
         checkHoldTime :: Maybe BGPMessage
         checkHoldTime = if holdTime required > getNegotiatedHoldTime' osm
@@ -101,7 +108,7 @@ getResponse osm@OpenStateMachine {..} | isJust remoteOffer = firstMaybe [checkmy
                         else Nothing
 
         checkmyAS :: Maybe BGPMessage
-        checkmyAS = if 0 == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
+        checkmyAS = if nullAS == myAutonomousSystem required || myAutonomousSystem remoteOffer' == myAutonomousSystem required
                     then Nothing
                     else Just (BGPNotify NotificationOPENMessageError (encode8 BadPeerAS) L.empty)
 

@@ -2,6 +2,7 @@ dist
 dist-*
 cabal-dev
 *.o
+*.swp
 *.hi
 *.chi
 *.chs.h
@@ -20,3 +21,15 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+Active
+BgpFile
+NewBgpFile
+Passive
+Reader
+OverlapReader
+ASPathReader
+ASReader
+ActPassive
+NR
+Router
+*.bgp
