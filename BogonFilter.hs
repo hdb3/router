@@ -2,7 +2,7 @@
 module BogonFilter where
 import Data.IP
 
-import Prefixes
+import BGPlib
 
 applyBogonFilter :: [(a, [Prefix])] -> [(a, [Prefix])]
 applyBogonFilter = filter p . map f where

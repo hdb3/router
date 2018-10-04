@@ -4,7 +4,6 @@ import Control.Monad.Extra(concatMapM)
 import BGPlib
 import BGPData
 import Update
-import Prefixes
 import Rib
 import AdjRIBOut
 

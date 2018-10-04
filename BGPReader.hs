@@ -11,12 +11,11 @@ import Update
 import BGPlib
 import qualified Rib
 import PrefixTableUtils(getRIB)
-import qualified Prefixes
 import qualified BGPData
 import BogonFilter
 import PathFilter
 
-bgpReader :: FilePath -> IO [(BGPData.RouteData, Prefixes.Prefix)]
+bgpReader :: FilePath -> IO [(BGPData.RouteData, BGPlib.Prefix)]
 bgpReader path = do
     handle <- openBinaryFile path ReadMode
     stream <- L.hGetContents handle
@@ -41,15 +40,15 @@ updateRib rib parsedUpdate@ParsedUpdate{..} = do
 --  However, it only contains the last version of the table, so earlier updates in the stream which were superceded are not returned
 
 
-readRib :: IO [((Int, [PathAttribute]), Prefixes.Prefix)]
+readRib :: IO [((Int, [PathAttribute]), BGPlib.Prefix)]
 readRib = readUngroupedRib
 readUngroupedRib = do rawRib <- readRib' 
                       return $ map normalise $ filter (bogonFilter . snd) rawRib
 
-readGroupedRib :: IO [((Int, [PathAttribute]), [Prefixes.Prefix])]
+readGroupedRib :: IO [((Int, [PathAttribute]), [BGPlib.Prefix])]
 readGroupedRib = do rawRib <- readRib' 
                     return $ map normalise $ applyBogonFilter $ groupBy_ rawRib
-pathReadRib :: FilePath -> IO [((Int, [PathAttribute]), [Prefixes.Prefix])]
+pathReadRib :: FilePath -> IO [((Int, [PathAttribute]), [BGPlib.Prefix])]
 pathReadRib path = fmap ( applyPathFilter . map normalise . applyBogonFilter . groupBy_ ) ( bgpReader path)
 --pathReadRib path = bgpReader path >>= map normalise . applyBogonFilter . groupBy_
 

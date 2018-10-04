@@ -19,7 +19,7 @@ import qualified Data.SortedList as SL -- package sorted-list
 import qualified Data.List
 
 import BGPData
-import Prefixes (IPrefix(..))
+import BGPlib (IPrefix(..))
 
 -- TODO
 -- prefix tabel semantics require prefixes to be removed from the table when routes are lost.

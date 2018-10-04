@@ -1,18 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Rib where
--- import Data.IORef
 import Control.Concurrent
--- import qualified Data.ByteString.Lazy as L
 import qualified Data.Map.Strict as Data.Map
--- import Data.Maybe(fromJust)
 import Control.Monad(unless,when,void)
--- import Control.Monad.Extra(concatMapM)
 import Data.List(intercalate)
 
--- import Common
 import BGPlib
 import BGPData
-import Prefixes
 import PrefixTable
 import qualified PrefixTableUtils
 import Update

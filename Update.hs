@@ -7,7 +7,6 @@ import Data.Either
 
 import Common
 import BGPlib
-import Prefixes
 import FarmHash(hash64)
 
 -- 'hash' will become 'routeId' when it is inserted into the RouteData record....

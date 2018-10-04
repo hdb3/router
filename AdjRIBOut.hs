@@ -16,7 +16,7 @@ import qualified Data.IntMap.Strict
 import qualified Data.Tuple
 
 import Fifo
-import Prefixes
+import BGPlib
 
 -- TODO
 -- bite this bullet? - the AdjRIBEntry should simply carry the RouteData itself rather than the proxy Int which is a hash over the original

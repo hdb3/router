@@ -57,10 +57,10 @@ instance Read Prefix where
 
 instance Hashable Prefix
 
-instance {-# OVERLAPPING #-} Show [Prefix] where
+instance {-# INCOHERENT #-} Show [Prefix] where
     show = shorten
 
-instance {-# OVERLAPPING #-} Show [IPrefix] where
+instance {-# INCOHERENT #-} Show [IPrefix] where
     show = shorten . map toPrefix
 
 instance Show Prefix where
