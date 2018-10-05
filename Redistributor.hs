@@ -25,8 +25,11 @@ redistribute :: Global -> IO ()
 redistribute global@Global{..} =
     do threadId <- myThreadId
        putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
+       ( zStreamIn, zStreamOut ) <- getZStreamUnix "/var/run/quagga/zserv.api"
+       zservRegister zStreamOut _ZEBRA_ROUTE_BGP
        let dummyRouteInstaller (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
-           dummyRouteInstaller (route, Just nextHop) = putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
+           dummyRouteInstaller (route, Just nextHop) = do putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
+                                                          addRoute zStreamOut (toAddrRange $ toPrefix route) nextHop
 
         -- addPeer rib peerData
         -- delPeer rib peerData
@@ -45,12 +48,12 @@ ribUpdateListener routeInstaller rib peer timeout = do
             else do
                 print $ map fst (take 10 updates)
                 putStrLn $ "and " ++ show (length updates - 10) ++ " more"
-            routes <- mapM ( nextHop rib ) (concatMap fst updates)
+            let getNextHop rib pfx = do nh <- lookupNextHop rib pfx
+                                        return (pfx,nh)
+            routes <- mapM ( getNextHop rib ) (concatMap fst updates)
             mapM_ routeInstaller routes
 
     -- rinse and repeat...
 
     ribUpdateListener routeInstaller rib peer timeout
 
-    where nextHop rib pfx = do nh <- lookupNextHop rib pfx
-                               return (pfx,nh)
