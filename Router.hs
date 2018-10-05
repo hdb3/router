@@ -12,6 +12,7 @@ import Collision
 import BGPRib
 import BGPReader(pathReadRib)
 import Global
+import Redistributor
 
 main :: IO ()
 main = do
@@ -24,6 +25,8 @@ main = do
     putStrLn "Router starting"
 
     global <- buildGlobal config
+
+    forkIO (redistribute global)
     
     let
         app = bgpFSM global
