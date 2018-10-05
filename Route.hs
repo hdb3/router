@@ -38,3 +38,12 @@ lookupRoute rib peer (iprefixes, _ ) = do
               in return $ if isExternal peer then egpUpdate else igpUpdate
           )
           maybeRoute
+
+lookupNextHop rib iprefix = do
+    maybeRoute <- queryRib rib iprefix
+    maybe (do putStrLn "failed lookup in lookupRoute"
+              return Nothing
+          )
+          (\route -> return $ Just $ nextHop route
+          )
+          maybeRoute
