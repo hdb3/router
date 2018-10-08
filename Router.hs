@@ -7,13 +7,12 @@ import Control.Concurrent
 import qualified Data.Map.Strict as Data.Map
 
 import Config
-import BGPData
 import BgpFSM
 import Collision
-import Rib
+import BGPRib
 import BGPReader(pathReadRib)
-import Update(makeUpdate)
 import Global
+import Redistributor
 
 main :: IO ()
 main = do
@@ -26,6 +25,8 @@ main = do
     putStrLn "Router starting"
 
     global <- buildGlobal config
+
+    forkIO (redistribute global)
     
     let
         app = bgpFSM global
@@ -68,5 +69,5 @@ buildGlobal c@Config{..} = do
         
     collisionDetector <- mkCollisionDetector
     sessions <- newMVar Data.Map.empty
-    rib <- Rib.newRib ld
+    rib <- BGPRib.newRib ld
     return Global {..}

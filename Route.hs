@@ -2,10 +2,7 @@ module Route where
 import Control.Monad.Extra(concatMapM)
 
 import BGPlib
-import BGPData
-import Update
-import Rib
-import AdjRIBOut
+import BGPRib
 
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
 lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
@@ -39,5 +36,14 @@ lookupRoute rib peer (iprefixes, _ ) = do
                                                   pathAttributes route
                                                  )
               in return $ if isExternal peer then egpUpdate else igpUpdate
+          )
+          maybeRoute
+
+lookupNextHop rib iprefix = do
+    maybeRoute <- queryRib rib iprefix
+    maybe (do putStrLn "failed lookup in lookupRoute"
+              return Nothing
+          )
+          (\route -> return $ Just $ nextHop route
           )
           maybeRoute

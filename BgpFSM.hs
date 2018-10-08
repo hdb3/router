@@ -12,13 +12,10 @@ import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
 
-import Common
+import BGPRib
 import BGPlib
-import BGPData
 import Open
 import Collision
-import Update
-import Rib
 import Route
 import Global
 import Config
@@ -215,7 +212,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
             localIPv4 = fromHostAddress localIP
             localPref = 0 -- TODO - source this somewhere sensible - config?
             isExternal = peerAS /= myAS gd
-            peerData = BGPData.PeerData { .. }
+            peerData = BGPRib.PeerData { .. }
         registerEstablished collisionDetector peerBGPid peerName
         -- VERY IMPORTANT TO USE THE NEW VALUE peerData' AS THIS IS THE ONLY ONE WHICH CONTAINS ACCURATE REMOTE IDENTITY FOR DYNAMIC PEERS!!!!
         -- it would be much better to remove the temptation to use conficured data by forcing a new type for relevant purposes, and dscarding the
@@ -238,7 +235,7 @@ runFSM g@Global{..} sock maybePeerConfig  = do
                          idle "established - Update parse error"
                     )
                     (\parsedUpdate -> do
-                      Rib.ribUpdater rib peerData parsedUpdate
+                      BGPRib.ribUpdater rib peerData parsedUpdate
                       return (Established,st)
                     )
                     ( processUpdate update )
