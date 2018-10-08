@@ -26,7 +26,7 @@ redistribute :: Global -> IO ()
 redistribute global@Global{..} =
     do threadId <- myThreadId
        putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
-       ( zStreamIn, zStreamOut ) <- getZStreamUnix "/var/run/quagga/zserv.api"
+       ( zStreamIn, zStreamOut ) <- getZServerStreamUnix "/var/run/quagga/zserv.api"
        zservRegister zStreamOut _ZEBRA_ROUTE_BGP
        forkIO (zservReader ( zStreamIn, zStreamOut ))
        let routeInstall (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
@@ -69,6 +69,7 @@ ribUpdateListener (routeInstall,routeDelete) rib peer timeout = do
 zservReader ( zStreamIn, zStreamOut ) = do
     zservRequestRouterId zStreamOut
     zservRequestInterface zStreamOut
+    zservRequestRedistributeAll zStreamOut
     loop zStreamIn
     where
     loop stream = do
