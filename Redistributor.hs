@@ -76,7 +76,12 @@ zservReader ( zStreamIn, zStreamOut ) = do
         msg <- Streams.read stream
         maybe (putStrLn "end of messages")
               ( \zMsg -> do 
-                              print zMsg
+                              -- print zMsg
+                              maybe (putStrLn "--")
+                                    (\s -> putStrLn $ "local route:" ++ show s)
+                                    ( getZRoute zMsg )
+                              -- let route = getZRoute zMsg
+                              -- print route
                               loop stream )
               msg
 
