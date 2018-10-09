@@ -28,7 +28,7 @@ redistribute global@Global{..} =
        putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
        ( zStreamIn, zStreamOut ) <- getZServerStreamUnix "/var/run/quagga/zserv.api"
        zservRegister zStreamOut _ZEBRA_ROUTE_BGP
-       forkIO (zservReader ( zStreamIn, zStreamOut ))
+       forkIO (zservReader rib (localPeer gd) ( zStreamIn, zStreamOut ))
        let routeInstall (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
            routeInstall (route, Just nextHop) = do putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
                                                    addRoute zStreamOut (toAddrRange $ toPrefix route) nextHop
@@ -66,7 +66,7 @@ ribUpdateListener (routeInstall,routeDelete) rib peer timeout = do
     ribUpdateListener (routeInstall,routeDelete) rib peer timeout
 
 
-zservReader ( zStreamIn, zStreamOut ) = do
+zservReader rib peer ( zStreamIn, zStreamOut ) = do
     zservRequestRouterId zStreamOut
     zservRequestInterface zStreamOut
     zservRequestRedistributeAll zStreamOut
@@ -78,7 +78,14 @@ zservReader ( zStreamIn, zStreamOut ) = do
               ( \zMsg -> do 
                               -- print zMsg
                               maybe (putStrLn "--")
-                                    (\s -> putStrLn $ "local route:" ++ show s)
+                                    -- (\s -> putStrLn $ "local route:" ++ show s)
+                                    (\(pfx,maybeNH) -> maybe (do putStrLn $ "delete route: " ++ show pfx
+                                                                 delRouteRib rib peer pfx )
+                                                             (\nh -> do putStrLn $ "add route: " ++ show pfx ++ " via " ++ show nh
+                                                                        addRouteRib rib peer pfx nh)
+                                                             maybeNH
+                                             
+                                    )
                                     ( getZRoute zMsg )
                               -- let route = getZRoute zMsg
                               -- print route

@@ -4,6 +4,16 @@ import Control.Monad.Extra(concatMapM)
 import BGPlib
 import BGPRib
 
+addRouteRib :: Rib -> PeerData -> AddrRange IPv4 -> IPv4 -> IO()
+-- addLocalRoute _ _ _ = return()
+addRouteRib rib peer prefix nextHop = BGPRib.ribUpdater rib peer (igpUpdate nextHop [fromAddrRange prefix])
+
+delRouteRib :: Rib -> PeerData -> AddrRange IPv4 -> IO()
+-- delLocalRoute _ _ = return()
+delRouteRib rib peer prefix = BGPRib.ribUpdater rib peer (originateWithdraw [fromAddrRange prefix])
+
+-- BGPRib.ribUpdater rib peerData parsedUpdate
+
 lookupRoutes :: Rib -> PeerData -> [AdjRIBEntry] -> IO [BGPMessage]
 lookupRoutes rib peer ares = do routes <- concatMapM (lookupRoute rib peer) ares
                                 return $ map ungetUpdate routes
