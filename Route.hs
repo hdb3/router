@@ -32,10 +32,14 @@ lookupRoute rib peer (iprefixes, _ ) = do
           (\route -> let igpUpdate = makeUpdate (toPrefixes iprefixes)
                                                 []
                                                 ( sortPathAttributes $
+                                                  -- TODO - consider why (re-)setting the origin here is sensible - 
+                                                  --        surely it should have been set correctly on ingress and not chabged, regardless of
+                                                  --        destination peer???
+                                                  --        Specifically, this overrides local route distinctions!!!
                                                   setOrigin _BGP_ORIGIN_INCOMPLETE $
                                                   -- this is reflector/controller default, bur for a router next-hop-self is default:
                                                   -- setNextHop (nextHop route) $
-                                                  setNextHop (localIPv4 $ peerData route) $ -- next hop self!
+                                                  setNextHop (localIPv4 peer ) $ -- next hop self!
                                                   setLocalPref (localPref $ peerData route) $
                                                   pathAttributes route
                                                  )
@@ -44,7 +48,7 @@ lookupRoute rib peer (iprefixes, _ ) = do
                                                 ( sortPathAttributes $
                                                   setOrigin _BGP_ORIGIN_INCOMPLETE $
                                                   -- setNextHop (nextHop route) $ -- reflector default
-                                                  setNextHop (localIPv4 $ peerData route) $ -- next hop self!
+                                                  setNextHop (localIPv4 peer ) $ -- next hop self!
                                                   prePendAS ( myAS $ globalData $ peerData route) $
                                                   pathAttributes route
                                                  )
