@@ -23,7 +23,9 @@ lookupRoute rib peer (iprefixes, _ ) = do
                                                 []
                                                 ( sortPathAttributes $
                                                   setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                                  setNextHop (nextHop route) $
+                                                  -- this is reflector/controller default, bur for a router next-hop-self is default:
+                                                  -- setNextHop (nextHop route) $
+                                                  setNextHop (localIPv4 $ peerData route) $ -- next hop self!
                                                   setLocalPref (localPref $ peerData route) $
                                                   pathAttributes route
                                                  )
@@ -31,7 +33,8 @@ lookupRoute rib peer (iprefixes, _ ) = do
                                                 []
                                                 ( sortPathAttributes $
                                                   setOrigin _BGP_ORIGIN_INCOMPLETE $
-                                                  setNextHop (nextHop route) $
+                                                  -- setNextHop (nextHop route) $ -- reflector default
+                                                  setNextHop (localIPv4 $ peerData route) $ -- next hop self!
                                                   prePendAS ( myAS $ globalData $ peerData route) $
                                                   pathAttributes route
                                                  )
