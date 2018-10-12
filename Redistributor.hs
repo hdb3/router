@@ -15,7 +15,7 @@ redistribute global@Global{..} =
        putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
        ( zStreamIn, zStreamOut ) <- getZServerStreamUnix "/var/run/quagga/zserv.api"
        zservRegister zStreamOut _ZEBRA_ROUTE_BGP
-       forkIO (zservReader rib (localPeer gd) ( zStreamIn, zStreamOut ))
+       forkIO (zservReader global (localPeer gd) ( zStreamIn, zStreamOut ))
        let routeInstall (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
            routeInstall (route, Just nextHop) = do putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
                                                    addRoute zStreamOut (toAddrRange $ toPrefix route) nextHop
@@ -25,10 +25,10 @@ redistribute global@Global{..} =
         -- addPeer rib peerData
         -- delPeer rib peerData
         -- BGPRib.ribUpdater rib peerData parsedUpdate
-       ribUpdateListener (routeInstall,routeDelete) rib ( localPeer gd ) 1
+       ribUpdateListener (routeInstall,routeDelete) global ( localPeer gd ) 1
 
 
-ribUpdateListener (routeInstall,routeDelete) rib peer timeout = do
+ribUpdateListener (routeInstall,routeDelete) global@Global{..} peer timeout = do
     updates <- pullAllUpdates (1000000 * timeout) peer rib
     if null updates then
         yield -- null op - could check if exit from thread is needed...
@@ -50,10 +50,10 @@ ribUpdateListener (routeInstall,routeDelete) rib peer timeout = do
 
     -- rinse and repeat...
 
-    ribUpdateListener (routeInstall,routeDelete) rib peer timeout
+    ribUpdateListener (routeInstall,routeDelete) global peer timeout
 
 
-zservReader rib peer ( zStreamIn, zStreamOut ) = do
+zservReader global@Global{..} peer ( zStreamIn, zStreamOut ) = do
     zservRequestRouterId zStreamOut
     zservRequestInterface zStreamOut
     zservRequestRedistributeAll zStreamOut
