@@ -1,25 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Redistributor where
-import Network.Socket
-import System.IO.Error(catchIOError)
-import System.IO(IOMode( ReadWriteMode ),Handle)
-import qualified Data.ByteString.Lazy as L
-import Data.Binary(encode)
 import Control.Concurrent
-import Control.Exception
-import Control.Monad(when,unless)
-import Data.Maybe(fromJust,isJust,fromMaybe)
-import Data.Either(either)
-import qualified Data.Map.Strict as Data.Map
 import qualified System.IO.Streams as Streams
 
 import BGPRib
 import BGPlib
-import Open
-import Collision
 import Route
 import Global
-import Config
 import ZServ
 
 redistribute :: Global -> IO ()
