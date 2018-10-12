@@ -2,7 +2,7 @@
 module BgpFSM(bgpFSM) where
 import Network.Socket
 import System.IO.Error(catchIOError)
-import System.IO(IOMode( ReadWriteMode ),Handle)
+import System.IO(IOMode( ReadWriteMode ),Handle, hClose)
 import qualified Data.ByteString.Lazy as L
 import Data.Binary(encode)
 import Control.Concurrent
@@ -11,6 +11,7 @@ import Control.Monad(when,unless)
 import Data.Maybe(fromJust,isJust,fromMaybe)
 import Data.Either(either)
 import qualified Data.Map.Strict as Data.Map
+import System.Posix.Temp(mkstemp)
 
 import BGPRib
 import BGPlib
@@ -84,6 +85,10 @@ initialiseOSM Global{..} PeerConfig{..} =
 
 bgpSnd :: Handle -> BGPMessage -> IO()
 bgpSnd h msg | 4079 > L.length (encode msg) = catchIOError ( sndRawMessage h (encode msg)) (\e -> throw $ FSMException (show (e :: IOError)))
+             | otherwise = do (n,h) <- mkstemp "bgpSnd"
+                              L.hPut h (encode msg)
+                              hClose h
+                              putStrLn $ "encoded message too long in bgpSnd, encoded message was written to: " ++ n 
 
 get :: Handle -> Int -> IO BGPMessage
 get b t = getRawMsg b t >>= return . decodeBGPByteString
