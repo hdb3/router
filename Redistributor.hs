@@ -2,30 +2,36 @@
 module Redistributor where
 import Control.Concurrent
 import qualified System.IO.Streams as Streams
+import Control.Monad(void)
 
 import BGPRib
 import BGPlib
 import Route
 import Global
+import Config
 import ZServ
 
 redistribute :: Global -> IO ()
 redistribute global@Global{..} =
-    do threadId <- myThreadId
-       putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
-       ( zStreamIn, zStreamOut ) <- getZServerStreamUnix "/var/run/quagga/zserv.api"
-       zservRegister zStreamOut _ZEBRA_ROUTE_BGP
-       forkIO (zservReader global (localPeer gd) ( zStreamIn, zStreamOut ))
-       let routeInstall (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
-           routeInstall (route, Just nextHop) = do putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
-                                                   addRoute zStreamOut (toAddrRange $ toPrefix route) nextHop
-           routeDelete route = do putStrLn $ "delete " ++ show route
-                                  delRoute zStreamOut (toAddrRange $ toPrefix route)
+    if not (configEnableDataPlane config )
+    then putStrLn "configEnableDataPlane not set, not starting zserv API"
+    else do threadId <- myThreadId
+            putStrLn $ "Thread " ++ show threadId ++ " starting redistributor"
+            ( zStreamIn, zStreamOut ) <- getZServerStreamUnix "/var/run/quagga/zserv.api"
+            zservRegister zStreamOut _ZEBRA_ROUTE_BGP
+            if configEnableRedistribution config
+            then void $ forkIO (zservReader global (localPeer gd) ( zStreamIn, zStreamOut ))
+            else putStrLn "configEnableRedistribution not enabled - not staring Zserv listener"
 
-        -- addPeer rib peerData
-        -- delPeer rib peerData
-        -- BGPRib.ribUpdater rib peerData parsedUpdate
-       ribUpdateListener (routeInstall,routeDelete) global ( localPeer gd ) 1
+            let routeInstall (route, Nothing) = putStrLn $ "route not in Rib!: " ++ show route
+                routeInstall (route, Just nextHop) = do putStrLn $ "install " ++ show route ++ " via " ++ show nextHop
+                                                        addRoute zStreamOut (toAddrRange $ toPrefix route) nextHop
+                routeDelete route = do putStrLn $ "delete " ++ show route
+                                       delRoute zStreamOut (toAddrRange $ toPrefix route)
+
+             -- addPeer rib peerData
+             -- delPeer rib peerData
+            ribUpdateListener (routeInstall,routeDelete) global ( localPeer gd ) 1
 
 
 ribUpdateListener (routeInstall,routeDelete) global@Global{..} peer timeout = do
@@ -71,7 +77,7 @@ zservReader global@Global{..} peer ( zStreamIn, zStreamOut ) = do
                                                              (\nh -> do putStrLn $ "add route: " ++ show pfx ++ " via " ++ show nh
                                                                         addRouteRib rib peer pfx nh)
                                                              maybeNH
-                                             
+
                                     )
                                     ( getZRoute zMsg )
                               -- let route = getZRoute zMsg
