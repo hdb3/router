@@ -15,6 +15,8 @@ data Config = Config { configAS :: Word32
                      , configDelayOpenTimer :: Int
                      , configInitialHoldTimer :: Int
                      , configAllowDynamicPeers :: Bool
+                     , configEnableDataPlane :: Bool
+                     , configEnableRedistribution :: Bool
                      , configOfferedCapabilities :: [ Capability ]
                      , configRequiredCapabilities :: [ Capability ]
                      , configOfferedHoldTime :: Word16
