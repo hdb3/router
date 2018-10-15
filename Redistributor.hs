@@ -4,6 +4,7 @@ import Control.Concurrent
 import qualified System.IO.Streams as Streams
 import Control.Monad(void)
 
+import BGPReader(pathReadRib)
 import BGPRib
 import BGPlib
 import Route
@@ -12,7 +13,8 @@ import Config
 import ZServ
 
 redistribute :: Global -> IO ()
-redistribute global@Global{..} =
+redistribute global@Global{..} = do
+    insertTestRoutes global (configTestRoutes config)
     if not (configEnableDataPlane config )
     then putStrLn "configEnableDataPlane not set, not starting zserv API"
     else do threadId <- myThreadId
@@ -85,3 +87,12 @@ zservReader global@Global{..} peer ( zStreamIn, zStreamOut ) = do
                               loop stream )
               msg
 
+
+insertTestRoutes _ "" = putStrLn "no test route data specified"
+insertTestRoutes Global{..} path = do
+    putStrLn $ "test route set requested: " ++ path
+    putStrLn "inserting routes"
+    updates <- pathReadRib path
+    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000000 updates)
+    mapM (ribUpdater rib ( localPeer gd )) updates'
+    putStrLn "done"
