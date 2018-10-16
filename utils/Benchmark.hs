@@ -6,10 +6,11 @@ import Data.Binary.Get
 import Text.Printf
 
 import BGPlib
-import BGPReader(updateRib,readRib)
+import BGPReader(updateRib,readRib,readGroupedRib)
 import qualified BGPRib
 
-main = test2
+main = test3
+
 test1 = do
     putStrLn "test1 - read file with BGPReader(readRib)"
     t0 <- DT.getSystemTime
@@ -33,10 +34,6 @@ stopwatch s t = do
 
 
 test2 = do
-    -- TODO - this looks a lot like Data.ByteString.Lazy.readFile !!!
-    --        replace?
-    -- handle <- openBinaryFile path ReadMode
-    -- stream <- L.hGetContents handle
     t0 <- DT.getSystemTime
     contents <- L.getContents
     putStrLn $ "file length: " ++ show (L.length contents) ++ " bytes"
@@ -50,7 +47,19 @@ test2 = do
     rib <- BGPRib.newRib BGPRib.dummyPeerData
     mapM_ (updateRib rib) updates
     stopwatch "after full (?) parse into rib" t0 
-    -- rib' <- BGPRib.getLocRib rib
-    -- return (getRIB rib')
 
+test3 = do
+    t0 <- DT.getSystemTime
+    rib <- readRib
+    putStrLn $ "rib length: " ++ show (length rib)
+    stopwatch "rib read duration " t0 
+    t1 <- DT.getSystemTime
+    grib <- readGroupedRib
+    putStrLn $ "grib length: " ++ show (length grib)
+    stopwatch "grib read duration " t1 
 
+testN = do
+    t0 <- DT.getSystemTime
+    rib <- readRib
+    putStrLn $ "rib length: " ++ show (length rib)
+    stopwatch "after rib read" t0 
