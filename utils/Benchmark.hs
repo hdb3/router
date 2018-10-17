@@ -30,8 +30,14 @@ diffSystemTime (DT.MkSystemTime s0 ns0) (DT.MkSystemTime s1 ns1) =
 stopwatch s t = do
     t' <- DT.getSystemTime
     -- putStrLn $ s ++ " " ++ show (diffSystemTime t t')
-    putStrLn $ s ++ " " ++ printf "%.3f" (diffSystemTime t t')
+    let dT = diffSystemTime t t'
+    putStrLn $ s ++ " " ++ if 1.0 > dT then printf "%.3f mS" (1000*dT) else printf "%.3f S" dT 
 
+timer s f = do
+    putStrLn $ "timing function " ++ s
+    t0 <- DT.getSystemTime
+    f
+    stopwatch (s ++ "completed in ") t0 
 
 test2 = do
     t0 <- DT.getSystemTime
