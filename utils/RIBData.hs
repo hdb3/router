@@ -6,6 +6,8 @@ import Data.IP(IPv4)
 
 import BGPlib
 
+type Prefix = Word64
+
 data Peer = Peer { isExternal :: Bool
                  ,  peerAS :: Word32
                  ,  peerBGPid :: IPv4
@@ -27,6 +29,9 @@ instance Eq Route where
 
 instance Eq Peer where
     p1 == p2 = peerBGPid p1 == peerBGPid p2
+
+instance Ord Peer where
+    compare p1 p2 = compare ( peerBGPid p1 ) ( peerBGPid p2 )
 
 instance {-# OVERLAPPING #-} Ord (Peer,Route) where
 
