@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 module RIB where
 import qualified Data.Map.Strict as Map
 import qualified Data.List
@@ -5,35 +7,53 @@ import Data.Maybe(fromMaybe)
 import RIBData
 
 class Rib rib where 
+    adjust :: rib -> Prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
     update :: rib -> Prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    -- withdraw :: Rib -> Prefix -> Peer -> Maybe (Peer,Route)
-    -- removePeer  :: Rib -> Peer -> [Prefix, (Peer,Route)]
-    -- lookup :: Rib -> Prefix -> Maybe (Peer,Route)
-    -- mkRib :: ((Peer,Route) -> (Peer,Route) -> Ordering) -> Rib
+    withdraw :: rib -> Prefix -> Peer -> (rib, Maybe (Peer,Route))
+    removePeer  :: rib -> Peer -> (rib, [(Prefix, (Peer,Route))])
+    lookup :: rib -> Prefix -> Maybe (Peer,Route)
+    mkRib :: ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
 
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                      ,  locRib :: Map.Map Prefix (Peer,Route)
                      ,  adjRibIn :: Map.Map Prefix (Map.Map Peer Route) }
 
 instance Rib MapRib where
-    update rib prefix peer route = (rib',result) where
-        rib' = MapRib { fSel = fSel rib, locRib = locRib', adjRibIn = adjRibIn' }
+    mkRib compare = MapRib { fSel = compare , locRib = Map.empty , adjRibIn = Map.empty }
+    lookup rib prefix = Map.lookup prefix (locRib rib)
+    removePeer rib peer = (rib,[])
+    withdraw rib prefix peer = (\(r,(old,Nothing)) -> (r,old)) $ ( adjust rib prefix peer Nothing)
+    update rib prefix peer route = adjust rib prefix peer (Just route)
+
+    adjust rib prefix peer route = (rib',result) where
+        rib' = MapRib { fSel = fSel rib, locRib = newLocRib, adjRibIn = newAdjRibIn }
+
+        oldLocRib = locRib rib
+        oldAdjRibIn = adjRibIn rib
 
         -- updating adjRibIn - 
 
         --    when the prefix is not present then the input target for the new peer value at this prefix is the empty map
-        oldPrefixMap = fromMaybe Map.empty ( Map.lookup prefix (adjRibIn rib))
+        oldPrefixMap = fromMaybe Map.empty ( Map.lookup prefix oldAdjRibIn )
 
         -- insert function simply overwrites any existing entry - unless it was also the best route we don't care...
         --     because if it is/was best route it will be in locRib too, so no need to worry here
-        newPrefixMap = Map.insert peer route oldPrefixMap
+        newPrefixMap = maybe (Map.delete peer oldPrefixMap)
+                             (\x -> Map.insert peer x oldPrefixMap)
+                             route
 
         -- similarly, we can simply replace the old one with the new one here....
-        adjRibIn' = Map.insert prefix newPrefixMap ( adjRibIn rib)
+        -- note (1) even if the operation was delete, this is still insert (replace, really)
+        -- note (2) (corrolary of note (1)) if the prefix is now empty of routes, it will still remain in the AdjRibIn
+        -- this is fine, as long as no-one uses adjribin for other purposes - it is NOT the same as locRib!!!
+        newAdjRibIn = Map.insert prefix newPrefixMap oldAdjRibIn
 
         -- now check if the new best route has changed for this prefix
         -- first, calculate the new best route:
-        newBestRoute = Data.List.maximumBy (fSel rib) (Map.toList newPrefixMap)
+        adjRibList = (Map.toList newPrefixMap)
+        newBestRoute | null adjRibList = Nothing
+                     | otherwise = Just $ Data.List.maximumBy (fSel rib) adjRibList
+
         -- there is a subtle point next, regarding comparing the new and old best routes....
         --     if the new best route is to a different peer then it is clearly a change, which must be disseminated
         --     but if the new and old calculated route is from the same peer we would need to know if it is different at the route level
@@ -42,18 +62,27 @@ instance Rib MapRib where
         --     this is a change, otherwise if the best route is from another peer then it is not - so no need to compare routes, ever....
         -- TLDR summary - check the peer in the calculated new best route - only iff it is the peer given in the update request is it a change of route
 
-        bestRouteChanged = (fst newBestRoute) == peer
+        -- in bestRouteChanged if the newBestRoute is empty then the route must have changed due to a withdraw
+        -- unless the rib was already empty and this was an erroneous withdraw
+        -- however this is still fine since the generated result will simply be (Nothing,Nothing) which is the same as if
+        -- the withdraw took out a non selected routed...
+        bestRouteChanged = maybe True
+                                 ((peer ==) . fst )
+                                 -- (\newRoute -> (fst newRoute) == peer)
+                                 newBestRoute
 
-        locRib' = if bestRouteChanged then Map.insert prefix newBestRoute (locRib rib) else (locRib rib) 
+        newLocRib = if bestRouteChanged then updatedLocRib else oldLocRib where
+            updatedLocRib = maybe (Map.delete prefix oldLocRib) ( \newRoute -> Map.insert prefix newRoute oldLocRib) newBestRoute
+        --locRib' = if bestRouteChanged then Map.insert prefix newBestRoute (locRib rib) else (locRib rib) 
 
         -- we are now done building the update Rib values and need to construct the 'result' value which is a '(Maybe (Peer,Route),(Peer,Route))'
-        result = if bestRouteChanged then (oldBestRoute,Just newBestRoute) else (Nothing,Nothing)
+        result = if bestRouteChanged then (oldBestRoute, newBestRoute) else (Nothing,Nothing)
         -- note, we only need to know now what was the previous best route, so 'locRib' actually is never touched unless it needs to change
         -- also note, as an optimisation (***TODO measure the impact?), the locRib can be updated and queried simultaneously with 'insertLookupWithKey'
         --    (note - 'updateLookupWithKey' does not always return the old value, insertLookupWithKey does).
 
         -- this is the simple version.....
-        oldBestRoute = Map.lookup prefix (locRib rib)
+        oldBestRoute = Map.lookup prefix oldLocRib
 
         -- optimised version: 
         -- require a simpler function than
@@ -68,9 +97,6 @@ instance Rib MapRib where
         insertLookup = Map.insertLookupWithKey f where f _ new_value _ = new_value
 
         -- and the derived results are just:
-        (_oldBestRoute,_locRib') = insertLookup prefix newBestRoute (locRib rib)
+        -- *** !!!! (_oldBestRoute,_newLocRib) = insertLookup prefix newBestRoute oldLocRib
 
-
-
-
-
+        -- but note may need adjustment to allow for the delete(withdraw) action
