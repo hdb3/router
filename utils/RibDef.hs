@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-module RIB where
+module RibDef where
 import qualified Data.Map.Strict as Map
 import qualified Data.List
 import Data.Maybe(fromMaybe)
@@ -17,11 +17,42 @@ class Rib rib where
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                      ,  locRib :: Map.Map Prefix (Peer,Route)
                      ,  adjRibIn :: Map.Map Prefix (Map.Map Peer Route) }
+instance Show MapRib where
+    show (MapRib _ locRib adjRibIn) = "locRib:   { " ++ show locRib ++ " } \n" ++
+                                      "adjRibIn: { " ++ show adjRibIn ++ " }" 
 
 instance Rib MapRib where
     mkRib compare = MapRib { fSel = compare , locRib = Map.empty , adjRibIn = Map.empty }
     lookup rib prefix = Map.lookup prefix (locRib rib)
-    removePeer rib peer = (rib,[])
+    -- remove peer 
+    -- in the absence of a per peer prefix table the peer removal process
+    -- must traverse the entire prefix tree (adjribin) to remove peer entries
+    -- the challenge is to avoid traversing the tree twice.... once to record the prefixes present for subsequent removal from locRib etc,
+    -- and once again to actually remove from the map.  (The second traversal need not be complete, since the list of keys should have been
+    -- already retrived on the fists pass...
+    -- the simplest implmentation consist in calling 'withdraw' for every prefix
+    -- however even this requires a prefix list to execute
+    -- the Map operation updateLookupWithKey can delete an entry and return the key, but not the value...
+    -- 
+    {- outline solution - 
+       use a fold to build a list of prefixes populated by the peer
+       use the resulting prefix list to drive existing withdraw function for each prefix
+       collect the withdraw results as we go...
+
+       an alternate: lookup list first in locRib - only call withdraw where the lookup succeeds, otherwise just delete without rerunning route selection...
+                     benefit would be reduced running time when the most common operation is just delete without change of selected route
+    -}
+
+    -- removePeer rib peer = (rib,[])
+    removePeer rib peer = (newRib,results) where
+        -- newRib = MapRib { fSel = fSel rib, locRib = newLocRib, adjRibIn = newAdjRibIn }
+        -- get the populated prefixes for this peer:
+        prefixesForPeer = Map.foldrWithKey' f [] (adjRibIn rib) where f k v l = if (Map.member peer v) then k:l else l
+        -- fold over the prefixes with withdraw, accumulating the results and updating the map
+        (results,newRib) = Data.List.foldl' f ([],rib) prefixesForPeer where f (l,r) pfx = let (r',m) = withdraw r pfx peer
+                                                                                               l' = maybe l (\x -> (pfx,x):l) m
+                                                                                           in (l',r') 
+
     withdraw rib prefix peer = (\(r,(old,Nothing)) -> (r,old)) $ ( adjust rib prefix peer Nothing)
     update rib prefix peer route = adjust rib prefix peer (Just route)
 

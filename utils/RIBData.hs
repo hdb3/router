@@ -13,7 +13,7 @@ data Peer = Peer { isExternal :: Bool
                  ,  peerBGPid :: IPv4
                  ,  peerIPv4 :: IPv4
                  ,  localIPv4 :: IPv4
-                 }
+                 } deriving Show
 
 data Route =  Route { localPref :: Word32
                     , pathAttributes :: [PathAttribute]
@@ -22,7 +22,8 @@ data Route =  Route { localPref :: Word32
                     , med :: Word32
                     , fromEBGP :: Bool
                     }
-
+instance Show Route where
+    show r = "Route {}"
 
 instance Eq Route where
     r1 == r2 = True -- dummy instance because we must have one for the later ord function....
