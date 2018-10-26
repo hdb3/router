@@ -15,10 +15,12 @@ class Rib rib where
     removePeer  :: (Prefix prefix) => rib -> Peer -> (rib, [(prefix, (Peer,Route))])
     lookup      :: (Prefix prefix) => rib -> prefix -> Maybe (Peer,Route)
     mkRib       ::                    ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
+    dumpRib     :: (Prefix prefix) => rib -> ([(prefix, (Peer,Route))],[(prefix, [(Peer,Route)])])
 
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                      ,  locRib :: Map.Map Int (Peer,Route)
                      ,  adjRibIn :: Map.Map Int (Map.Map Peer Route) }
+
 instance Show MapRib where
     show mr = "locRib:   { " ++ show ( locRib mr ) ++ " } \n" ++
               "adjRibIn: { " ++ show ( adjRibIn mr ) ++ " }" 
@@ -44,6 +46,10 @@ instance Rib MapRib where
        an alternate: lookup list first in locRib - only call withdraw where the lookup succeeds, otherwise just delete without rerunning route selection...
                      benefit would be reduced running time when the most common operation is just delete without change of selected route
     -}
+
+    --dumpRib _ = ([],[])
+    dumpRib rib = (getLocRib rib,[]) where
+        getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
 
     removePeer rib peer = (newRib,results) where
         -- get the populated prefixes for this peer:

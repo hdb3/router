@@ -4,10 +4,7 @@ module RIBData where
 import Data.Word
 import Data.IP(IPv4)
 
--- import Prefix
 import BGPlib
-
--- type Prefix = Word64
 
 data Peer = Peer { isExternal :: Bool
                  ,  peerAS :: Word32
@@ -24,10 +21,10 @@ data Route =  Route { localPref :: Word32
                     , fromEBGP :: Bool
                     }
 instance Show Route where
-    show r = "Route {}"
+    show _ = "Route {}"
 
 instance Eq Route where
-    r1 == r2 = True -- dummy instance because we must have one for the later ord function....
+    _ == _ = True -- dummy instance because we must have one for the later ord function....
 
 instance Eq Peer where
     p1 == p2 = peerBGPid p1 == peerBGPid p2

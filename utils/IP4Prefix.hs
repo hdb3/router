@@ -1,11 +1,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module IP4Prefix where
 import Data.Word
 import Data.Bits
 import Data.IP
 import Data.String(IsString,fromString)
 import Prefix
+
+instance Prefix IP4Prefix where
+    fromInt = fromIntegral
+    toInt = fromIntegral
 
 instance Prefix (AddrRange IPv4) where
     fromInt = toAddrRange . fromIntegral
@@ -24,7 +29,7 @@ fromAddrRange :: AddrRange IPv4 -> Word64
 fromAddrRange ar = intFromIpSubnet (fromIntegral $ toHostAddress ip) (fromIntegral subnet) where
                    (ip,subnet) = addrRangePair ar
  
-newtype IP4Prefix = IP4Prefix Word64 deriving Eq
+newtype IP4Prefix = IP4Prefix Word64 deriving (Eq,Enum,Ord,Num,Real,Integral)
 
 instance Show IP4Prefix where
     show (IP4Prefix x) = show $ toAddrRange x
