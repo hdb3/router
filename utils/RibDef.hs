@@ -1,25 +1,28 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 module RibDef where
 import qualified Data.Map.Strict as Map
 import qualified Data.List
 import Data.Maybe(fromMaybe)
 
-import Prefix
+--import Prefix
+import IP4Prefix
 import RIBData
 
+type Prefix = IP4Prefix
 class Rib rib where 
-    adjust      :: (Prefix prefix) => rib -> prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    update      :: (Prefix prefix) => rib -> prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    withdraw    :: (Prefix prefix) => rib -> prefix -> Peer -> (rib, Maybe (Peer,Route))
-    removePeer  :: (Prefix prefix) => rib -> Peer -> (rib, [(prefix, (Peer,Route))])
-    lookup      :: (Prefix prefix) => rib -> prefix -> Maybe (Peer,Route)
+    adjust      :: rib -> Prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
+    update      :: rib -> Prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
+    withdraw    :: rib -> Prefix -> Peer -> (rib, Maybe (Peer,Route))
+    removePeer  :: rib -> Peer -> (rib, [(Prefix, (Peer,Route))])
+    lookup      :: rib -> Prefix -> Maybe (Peer,Route)
     mkRib       ::                    ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
-    dumpRib     :: (Prefix prefix) => rib -> ([(prefix, (Peer,Route))],[(prefix, [(Peer,Route)])])
+    dumpRib     :: rib -> ([(Prefix, (Peer,Route))],[(Prefix, [(Peer,Route)])])
 
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
-                     ,  locRib :: Map.Map Int (Peer,Route)
-                     ,  adjRibIn :: Map.Map Int (Map.Map Peer Route) }
+                                               , locRib :: Map.Map Int (Peer,Route)
+                                               , adjRibIn :: Map.Map Int (Map.Map Peer Route) }
 
 instance Show MapRib where
     show mr = "locRib:   { " ++ show ( locRib mr ) ++ " } \n" ++
@@ -49,7 +52,10 @@ instance Rib MapRib where
 
     --dumpRib _ = ([],[])
     dumpRib rib = (getLocRib rib,[]) where
-        getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
+        fi :: Int -> Prefix
+        fi = fromInt
+        getLocRib rib = map (\(k,v) -> (fi k,v)) $ Map.toAscList (locRib rib)
+        --getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
 
     removePeer rib peer = (newRib,results) where
         -- get the populated prefixes for this peer:
@@ -57,7 +63,7 @@ instance Rib MapRib where
 
         -- fold over the prefixes with withdraw, accumulating the results and updating the map
         (results,newRib) = Data.List.foldl' f ([],rib) prefixesForPeer where
-            f :: (Prefix prefix) => ([(prefix, (Peer,Route))],MapRib) -> Int -> ([(prefix, (Peer,Route))],MapRib)
+            f :: ([(Prefix, (Peer,Route))],MapRib) -> Int -> ([(Prefix, (Peer,Route))],MapRib)
             f (l,r) i = let pfx = fromInt i -- note this single definition of pfx is needed to allow the following two lines to be unambiguous (and thus to compile)
                                             -- the function signature for 'f', above, though is just for documentation ;-)
                             (r',m) = withdraw r pfx peer

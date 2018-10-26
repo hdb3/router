@@ -12,9 +12,17 @@ instance Prefix IP4Prefix where
     fromInt = fromIntegral
     toInt = fromIntegral
 
+fromInt :: Int -> IP4Prefix
+fromInt = fromIntegral
+
+toInt :: IP4Prefix -> Int
+toInt = fromIntegral
+
+{-
 instance Prefix (AddrRange IPv4) where
     fromInt = toAddrRange . fromIntegral
     toInt = fromIntegral . fromAddrRange
+-}
 
 ipFromInt :: Word64 -> Word32
 ipFromInt w64 = fromIntegral $ unsafeShiftR w64 32

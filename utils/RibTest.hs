@@ -11,10 +11,16 @@ main = do
     -- let rib = mkRib (compare :: ((Peer,Route) -> (Peer,Route) -> Ordering))
     print rib0
     print prefix1
-    let rib1 = update rib0 prefix1 peer1 route1
+    let rib1 = fst $ update rib0 prefix1 peer1 route1
+        rib2 = fst $ update rib1 prefix2 peer2 route2
+    putStrLn "\n---------------\n"
+    print rib1
+    putStrLn "\n. . . . . . . .\n"
     print $ dumpRib rib1
+    putStrLn "\n---------------\n"
+    print rib2
+    putStrLn "\n---------------\n"
 {-
-        rib2 = update rib1 prefix2 peer2 route2
     print rib2
     print $ RibDef.lookup rib2 prefix1
     print $ RibDef.lookup rib2 prefix2
