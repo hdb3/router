@@ -4,9 +4,10 @@ module RIBData where
 import Data.Word
 import Data.IP(IPv4)
 
+-- import Prefix
 import BGPlib
 
-type Prefix = Word64
+-- type Prefix = Word64
 
 data Peer = Peer { isExternal :: Bool
                  ,  peerAS :: Word32

@@ -4,26 +4,28 @@ module RibDef where
 import qualified Data.Map.Strict as Map
 import qualified Data.List
 import Data.Maybe(fromMaybe)
+
+import Prefix
 import RIBData
 
 class Rib rib where 
-    adjust :: rib -> Prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    update :: rib -> Prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    withdraw :: rib -> Prefix -> Peer -> (rib, Maybe (Peer,Route))
-    removePeer  :: rib -> Peer -> (rib, [(Prefix, (Peer,Route))])
-    lookup :: rib -> Prefix -> Maybe (Peer,Route)
-    mkRib :: ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
+    adjust      :: (Prefix prefix) => rib -> prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
+    update      :: (Prefix prefix) => rib -> prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
+    withdraw    :: (Prefix prefix) => rib -> prefix -> Peer -> (rib, Maybe (Peer,Route))
+    removePeer  :: (Prefix prefix) => rib -> Peer -> (rib, [(prefix, (Peer,Route))])
+    lookup      :: (Prefix prefix) => rib -> prefix -> Maybe (Peer,Route)
+    mkRib       ::                    ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
 
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
-                     ,  locRib :: Map.Map Prefix (Peer,Route)
-                     ,  adjRibIn :: Map.Map Prefix (Map.Map Peer Route) }
+                     ,  locRib :: Map.Map Int (Peer,Route)
+                     ,  adjRibIn :: Map.Map Int (Map.Map Peer Route) }
 instance Show MapRib where
-    show (MapRib _ locRib adjRibIn) = "locRib:   { " ++ show locRib ++ " } \n" ++
-                                      "adjRibIn: { " ++ show adjRibIn ++ " }" 
+    show mr = "locRib:   { " ++ show ( locRib mr ) ++ " } \n" ++
+              "adjRibIn: { " ++ show ( adjRibIn mr ) ++ " }" 
 
 instance Rib MapRib where
-    mkRib compare = MapRib { fSel = compare , locRib = Map.empty , adjRibIn = Map.empty }
-    lookup rib prefix = Map.lookup prefix (locRib rib)
+    mkRib cmp = MapRib { fSel = cmp , locRib = Map.empty , adjRibIn = Map.empty }
+    lookup rib prefix = Map.lookup (toInt prefix) (locRib rib)
     -- remove peer 
     -- in the absence of a per peer prefix table the peer removal process
     -- must traverse the entire prefix tree (adjribin) to remove peer entries
@@ -43,20 +45,24 @@ instance Rib MapRib where
                      benefit would be reduced running time when the most common operation is just delete without change of selected route
     -}
 
-    -- removePeer rib peer = (rib,[])
     removePeer rib peer = (newRib,results) where
-        -- newRib = MapRib { fSel = fSel rib, locRib = newLocRib, adjRibIn = newAdjRibIn }
         -- get the populated prefixes for this peer:
-        prefixesForPeer = Map.foldrWithKey' f [] (adjRibIn rib) where f k v l = if (Map.member peer v) then k:l else l
-        -- fold over the prefixes with withdraw, accumulating the results and updating the map
-        (results,newRib) = Data.List.foldl' f ([],rib) prefixesForPeer where f (l,r) pfx = let (r',m) = withdraw r pfx peer
-                                                                                               l' = maybe l (\x -> (pfx,x):l) m
-                                                                                           in (l',r') 
+        prefixesForPeer = Map.foldrWithKey' f [] (adjRibIn rib) where f k v l = if Map.member peer v then k:l else l
 
-    withdraw rib prefix peer = (\(r,(old,Nothing)) -> (r,old)) $ ( adjust rib prefix peer Nothing)
+        -- fold over the prefixes with withdraw, accumulating the results and updating the map
+        (results,newRib) = Data.List.foldl' f ([],rib) prefixesForPeer where
+            f :: (Prefix prefix) => ([(prefix, (Peer,Route))],MapRib) -> Int -> ([(prefix, (Peer,Route))],MapRib)
+            f (l,r) i = let pfx = fromInt i -- note this single definition of pfx is needed to allow the following two lines to be unambiguous (and thus to compile)
+                                            -- the function signature for 'f', above, though is just for documentation ;-)
+                            (r',m) = withdraw r pfx peer
+                            l' = maybe l (\x -> (pfx,x):l) m
+                        in (l',r') 
+
+    withdraw rib prefix peer = (\(r,(old,Nothing)) -> (r,old)) $ adjust rib prefix peer Nothing
     update rib prefix peer route = adjust rib prefix peer (Just route)
 
-    adjust rib prefix peer route = (rib',result) where
+    adjust rib prefix' peer route = (rib',result) where
+        prefix = toInt prefix'
         rib' = MapRib { fSel = fSel rib, locRib = newLocRib, adjRibIn = newAdjRibIn }
 
         oldLocRib = locRib rib
@@ -81,7 +87,7 @@ instance Rib MapRib where
 
         -- now check if the new best route has changed for this prefix
         -- first, calculate the new best route:
-        adjRibList = (Map.toList newPrefixMap)
+        adjRibList = Map.toList newPrefixMap
         newBestRoute | null adjRibList = Nothing
                      | otherwise = Just $ Data.List.maximumBy (fSel rib) adjRibList
 
