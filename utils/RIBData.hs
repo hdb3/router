@@ -6,22 +6,27 @@ import Data.IP(IPv4)
 
 import BGPlib
 
-data Peer = Peer { isExternal :: Bool
+data Peer = Peer {  peerName :: String
+                 ,  isExternal :: Bool
                  ,  peerAS :: Word32
                  ,  peerBGPid :: IPv4
                  ,  peerIPv4 :: IPv4
                  ,  localIPv4 :: IPv4
-                 } deriving Show
+                 }
 
-data Route =  Route { localPref :: Word32
+data Route =  Route { routeName :: String
+                    , localPref :: Word32
                     , pathAttributes :: [PathAttribute]
                     , pathLength :: Int
                     , origin :: Word8
                     , med :: Word32
                     , fromEBGP :: Bool
                     }
+instance Show Peer where
+    show p = "Peer \"" ++ peerName p ++ "\""
+
 instance Show Route where
-    show _ = "Route {}"
+    show r = "Route \"" ++ routeName r ++ "\""
 
 instance Eq Route where
     _ == _ = True -- dummy instance because we must have one for the later ord function....

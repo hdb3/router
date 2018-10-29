@@ -25,36 +25,22 @@ data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                                                , adjRibIn :: Map.Map Int (Map.Map Peer Route) }
 
 instance Show MapRib where
-    show mr = "locRib:   { " ++ show ( locRib mr ) ++ " } \n" ++
-              "adjRibIn: { " ++ show ( adjRibIn mr ) ++ " }" 
+    show mr = let (loc,adj) = dumpRib mr
+              in "locRib:   { " ++ show loc ++ " } \n" ++
+              "adjRibIn: { " ++ show adj ++ " }" 
 
 instance Rib MapRib where
+
     mkRib cmp = MapRib { fSel = cmp , locRib = Map.empty , adjRibIn = Map.empty }
+
     lookup rib prefix = Map.lookup (toInt prefix) (locRib rib)
-    -- remove peer 
-    -- in the absence of a per peer prefix table the peer removal process
-    -- must traverse the entire prefix tree (adjribin) to remove peer entries
-    -- the challenge is to avoid traversing the tree twice.... once to record the prefixes present for subsequent removal from locRib etc,
-    -- and once again to actually remove from the map.  (The second traversal need not be complete, since the list of keys should have been
-    -- already retrived on the fists pass...
-    -- the simplest implmentation consist in calling 'withdraw' for every prefix
-    -- however even this requires a prefix list to execute
-    -- the Map operation updateLookupWithKey can delete an entry and return the key, but not the value...
-    -- 
-    {- outline solution - 
-       use a fold to build a list of prefixes populated by the peer
-       use the resulting prefix list to drive existing withdraw function for each prefix
-       collect the withdraw results as we go...
 
-       an alternate: lookup list first in locRib - only call withdraw where the lookup succeeds, otherwise just delete without rerunning route selection...
-                     benefit would be reduced running time when the most common operation is just delete without change of selected route
-    -}
-
-    --dumpRib _ = ([],[])
-    dumpRib rib = (getLocRib rib,[]) where
+    dumpRib rib = (getLocRib rib,getAdjRibIn rib) where
         fi :: Int -> Prefix
         fi = fromInt
+        --getLocRib rib = []
         getLocRib rib = map (\(k,v) -> (fi k,v)) $ Map.toAscList (locRib rib)
+        getAdjRibIn rib = map (\(k,v) -> (fi k,f v)) $ Map.toAscList (adjRibIn rib) where f = Map.toAscList
         --getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
 
     removePeer rib peer = (newRib,results) where
