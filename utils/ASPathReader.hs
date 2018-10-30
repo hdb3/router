@@ -1,21 +1,12 @@
 {-# LANGUAGE FlexibleInstances,FlexibleContexts, OverloadedStrings #-}
 module Main where
-import System.IO
 import qualified Data.List
-import Data.List(delete,sortOn,foldl')
+import Data.List(sortOn,foldl')
 import qualified Data.Map.Strict as DMS
-import Data.IP
 import Data.Word
 
 import BGPlib
-import Common
-import Prefixes
 import BGPReader
-import qualified Overlap
-import PrefixTable
-import BGPData
-import PrefixTableUtils
-import AdjRIBOut
 
 main = do
 
