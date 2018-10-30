@@ -16,7 +16,7 @@ main = do
     putStrLn $ "prefixes: " ++ show prefixCount
     -- putStrLn $ unlines $ mapt (customShowRoute . snd , shorten ) rib
     -- putStrLn $ unlines $ map (customShowRoute . snd . fst ) rib
-    let paths = map (stripASPath . getASPath . snd . fst) rib
+    let paths = map (getASPathContent . snd . fst) rib
         simplePaths = map flattenPath paths
         longestPath = Data.List.maximum (map length simplePaths)
         simplerPaths = map removePrepends simplePaths
@@ -37,10 +37,11 @@ main = do
     -- putStrLn $ "transitAS distribution':\n" ++ unlines ( map show transitASDistribution' )
     putStrLn $ reportSegments paths
 
-customShowRoute = showASPath . getASPath
+customShowRoute = showPath . getASPathContent
 -- customShowRoute route = show (pathAttributes route)
 
 mapt (f,g) = map (\(a,b) -> (f a ++ " " ++ g b))
+{-
 showASPath = showPath . stripASPath
 
 stripASPath :: PathAttribute -> [ASSegment Word32]
@@ -48,6 +49,7 @@ stripASPath (PathAttributeASPath (ASPath2 path)) = stripASPath $ PathAttributeAS
 stripASPath (PathAttributeASPath (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath4 path)) = path
 stripASPath (PathAttributeAS4Path (ASPath2 path)) = undefined
+-}
 
 reportSegments paths = unlines [heading,all,sequences,sequenceSet1,sequenceSetN,seqSetSeq] where
     heading = "\nSequence Analysis"

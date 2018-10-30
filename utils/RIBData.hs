@@ -22,6 +22,17 @@ data Route =  Route { routeName :: String
                     , med :: Word32
                     , fromEBGP :: Bool
                     }
+
+makeRoute :: Bool -> [PathAttribute] -> Route
+makeRoute fromEBGP attributes = Route {
+    routeName = "AS" ++ show (getASPathOrigin attributes) ,
+    localPref = getLocalPref attributes ,
+    pathAttributes = attributes ,
+    pathLength = getASPathLength attributes , 
+    origin = getOrigin attributes , 
+    med = getMED attributes ,
+    fromEBGP = fromEBGP
+    }
 instance Show Peer where
     show p = "Peer \"" ++ peerName p ++ "\""
 

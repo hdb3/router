@@ -1,5 +1,4 @@
 module Main where
-import System.IO
 
 import BGPReader(readRib)
 
