@@ -20,6 +20,16 @@ class Rib rib where
     mkRib       ::                    ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
     dumpRib     :: rib -> ([(Prefix, (Peer,Route))],[(Prefix, [(Peer,Route)])])
 
+-- full common form for results allows arbitrary composition of functions with accumulated updates
+
+    update_      :: Prefix -> Peer -> Route -> rib -> ( [(Prefix, Maybe (Peer,Route), Maybe (Peer,Route))], rib)
+    update_ p x y r = ([(p,a,b)],r') where ((a,b),r') = update p x y r 
+    withdraw_    :: Prefix -> Peer ->          rib -> ( [(Prefix, Maybe (Peer,Route), Maybe (Peer,Route))], rib)
+    withdraw_ p x r = ([(p,z,Nothing)],r') where (z,r') = withdraw p x r 
+    removePeer_  :: Peer ->                    rib -> ( [(Prefix, Maybe (Peer,Route), Maybe (Peer,Route))], rib)
+    removePeer_ p r = (map (\(p,a) -> (p, Just a, Nothing)) z, r') where (z,r') = removePeer p r 
+
+
 data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                                                , locRib :: Map.Map Int (Peer,Route)
                                                , adjRibIn :: Map.Map Int (Map.Map Peer Route) }
