@@ -7,6 +7,16 @@ import IP4Prefix
 
 main = do
     putStrLn "RibTest"
+    let emptyRib = mkRib compare :: MapRib
+    let updates = Main.sequence [ update_ prefix1 peer1 route1
+                                , update_ prefix2 peer2 route2
+                                , update_ prefix2 peer1 route1
+                                , withdraw_ prefix1 peer1
+                                , removePeer_ peer2
+                                ]
+
+        ribx = updates emptyRib
+    print ribx
     let rib0 = mkRib compare :: MapRib
     -- let rib = mkRib (compare :: ((Peer,Route) -> (Peer,Route) -> Ordering))
     print rib0
@@ -24,6 +34,17 @@ main = do
     print $ RibDef.lookup rib2 prefix1
     print $ RibDef.lookup rib2 prefix2
 -}
+
+sequence fx r = foldl (\b f -> snd $ f b) r fx
+sequence' fx r0 = foldl m ([],r0) fx where
+    m (ax,r) f = let (a,r') = f r 
+                in (a:ax,r')
+        
+compose' f g r = let (cf,r') = f r
+                     (cg,r'') = g r'
+                 in ( cf ++ cg, r'')
+
+compose f g = snd . g . snd . f
 
 peer1 = Peer "peer1" True 64500 "10.0.0.1" "10.0.0.1" "10.0.0.99"
 peer2 = Peer "peer2" False 64501 "10.0.0.2" "10.0.0.2" "10.0.0.99"
