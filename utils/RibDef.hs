@@ -12,11 +12,11 @@ import RIBData
 
 type Prefix = IP4Prefix
 class Rib rib where 
-    adjust      :: rib -> Prefix -> Peer -> Maybe Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    update      :: rib -> Prefix -> Peer -> Route -> (rib, ( Maybe (Peer,Route),Maybe (Peer,Route)))
-    withdraw    :: rib -> Prefix -> Peer -> (rib, Maybe (Peer,Route))
-    removePeer  :: rib -> Peer -> (rib, [(Prefix, (Peer,Route))])
-    lookup      :: rib -> Prefix -> Maybe (Peer,Route)
+    adjust      :: Prefix -> Peer -> Maybe Route -> rib -> (( Maybe (Peer,Route),Maybe (Peer,Route)), rib)
+    update      :: Prefix -> Peer -> Route -> rib -> (( Maybe (Peer,Route),Maybe (Peer,Route)), rib)
+    withdraw    :: Prefix -> Peer -> rib -> (Maybe (Peer,Route), rib)
+    removePeer  :: Peer -> rib -> ([(Prefix, (Peer,Route))], rib)
+    lookup      :: Prefix -> rib -> Maybe (Peer,Route)
     mkRib       ::                    ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
     dumpRib     :: rib -> ([(Prefix, (Peer,Route))],[(Prefix, [(Peer,Route)])])
 
@@ -33,7 +33,7 @@ instance Rib MapRib where
 
     mkRib cmp = MapRib { fSel = cmp , locRib = Map.empty , adjRibIn = Map.empty }
 
-    lookup rib prefix = Map.lookup (toInt prefix) (locRib rib)
+    lookup prefix rib = Map.lookup (toInt prefix) (locRib rib)
 
     dumpRib rib = (getLocRib rib,getAdjRibIn rib) where
         fi :: Int -> Prefix
@@ -43,7 +43,7 @@ instance Rib MapRib where
         getAdjRibIn rib = map (\(k,v) -> (fi k,f v)) $ Map.toAscList (adjRibIn rib) where f = Map.toAscList
         --getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
 
-    removePeer rib peer = (newRib,results) where
+    removePeer peer rib = (results,newRib) where
         -- get the populated prefixes for this peer:
         prefixesForPeer = Map.foldrWithKey' f [] (adjRibIn rib) where f k v l = if Map.member peer v then k:l else l
 
@@ -52,14 +52,14 @@ instance Rib MapRib where
             f :: ([(Prefix, (Peer,Route))],MapRib) -> Int -> ([(Prefix, (Peer,Route))],MapRib)
             f (l,r) i = let pfx = fromInt i -- note this single definition of pfx is needed to allow the following two lines to be unambiguous (and thus to compile)
                                             -- the function signature for 'f', above, though is just for documentation ;-)
-                            (r',m) = withdraw r pfx peer
+                            (m,r') = withdraw pfx peer r
                             l' = maybe l (\x -> (pfx,x):l) m
                         in (l',r') 
 
-    withdraw rib prefix peer = (\(r,(old,Nothing)) -> (r,old)) $ adjust rib prefix peer Nothing
-    update rib prefix peer route = adjust rib prefix peer (Just route)
+    withdraw prefix peer rib = (\((old,Nothing),r) -> (old,r)) $ adjust prefix peer Nothing rib
+    update prefix peer route rib = adjust prefix peer (Just route) rib
 
-    adjust rib prefix' peer route = (rib',result) where
+    adjust prefix' peer route rib = (result,rib') where
         prefix = toInt prefix'
         rib' = MapRib { fSel = fSel rib, locRib = newLocRib, adjRibIn = newAdjRibIn }
 

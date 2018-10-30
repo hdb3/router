@@ -11,9 +11,9 @@ main = do
     -- let rib = mkRib (compare :: ((Peer,Route) -> (Peer,Route) -> Ordering))
     print rib0
     print prefix1
-    let rib1 = fst $ update rib0 prefix1 peer1 route1
-        rib2 = fst $ update rib1 prefix2 peer2 route2
-        rib3 = fst $ update rib2 prefix2 peer1 route1
+    let rib1 = snd $ update prefix1 peer1 route1 rib0 
+        rib2 = snd $ update prefix2 peer2 route2 rib1
+        rib3 = snd $ update prefix2 peer1 route1 rib2
     putStrLn "\n---------------\n"
     print rib3
     putStrLn "\n. . . . . . . .\n"
