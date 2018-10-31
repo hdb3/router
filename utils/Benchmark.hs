@@ -8,6 +8,14 @@ import Text.Printf
 import BGPlib
 import BGPReader(updateRib,readRib,readGroupedRib)
 import qualified BGPRib
+import RIBData
+
+parseRibRoute ((_,attributes),prefix) = (RIBData.makeRoute True attributes,prefix)
+
+getRoutes = do
+    rib <- readRib
+    putStrLn $ "got " ++ show (length rib) ++ " routes"
+    return $ map parseRibRoute rib
 
 main = test3
 
@@ -15,6 +23,7 @@ test1 = do
     putStrLn "test1 - read file with BGPReader(readRib)"
     t0 <- DT.getSystemTime
     rib <- readRib
+    let routes = map parseRibRoute rib
     t1 <- DT.getSystemTime
     stopwatch "loaded rib" t0
     putStrLn $ "loaded rib in " ++ show (diffSystemTime t0 t1)
