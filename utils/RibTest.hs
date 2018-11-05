@@ -3,65 +3,80 @@ module Main where
 import Data.IP
 import RibDef
 import RIBData
+import MapRib
 import IP4Prefix
 
-main = do
+emptyRib = mkRib compare :: MapRib
+emptyRib' = ([], emptyRib)
+
+print' (a,b) = putStrLn $ showRibChanges a ++ "\n" ++ show b
+
+main = c5 >> c6
+
+c6 = print' $ withdrawM prefix1 peer2 $
+              updateM prefix1 peer1 route1 $
+              updateM prefix1 peer2 route2 emptyRib'
+
+c5 = print' $ withdrawM prefix1 peer2 $
+              updateM prefix1 peer2 route2 $
+              updateM prefix1 peer1 route1 emptyRib'
+
+c4 = print' $ withdrawM prefix1 peer1 $
+              updateM prefix1 peer2 route2 $
+              updateM prefix1 peer1 route1 emptyRib'
+
+c3 = print' $ withdrawM prefix1 peer1 $ updateM prefix1 peer1 route1 emptyRib'
+c2 = print' $ updateM prefix1 peer1 route1 emptyRib'
+c1 = print $ emptyRib
+
+main' = do
     putStrLn "RibTest"
 
-    let riby = buildPeerSequence peer1 routes emptyRib
-        ribz = buildPeerSequence peer2 routes riby
+    let riby = buildUpdateSequence peer1 routes emptyRib
+        ribz = buildUpdateSequence peer2 routes riby
 
-    let riby' = buildPeerSequence' peer1 routes emptyRib'
-        ribz' = buildPeerSequence' peer2 routes ([],riby)
-        ribz'' = buildPeerSequence' peer2 routes $ buildPeerSequence' peer1 routes emptyRib'
-        ribz''' = buildPeerSequence' peer1 routes $ buildPeerSequence' peer2 routes emptyRib'
+    let riby' = buildUpdateSequence' peer1 routes emptyRib'
+        ribz' = buildUpdateSequence' peer2 routes ([],riby)
+        ribz'' = buildUpdateSequence' peer2 routes $ buildUpdateSequence' peer1 routes emptyRib'
+        ribz''' = buildUpdateSequence' peer1 routes $ buildUpdateSequence' peer2 routes emptyRib'
+        ribz'''' = removePeerM peer1 ribz'''
+        ribz''''' = removePeerM peer2 ribz'''
 
     putStrLn "\n---------------\n"
     putStrLn "riby\n"
     print riby
     putStrLn "\n. . . . . . . .\n"
-    putStrLn $ showRibChanges $ concat $ fst riby'
+    putStrLn $ showRibChanges $ fst riby'
 
     putStrLn "\n---------------\n"
     putStrLn "ribz\n"
     print ribz
     putStrLn "\n. . . . . . . .\n"
-    putStrLn $ showRibChanges $ concat $ fst ribz'
+    putStrLn $ showRibChanges $ fst ribz'
     putStrLn "\n. . . . . . . .\n"
-    putStrLn $ showRibChanges $ concat $ fst ribz''
+    putStrLn $ showRibChanges $ fst ribz''
     putStrLn "\n---------------\n"
 
     putStrLn "\n---------------\n"
     putStrLn "ribz'''\n"
     print $ snd ribz'''
     putStrLn "\n. . . . . . . .\n"
-    putStrLn $ showRibChanges $ concat $ fst ribz'''
+    putStrLn $ showRibChanges $ fst ribz'''
     putStrLn "\n---------------\n"
 
-showRibChanges = unlines . map showRibChange . reverse
-showRibChange (prefix, Nothing, Nothing) = "nul " ++ show prefix
-showRibChange (prefix, Nothing, Just a) = "Add " ++ show prefix ++ " via " ++ (peerName $ fst a)
-showRibChange (prefix, Just a, Just b) = "Chg " ++ show prefix ++ " via " ++ (peerName $ fst a) ++ " -> " ++ (peerName $ fst b)
-showRibChange (prefix, Just a, Nothing) = "Del " ++ show prefix ++ " via " ++ (peerName $ fst a)
+    putStrLn "\n---------------\n"
+    putStrLn "ribz''''\n"
+    print $ snd ribz''''
+    putStrLn "\n. . . . . . . .\n"
+    putStrLn $ showRibChanges $ fst ribz''''
+    putStrLn "\n---------------\n"
 
-emptyRib = mkRib compare :: MapRib
-emptyRib' = ([], emptyRib)
-makeUpdateAction peer (prefix,route) = update_ prefix peer route
-buildPeerSequence peer routes = Main.sequence $ map (makeUpdateAction peer) routes
-buildPeerSequence' peer routes = Main.sequence' $ map (makeUpdateAction peer) routes
-
-sequence fx r = foldl (\b f -> snd $ f b) r fx
-
---sequence' fx r0 = foldl m ([],r0) fx where
-sequence' fx (ax0,r0) = foldl m (ax0,r0) fx where
-    m (ax,r) f = let (a,r') = f r 
-                in (a:ax,r')
-        
-compose' f g r = let (cf,r') = f r
-                     (cg,r'') = g r'
-                 in ( cf ++ cg, r'')
-
-compose f g = snd . g . snd . f
+    putStrLn "\n---------------\n"
+    putStrLn "ribz'''''\n"
+    print $ snd ribz'''''
+    putStrLn "\n. . . . . . . .\n"
+    putStrLn $ showRibChanges $ fst ribz'''''
+    putStrLn "\n---------------\n"
 
 routes = [(prefix1,route1),(prefix2,route2),(prefix3,route3)]
 peer1 = Peer "peer1" True 64500 "10.0.0.1" "10.0.0.1" "10.0.0.99"
