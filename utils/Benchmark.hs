@@ -1,5 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
--- import Data.Time.Clock as DT
+import Data.Maybe(isJust)
 import qualified Data.Time.Clock.System as DT
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get
@@ -9,15 +10,48 @@ import BGPlib
 import BGPReader(updateRib,readRib,readGroupedRib)
 import qualified BGPRib
 import RIBData
+import RibDef
+import MapRib
+import qualified IP4Prefix
 
-parseRibRoute ((_,attributes),prefix) = (RIBData.makeRoute True attributes,prefix)
+t = DT.getSystemTime
+peer1 = Peer "peer1" True  64500 "10.0.0.1" "10.0.0.1" "10.0.0.99"
+peer2 = Peer "peer2" False 64501 "10.0.0.2" "10.0.0.2" "10.0.0.99"
+
+emptyMapRib = mkRib compare :: MapRib
+emptyMapRib' = ([], emptyMapRib)
+
+parseRibRoute ((_,attributes),prefix) = (IP4Prefix.fromAddrRange $ toAddrRange prefix, RIBData.makeRoute True attributes)
 
 getRoutes = do
     rib <- readRib
     putStrLn $ "got " ++ show (length rib) ++ " routes"
     return $ map parseRibRoute rib
 
-main = test3
+--query :: ([(RibDef.Prefix, (Peer, Route))], MapRib) -> IO ()
+query rib = do let r = RibDef.lookup "255.255.255.255" rib
+               putStrLn $ if isJust r then "query complete!" else "query complete!" 
+
+
+--main = test3
+main = do
+    t0 <- t
+    routes <- getRoutes
+    stopwatch "loaded rib" t0
+    let mapRib = buildUpdateSequence peer1 routes emptyMapRib
+        mapRib' = buildUpdateSequence' peer1 routes emptyMapRib'
+    query mapRib
+    stopwatch "populated mapRib" t0
+    let mapRib2 = buildUpdateSequence peer1 (take 10 routes) mapRib
+        mapRib2' = buildUpdateSequence' peer1 (take 10 routes) mapRib'
+    query mapRib2
+    stopwatch "populated mapRib with peer2" t0
+    let mapRib3 = removePeer_ peer2 mapRib2
+    query mapRib3
+    stopwatch "depopulated mapRib with peer2" t0
+
+    
+
 
 test1 = do
     putStrLn "test1 - read file with BGPReader(readRib)"
