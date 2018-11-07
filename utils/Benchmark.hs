@@ -14,7 +14,6 @@ import RibDef
 import MapRib
 import qualified IP4Prefix
 
-t = DT.getSystemTime
 peer1 = Peer "peer1" True  64501 "10.0.0.1" "10.0.0.1" "10.0.0.99"
 peer2 = Peer "peer2" False 64502 "10.0.0.2" "10.0.0.2" "10.0.0.99"
 peer3 = Peer "peer3" False 64503 "10.0.0.3" "10.0.0.3" "10.0.0.99"
@@ -30,36 +29,49 @@ getRoutes = do
     return $ map parseRibRoute rib
 
 --query :: ([(RibDef.Prefix, (Peer, Route))], MapRib) -> IO ()
-query rib = do let r = RibDef.lookup "255.255.255.255" rib
-               putStrLn $ if isJust r then "query complete!" else "query complete!" 
+query rib = query' ([],rib)
+
+query' (updates,rib) = do let r = RibDef.lookup "255.255.255.255" rib
+                          putStrLn $ show (length updates) ++ if isJust r then " query complete!" else " query complete" 
 
 
 --main = test3
 main = do
-    t0 <- t
+    let mapRib0 = emptyMapRib'
+        build = buildUpdateSequence'
+        q = query'
+    t0 <- systime
     routes <- getRoutes
     let peerRoutes peer routes = map (\(pfx,rte) -> (pfx, routePrePendAS (peerAS peer) rte)) routes where
             routePrePendAS p r = r { pathAttributes = prePendAS p (pathAttributes r) }
         peer1Routes = peerRoutes peer1 routes
         peer2Routes = peerRoutes peer2 routes
         peer3Routes = peerRoutes peer3 routes
-    stopwatch "loaded rib" t0
-    let mapRib1 = buildUpdateSequence peer2 peer2Routes emptyMapRib
-    query mapRib1
-    stopwatch "populated mapRib with peer 2" t0
+    t1 <- stopwatch "loaded rib" t0 t0
+    let mapRib1 = build peer2 peer2Routes mapRib0
+    q mapRib1
+    t2 <- stopwatch "populated mapRib with peer 2" t0 t1
 
-    let mapRib2 = buildUpdateSequence peer1 peer1Routes mapRib1
-    query mapRib2
-    stopwatch "populated mapRib with peer 1" t0
+    let mapRib2 = build peer1 peer1Routes mapRib1
+    q mapRib2
+    t3 <- stopwatch "populated mapRib with peer 1" t0 t2
 
-    let mapRib3 = buildUpdateSequence peer3 peer3Routes mapRib2
-    query mapRib3
-    stopwatch "populated mapRib with peer 3" t0
+    let mapRib3 = build peer3 peer3Routes mapRib2
+    q mapRib3
+    t4 <- stopwatch "populated mapRib with peer 3" t0 t3
 
-    let mapRib4 = buildUpdateSequence peer2 peer2Routes mapRib3
-    query mapRib4
-    stopwatch "repopulated mapRib with peer 2" t0
+    let mapRib4 = build peer2 peer2Routes mapRib3
+    q mapRib4
+    t5 <- stopwatch "repopulated mapRib with peer 2" t0 t4
 
+    let mapRib5 = build peer1 peer1Routes mapRib4
+    q mapRib5
+    t6 <- stopwatch "repopulated mapRib with peer 1" t0 t5
+
+    let mapRib6 = build peer3 peer3Routes mapRib5
+    q mapRib6
+    t7 <- stopwatch "repopulated mapRib with peer 3" t0 t6
+    return ()
 
 {-
 
@@ -81,60 +93,56 @@ main = do
 
 test1 = do
     putStrLn "test1 - read file with BGPReader(readRib)"
-    t0 <- DT.getSystemTime
+    t0 <- systime
     rib <- readRib
     let routes = map parseRibRoute rib
-    t1 <- DT.getSystemTime
-    stopwatch "loaded rib" t0
+    t1 <- stopwatch "loaded rib" t0 t0
     putStrLn $ "loaded rib in " ++ show (diffSystemTime t0 t1)
     putStrLn $ "got " ++ show (length rib) ++ " routes"
     print (last rib)
-    stopwatch "printed from rib" t0
+    stopwatch "printed from rib" t0 t1
 
+-- timer functions TODO move out of this file
+
+systime = DT.getSystemTime
 diffSystemTime :: DT.SystemTime -> DT.SystemTime -> Double
 diffSystemTime (DT.MkSystemTime s0 ns0) (DT.MkSystemTime s1 ns1) = 
     f s1 ns1 - f s0 ns0 where
     f s ns = ( 0.0 + fromIntegral (s * 1000000000) + fromIntegral ns ) / 1000000000.0
 
-stopwatch s t = do
-    t' <- DT.getSystemTime
+stopwatch s t0 t = do
+    t' <- systime
     -- putStrLn $ s ++ " " ++ show (diffSystemTime t t')
-    let dT = diffSystemTime t t'
-    putStrLn $ s ++ " " ++ if 1.0 > dT then printf "%.3f mS" (1000*dT) else printf "%.3f S" dT 
-
-timer s f = do
-    putStrLn $ "timing function " ++ s
-    t0 <- DT.getSystemTime
-    f
-    stopwatch (s ++ "completed in ") t0 
+    let showDiffTime tx ty = if 1.0 > dT then printf "%.3f ms" (1000*dT) else printf "%.3f s" dT where dT = diffSystemTime tx ty
+    putStrLn $ "elapsed " ++ showDiffTime t0 t' ++ " delta " ++ showDiffTime t t' ++ " " ++ s
+    return t'
 
 test2 = do
-    t0 <- DT.getSystemTime
+    t0 <- systime
     contents <- L.getContents
     putStrLn $ "file length: " ++ show (L.length contents) ++ " bytes"
-    stopwatch "after file read" t0 
+    t1 <- stopwatch "after file read" t0 t0
     let bgpByteStrings = runGet getBGPByteStrings contents
     putStrLn $ "BGP message count : " ++ show (length bgpByteStrings)
-    stopwatch "after wireformat parse" t0 
+    t2 <- stopwatch "after wireformat parse" t0 t1
     let
         bgpMessages = map decodeBGPByteString bgpByteStrings
         updates = map BGPRib.getUpdate $ filter isUpdate bgpMessages
     rib <- BGPRib.newRib BGPRib.dummyPeerData
     mapM_ (updateRib rib) updates
-    stopwatch "after full (?) parse into rib" t0 
+    stopwatch "after full (?) parse into rib" t0 t2
 
 test3 = do
-    t0 <- DT.getSystemTime
+    t0 <- systime
     rib <- readRib
     putStrLn $ "rib length: " ++ show (length rib)
-    stopwatch "rib read duration " t0 
-    t1 <- DT.getSystemTime
+    t1 <- stopwatch "rib read duration " t0 t0
     grib <- readGroupedRib
     putStrLn $ "grib length: " ++ show (length grib)
-    stopwatch "grib read duration " t1 
+    stopwatch "grib read duration " t0 t1 
 
 testN = do
-    t0 <- DT.getSystemTime
+    t0 <- systime
     rib <- readRib
     putStrLn $ "rib length: " ++ show (length rib)
-    stopwatch "after rib read" t0 
+    stopwatch "after rib read" t0 t0
