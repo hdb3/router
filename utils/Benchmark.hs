@@ -82,8 +82,20 @@ main = do
 
     d mapRib6
     t8 <- stopwatch "dumped locRib" t0 t7
-    return ()
 
+    let mapRib7 = removePeerM peer3 mapRib6
+    q mapRib7
+    t9 <- stopwatch "removed peer 3" t0 t8
+
+    let mapRib8 = build peer3 (take 10 peer3Routes) mapRib7
+    q mapRib8
+    t10 <- stopwatch "rerepopulated mapRib with peer 3 (10 routes)" t0 t9
+
+    let mapRib9 = removePeerM peer3 mapRib8
+    q mapRib9
+    t11 <- stopwatch "reremoved peer 3" t0 t10
+
+    return ()
 {-
 
 
