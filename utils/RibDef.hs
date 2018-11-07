@@ -1,10 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 module RibDef where
-import qualified Data.Map.Strict as Map
-import qualified Data.List
-import Data.Maybe(fromMaybe)
 
 import IP4Prefix
 import RIBData
@@ -12,15 +6,15 @@ import RIBData
 type Prefix = IP4Prefix
 type Action = (Prefix, Maybe (Peer,Route), Maybe (Peer,Route))
 type RibM rib = ([Action],rib)
-type RibOp rib = (([Action],rib)) -> (([Action],rib))
+type RibOp rib = ([Action],rib) -> ([Action],rib)
 class Rib rib where
     adjust      :: Prefix -> Peer -> Maybe Route -> rib -> (Action,rib)
 
     update      :: Prefix -> Peer -> Route -> rib -> (Action,rib)
-    update prefix peer route rib = adjust prefix peer (Just route) rib
+    update prefix peer route = adjust prefix peer (Just route)
 
     withdraw    :: Prefix -> Peer -> rib -> (Action,rib)
-    withdraw prefix peer rib = adjust prefix peer Nothing rib
+    withdraw prefix peer = adjust prefix peer Nothing
 
     removePeer  :: Peer -> rib -> RibM rib
     removePeer_  :: Peer -> rib -> rib
@@ -44,9 +38,9 @@ class Rib rib where
 showRibChanges :: [(Prefix, Maybe (Peer, b1), Maybe (Peer, b))] -> String
 showRibChanges = unlines . map showRibChange . reverse
 showRibChange (prefix, Nothing, Nothing) = "nul " ++ show prefix
-showRibChange (prefix, Nothing, Just a) = "Add " ++ show prefix ++ " via " ++ (peerName $ fst a)
-showRibChange (prefix, Just a, Just b) = "Chg " ++ show prefix ++ " via " ++ (peerName $ fst a) ++ " -> " ++ (peerName $ fst b)
-showRibChange (prefix, Just a, Nothing) = "Del " ++ show prefix ++ " via " ++ (peerName $ fst a)
+showRibChange (prefix, Nothing, Just a) = "Add " ++ show prefix ++ " via " ++ peerName (fst a)
+showRibChange (prefix, Just a, Just b) = "Chg " ++ show prefix ++ " via " ++ peerName (fst a) ++ " -> " ++ peerName (fst b)
+showRibChange (prefix, Just a, Nothing) = "Del " ++ show prefix ++ " via " ++ peerName (fst a)
 
 -- wanted  - generic definintion for emptyRib
 --emptyRib = mkRib compare :: MapRib
@@ -66,6 +60,5 @@ buildUpdateSequence' peer routes = RibDef.sequence' $ map (makeUpdateAction peer
 sequence :: Foldable t => t (t1 -> (a, t1)) -> t1 -> t1
 sequence fx r = foldl (\b f -> snd $ f b) r fx
 
-sequence' :: [((a, t) -> (a, t))] -> (a, t) -> (a, t)
-sequence' ([]) s = s
-sequence' (f:fx) s = sequence' fx ( f s )
+sequence' :: [(a, t) -> (a, t)] -> (a, t) -> (a, t)
+sequence' fx s = foldl (\ s f -> f s) s fx
