@@ -15,8 +15,9 @@ import MapRib
 import qualified IP4Prefix
 
 t = DT.getSystemTime
-peer1 = Peer "peer1" True  64500 "10.0.0.1" "10.0.0.1" "10.0.0.99"
-peer2 = Peer "peer2" False 64501 "10.0.0.2" "10.0.0.2" "10.0.0.99"
+peer1 = Peer "peer1" True  64501 "10.0.0.1" "10.0.0.1" "10.0.0.99"
+peer2 = Peer "peer2" False 64502 "10.0.0.2" "10.0.0.2" "10.0.0.99"
+peer3 = Peer "peer3" False 64503 "10.0.0.3" "10.0.0.3" "10.0.0.99"
 
 emptyMapRib = mkRib compare :: MapRib
 emptyMapRib' = ([], emptyMapRib)
@@ -37,20 +38,45 @@ query rib = do let r = RibDef.lookup "255.255.255.255" rib
 main = do
     t0 <- t
     routes <- getRoutes
+    let peerRoutes peer routes = map (\(pfx,rte) -> (pfx, routePrePendAS (peerAS peer) rte)) routes where
+            routePrePendAS p r = r { pathAttributes = prePendAS p (pathAttributes r) }
+        peer1Routes = peerRoutes peer1 routes
+        peer2Routes = peerRoutes peer2 routes
+        peer3Routes = peerRoutes peer3 routes
     stopwatch "loaded rib" t0
-    let mapRib = buildUpdateSequence peer1 routes emptyMapRib
-        mapRib' = buildUpdateSequence' peer1 routes emptyMapRib'
-    query mapRib
-    stopwatch "populated mapRib" t0
-    let mapRib2 = buildUpdateSequence peer1 (take 10 routes) mapRib
-        mapRib2' = buildUpdateSequence' peer1 (take 10 routes) mapRib'
+    let mapRib1 = buildUpdateSequence peer2 peer2Routes emptyMapRib
+    query mapRib1
+    stopwatch "populated mapRib with peer 2" t0
+
+    let mapRib2 = buildUpdateSequence peer1 peer1Routes mapRib1
     query mapRib2
-    stopwatch "populated mapRib with peer2" t0
+    stopwatch "populated mapRib with peer 1" t0
+
+    let mapRib3 = buildUpdateSequence peer3 peer3Routes mapRib2
+    query mapRib3
+    stopwatch "populated mapRib with peer 3" t0
+
+    let mapRib4 = buildUpdateSequence peer2 peer2Routes mapRib3
+    query mapRib4
+    stopwatch "repopulated mapRib with peer 2" t0
+
+
+{-
+
+
     let mapRib3 = removePeer_ peer2 mapRib2
     query mapRib3
-    stopwatch "depopulated mapRib with peer2" t0
+    stopwatch "depopulated mapRib with pref peer" t0
 
-    
+    let mapRib2 = buildUpdateSequence peer3 (take 10 routes) mapRib
+        mapRib2' = buildUpdateSequence' peer3 (take 10 routes) mapRib'
+    query mapRib2
+    stopwatch "populated mapRib with non-pref peer" t0
+    let mapRib3 = removePeer_ peer3 mapRib2
+    query mapRib3
+    stopwatch "depopulated mapRib with non-pref peer" t0
+
+-}
 
 
 test1 = do
