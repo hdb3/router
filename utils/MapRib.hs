@@ -15,9 +15,8 @@ data MapRib = MapRib { fSel :: (Peer,Route) -> (Peer,Route) -> Ordering
                                                , adjRibIn :: Map.Map Int (Map.Map Peer Route) }
 
 instance Show MapRib where
-    show mr = let (loc,adj) = dumpRib mr
-              in "locRib:   { " ++ show loc ++ " } \n" ++
-              "adjRibIn: { " ++ show adj ++ " }" 
+    show mr = "locRib:   { " ++ show ( getLocRib mr ) ++ " } \n" ++
+              "adjRibIn: { " ++ show ( getAdjRibIn mr ) ++ " }" 
 
 instance Rib MapRib where
 
@@ -25,11 +24,8 @@ instance Rib MapRib where
 
     lookup prefix rib = Map.lookup (toInt prefix) (locRib rib)
 
-    dumpRib rib = (getLocRib rib,getAdjRibIn rib) where
-        fi :: Int -> Prefix
-        fi = fromInt
-        getLocRib rib = map (\(k,v) -> (fi k,v)) $ Map.toAscList (locRib rib)
-        getAdjRibIn rib = map (\(k,v) -> (fi k,f v)) $ Map.toAscList (adjRibIn rib) where f = Map.toAscList
+    getLocRib rib = map (\(k,v) -> (fromInt k,v)) $ Map.toAscList (locRib rib)
+    getAdjRibIn rib = map (\(k,v) -> (fromInt k,f v)) $ Map.toAscList (adjRibIn rib) where f = Map.toAscList
 
     removePeer peer rib = (actions,newRib) where
         -- get the populated prefixes for this peer:

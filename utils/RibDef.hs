@@ -21,7 +21,8 @@ class Rib rib where
     removePeer_ p r = snd ( removePeer p r)
     lookup      :: Prefix -> rib -> Maybe (Peer,Route)
     mkRib       :: ((Peer,Route) -> (Peer,Route) -> Ordering) -> rib
-    dumpRib     :: rib -> ([(Prefix, (Peer,Route))],[(Prefix, [(Peer,Route)])])
+    getLocRib   :: rib -> ([(Prefix, (Peer,Route))])
+    getAdjRibIn :: rib -> [(Prefix, [(Peer,Route)])]
 
     updateM     :: Prefix -> Peer -> Route -> RibM rib -> RibM rib
     updateM p x y (ax,r) = (a':ax,r') where (a',r') = update p x y r

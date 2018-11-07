@@ -34,12 +34,20 @@ query rib = query' ([],rib)
 query' (updates,rib) = do let r = RibDef.lookup "255.255.255.255" rib
                           putStrLn $ show (length updates) ++ if isJust r then " query complete!" else " query complete" 
 
+dumpRib' (_,rib) = dumpRib rib
+
+dumpRib rib = do
+    let locRib = getLocRib rib
+        arbitraryFunction (peer,route) = peerAS peer + localPref route
+        arbitraryHashSum = foldl (\s (_,r) -> s + arbitraryFunction r) 0 locRib
+    putStrLn $ "locRib dumped " ++ if even arbitraryHashSum then "e" else "o"
 
 --main = test3
 main = do
     let mapRib0 = emptyMapRib'
         build = buildUpdateSequence'
         q = query'
+        d = dumpRib'
     t0 <- systime
     routes <- getRoutes
     let peerRoutes peer routes = map (\(pfx,rte) -> (pfx, routePrePendAS (peerAS peer) rte)) routes where
@@ -71,6 +79,9 @@ main = do
     let mapRib6 = build peer3 peer3Routes mapRib5
     q mapRib6
     t7 <- stopwatch "repopulated mapRib with peer 3" t0 t6
+
+    d mapRib6
+    t8 <- stopwatch "dumped locRib" t0 t7
     return ()
 
 {-
