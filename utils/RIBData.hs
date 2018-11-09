@@ -1,7 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 module RIBData where
 
 import Data.Word
+import Data.Hashable
+import GHC.Generics(Generic)
 import Data.IP(IPv4)
 
 import BGPlib
@@ -15,17 +18,22 @@ data Peer = Peer {  peerName :: String
                  }
 
 data Route =  Route { routeName :: String
+                    , routeHash :: Int
                     , localPref :: Word32
                     , pathAttributes :: [PathAttribute]
                     , pathLength :: Int
                     , origin :: Word8
                     , med :: Word32
                     , fromEBGP :: Bool
-                    }
+                    } --deriving Generic
+
+--instance Hashable Route
 
 makeRoute :: Bool -> [PathAttribute] -> Route
-makeRoute fromEBGP attributes = Route {
-    routeName = "AS" ++ show (getASPathOrigin attributes) ,
+makeRoute fromEBGP attributes = let attributesHash = Data.Hashable.hash attributes in Route {
+    -- routeName = "AS" ++ show (getASPathOrigin attributes) ,
+    routeName = "AS" ++ show (getASPathOrigin attributes) ++ "-" ++ (show (attributesHash `mod` 97)) ,
+    routeHash = attributesHash ,
     localPref = getLocalPref attributes ,
     pathAttributes = attributes ,
     pathLength = getASPathLength attributes , 
@@ -38,9 +46,11 @@ instance Show Peer where
 
 instance Show Route where
     show r = "Route \"" ++ routeName r ++ "\""
+    -- show r = "Route \"" ++ routeName r ++ "-" ++ (show ((routeHash r) `mod` 97))"\""
 
 instance Eq Route where
-    _ == _ = True -- dummy instance because we must have one for the later ord function....
+    r1 == r2 = routeHash r1 == routeHash r2
+    --_ == _ = True -- dummy instance because we must have one for the later ord function....
 
 instance Eq Peer where
     p1 == p2 = peerBGPid p1 == peerBGPid p2

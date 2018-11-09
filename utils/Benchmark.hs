@@ -1,10 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Data.Maybe(isJust)
+import Data.List(groupBy)
 import qualified Data.Time.Clock.System as DT
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get
 import Text.Printf
+import System.Random
+import System.Random.Shuffle(shuffle')
 
 import BGPlib
 import BGPReader(updateRib,readRib,readGroupedRib)
@@ -13,6 +16,9 @@ import RIBData
 import RibDef
 import MapRib
 import qualified IP4Prefix
+
+shuffle l = do random <- getStdGen
+               return $ shuffle' l (length l) random
 
 peer1 = Peer "peer1" True  64501 "10.0.0.1" "10.0.0.1" "10.0.0.99"
 peer2 = Peer "peer2" False 64502 "10.0.0.2" "10.0.0.2" "10.0.0.99"
@@ -42,8 +48,21 @@ dumpRib rib = do
         arbitraryHashSum = foldl (\s (_,r) -> s + arbitraryFunction r) 0 locRib
     putStrLn $ "locRib dumped " ++ if even arbitraryHashSum then "e" else "o"
 
---main = test3
-main = do
+main = test5
+test5 = do
+    t0 <- systime
+    routes <- getRoutes
+    print $ last routes
+    t1 <- stopwatch "loaded rib" t0 t0
+    shuffledRoutes <- shuffle routes
+    print $ last shuffledRoutes
+    t2 <- stopwatch "shuffled rib" t0 t1
+    let grouped = groupBy (\(_,a) (_, b) -> a == b) shuffledRoutes 
+    print $ "route count = " ++ show ( length grouped )
+    print $ last $ last grouped
+    stopwatch "done" t0 t2
+
+test4 = do
     let mapRib0 = emptyMapRib'
         build = buildUpdateSequence'
         q = query'
@@ -120,7 +139,9 @@ test1 = do
     rib <- readRib
     let routes = map parseRibRoute rib
     t1 <- stopwatch "loaded rib" t0 t0
-    putStrLn $ "loaded rib in " ++ show (diffSystemTime t0 t1)
+    --shuffledRoutes <- shuffle rib
+    --t2 <- stopwatch "shuffled rib" t0 t1
+    --putStrLn $ "loaded rib in " ++ show (diffSystemTime t0 t1)
     putStrLn $ "got " ++ show (length rib) ++ " routes"
     print (last rib)
     stopwatch "printed from rib" t0 t1
