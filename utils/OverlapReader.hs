@@ -2,7 +2,7 @@ module Main where
 import qualified Data.List
 
 import Prefixes
-import Common(distribution)
+import Comm(distribution)
 import BGPReader(readGroupedRib)
 import qualified Overlap
 

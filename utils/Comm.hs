@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Com where
+module Comm where
 import Data.List(delete,sortOn,foldl')
 import qualified Data.Map.Strict as DMS
 
