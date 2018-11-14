@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 import Data.Maybe(isJust)
-import Data.List(groupBy)
 import qualified Data.Time.Clock.System as DT
 import qualified Data.ByteString.Lazy as L
 import Data.Binary.Get
@@ -27,7 +26,8 @@ peer3 = Peer "peer3" False 64503 "10.0.0.3" "10.0.0.3" "10.0.0.99"
 emptyMapRib = mkRib compare :: MapRib
 emptyMapRib' = ([], emptyMapRib)
 
-parseRibRoute ((_,attributes),prefix) = (IP4Prefix.fromAddrRange $ toAddrRange prefix, RIBData.makeRoute True attributes)
+parseRibRoute ((_,attributes),prefix) = (RIBData.makeRoute True attributes , IP4Prefix.fromAddrRange $ toAddrRange prefix)
+-- parseRibRoute ((_,attributes),prefix) = (IP4Prefix.fromAddrRange $ toAddrRange prefix, RIBData.makeRoute True attributes)
 
 getRoutes = do
     rib <- readRib
@@ -57,10 +57,14 @@ test5 = do
     shuffledRoutes <- shuffle routes
     print $ last shuffledRoutes
     t2 <- stopwatch "shuffled rib" t0 t1
-    let grouped = groupBy (\(_,a) (_, b) -> a == b) shuffledRoutes 
+    let grouped = RIBData.group shuffledRoutes 
+    -- let grouped = groupBy (\(_,a) (_, b) -> a == b) shuffledRoutes 
     print $ "route count = " ++ show ( length grouped )
-    print $ last $ last grouped
-    stopwatch "done" t0 t2
+    --print $ last $ last grouped
+    --putStrLn $ unlines $ map show grouped
+    t3 <- stopwatch "done" t0 t2
+    print $ "ungrouped prefix count = " ++ show ( length $ ungroup  grouped )
+    stopwatch "done" t0 t3
 
 test4 = do
     let mapRib0 = emptyMapRib'
@@ -69,7 +73,7 @@ test4 = do
         d = dumpRib'
     t0 <- systime
     routes <- getRoutes
-    let peerRoutes peer routes = map (\(pfx,rte) -> (pfx, routePrePendAS (peerAS peer) rte)) routes where
+    let peerRoutes peer routes = map (\(rte,pfx) -> (routePrePendAS (peerAS peer) rte,pfx)) routes where
             routePrePendAS p r = r { pathAttributes = prePendAS p (pathAttributes r) }
         peer1Routes = peerRoutes peer1 routes
         peer2Routes = peerRoutes peer2 routes

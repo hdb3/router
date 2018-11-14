@@ -47,9 +47,9 @@ showRibChange (prefix, Just a, Nothing) = "Del " ++ show prefix ++ " via " ++ pe
 --emptyRib = mkRib compare :: MapRib
 --emptyRib' = ([], emptyRib)
 buildUpdateSequence peer routes = RibDef.sequence $ map (makeUpdateAction peer) routes where
-    makeUpdateAction peer (prefix,route) = update prefix peer route
+    makeUpdateAction peer (route,prefix) = update prefix peer route
 buildUpdateSequence' peer routes = RibDef.sequence' $ map (makeUpdateAction peer) routes where
-    makeUpdateAction peer (prefix,route) = updateM prefix peer route
+    makeUpdateAction peer (route,prefix) = updateM prefix peer route
 
 -- sequence - combine a sequence of rib actions into a single action - 
 --            - base version discards the adjRibOut updates, producing and consuming purely a current Rib
