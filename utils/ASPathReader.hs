@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances,FlexibleContexts, OverloadedStrings #-}
 module Main where
 import qualified Data.List
-import Data.List(sortOn,foldl')
+import Data.List(sort,sortOn,foldl')
 import qualified Data.Map.Strict as DMS
 import Data.Word
 
@@ -26,6 +26,7 @@ main = do
         transitASes = concatMap (tail.reverse) simplerPaths 
         transitAScount = length $ Data.List.nub transitASes
         transitASDistribution = distribution_ 10 transitASes
+        loopedPaths = sort $ filter hasLoop simplerPaths
 
     putStrLn   "\nAS analysis"
     putStrLn $ "longestPath:  " ++ show longestPath
@@ -36,6 +37,9 @@ main = do
     putStrLn $ "transitAS distribution:\n" ++ unlines ( map show transitASDistribution )
     -- putStrLn $ "transitAS distribution':\n" ++ unlines ( map show transitASDistribution' )
     putStrLn $ reportSegments paths
+
+    putStrLn $ "path loop analysis: " ++ show (length loopedPaths )  ++ " loops found"
+    putStrLn $ unlines $ map show loopedPaths
 
 customShowRoute = showPath . getASPathContent
 -- customShowRoute route = show (pathAttributes route)
@@ -79,6 +83,14 @@ flattenPath (ASSequence []:segs) = flattenPath segs
 flattenPath (ASSequence asns:segs) = asns ++ flattenPath segs
 flattenPath (ASSet []:segs) = flattenPath segs
 flattenPath (ASSet asns:segs) = head asns : flattenPath segs
+
+hasLoop :: [Word32] -> Bool
+hasLoop = go . sort where
+    go [] = False
+    go [x] = False
+    go  (x:y:ax) | x==y = True
+                 | otherwise = go (y:ax)
+
 
 removePrepends :: [Word32] -> [Word32]
 --removePrepends _ = []
