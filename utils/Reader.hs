@@ -1,10 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import BGPReader(readMsgs)
--- import BGPlib
-import BGPlib(Prefix,BGPMessage(..))
+import Data.Hashable
 import Data.Binary
+import qualified Data.ByteString.Lazy
+import BGPlib(Prefix,BGPMessage(..))
+import BGPReader(readMsgs)
+import ASPathUtils
 
 main = do
     msgs <- readMsgs
@@ -27,3 +29,11 @@ analysePrefixes msgs = do
         f (u,w) BGPUpdate{..} = ( u + prefixCount nlri , w + prefixCount withdrawn )
         f (u,w) _ = (u,w)
     putStrLn $ "count (update,withdrawn) = " ++ show prefixes
+
+getUpdateHashes :: BGPMessage -> (Int,Int,Int,Int)
+getUpdateHashes msg@BGPUpdate{..} = (hashPrefixList nlri, hashPrefixList withdrawn, hash update, pathHash attributes)
+    where update = getUpdate msg
+
+hashPrefixList :: Data.ByteString.Lazy.ByteString -> Int
+hashPrefixList = Data.Hashable.hash . decodePrefixes
+    where decodePrefixes bs = decode bs :: [Prefix]
