@@ -3,7 +3,8 @@ module Main where
 
 import BGPlib
 import BGPReader
-import ASPathReader(reportPaths)
+import BGPutils(reportPaths)
+--import ASPathReader(reportPaths)
 
 main :: IO ()
 main = do
