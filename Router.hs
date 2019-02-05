@@ -1,6 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields,RecordWildCards #-}
 module Main where
 
+import System.Environment(getArgs)
 import Network.Socket
 import Session
 import Control.Concurrent
@@ -15,13 +16,10 @@ import Redistributor
 
 main :: IO ()
 main = do
-    configString <- readFile "bgp.conf"
-    let rawConfig = read configString :: Config
-    print rawConfig
-    let config = buildPeerConfigs rawConfig
+    config <- getConfig
     print config
 
-    putStrLn "Router starting"
+    putStrLn "ZRouter starting"
 
     global <- buildGlobal config
 
@@ -35,6 +33,17 @@ main = do
     putStrLn "Router ready"
     idle where idle = do threadDelay 10000000
                          idle
+
+getConfig = do
+    args <- getArgs
+    let n = if 1 < length args then read (args !! 1) :: Int else 0
+    let configPath = if null args then "bgp.conf" else head args
+
+    configString <- readFile configPath
+    let rawConfig = read configString :: Config
+        rawConfig' = if 0 == n then rawConfig else rawConfig { configTestRouteCount = n }
+    --print rawConfig
+    return $ buildPeerConfigs rawConfig'
 
 buildGlobal c@Config{..} = do
     let

@@ -1,22 +1,14 @@
 {-# LANGUAGE FlexibleInstances,FlexibleContexts, OverloadedStrings #-}
-module Main where
+module ASPathReader(reportPaths) where
 import qualified Data.List
 import Data.List(sort)
 
 import BGPlib
-import BGPReader
 import ASPathUtils
 
-main :: IO ()
-main = do
-
-    rib <- readGroupedRib
-    putStrLn $ "routes: " ++ show (length rib)
-    let prefixCount = sum (map (length .snd) rib)
-    putStrLn $ "prefixes: " ++ show prefixCount
-    -- putStrLn $ unlines $ mapt (customShowRoute . snd , shorten ) rib
-    -- putStrLn $ unlines $ map (customShowRoute . snd . fst ) rib
-    let paths = map (getASPathContent . snd . fst) rib
+reportPaths :: [[ASSegment4]] -> IO ()
+reportPaths paths = do
+    let
         simplePaths = map flattenPath paths
         longestPath = Data.List.maximum (map length simplePaths)
         simplerPaths = map removePrepends simplePaths
