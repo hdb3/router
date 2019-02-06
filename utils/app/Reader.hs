@@ -5,8 +5,10 @@ import Data.Hashable
 import Data.Binary
 import qualified Data.ByteString.Lazy
 import BGPlib(Prefix,BGPMessage(..))
+import BGPRib(myHash)
 import BGPReader(readMsgs)
-import ASPathUtils
+--import ASPathUtils
+--import BGPutils
 
 main = do
     msgs <- readMsgs
@@ -30,9 +32,8 @@ analysePrefixes msgs = do
         f (u,w) _ = (u,w)
     putStrLn $ "count (update,withdrawn) = " ++ show prefixes
 
-getUpdateHashes :: BGPMessage -> (Int,Int,Int,Int)
-getUpdateHashes msg@BGPUpdate{..} = (hashPrefixList nlri, hashPrefixList withdrawn, hash update, pathHash attributes)
-    where update = getUpdate msg
+getUpdateHashes :: BGPMessage -> (Int,Int,Int)
+getUpdateHashes msg@BGPUpdate{..} = (hashPrefixList nlri, hashPrefixList withdrawn, myHash attributes)
 
 hashPrefixList :: Data.ByteString.Lazy.ByteString -> Int
 hashPrefixList = Data.Hashable.hash . decodePrefixes

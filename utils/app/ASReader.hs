@@ -5,6 +5,7 @@ import qualified Data.List
 import Data.IP
 
 import Common
+import Comm
 import Prefixes
 import BGPReader
 import qualified Overlap

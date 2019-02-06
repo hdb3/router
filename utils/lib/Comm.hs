@@ -3,6 +3,9 @@ module Comm where
 import Data.List(delete,sortOn,foldl')
 import qualified Data.Map.Strict as DMS
 
+import Numeric(showHex)
+hex x = showHex x ""
+
 
 -- unsure which implementation of 'distribution' is better.....
 
