@@ -1,5 +1,26 @@
 {-# LANGUAGE RecordWildCards #-}
 {-#LANGUAGE OverloadedStrings #-}
+
+{-
+
+  The bug was an error like this:
+
+        Fork: True
+        listener - connect request from 127.0.0.1
+        echo starting
+        Exception in getPeerName - *** UNKNOWN exception, please record this
+        invalid argument
+        error invalid argument
+        errno 9
+        description Bad file descriptor
+
+        Bug.hs: Network.Socket.getSocketName: invalid argument (Bad file descriptor)
+
+    But the problem was simply caused by the main thread closing the socket which it had passed to the application thread, before the application thread
+    completed.
+    This version of the code fixes the bug by moving the 'close' into the app
+
+-}
 module Main where
 
 import Data.Char(toUpper)
@@ -7,14 +28,13 @@ import System.Environment(getArgs)
 import Data.Maybe
 import Control.Concurrent
 import Control.Monad (void,unless,when,forever)
-import Network.Socket(SockAddr(..))
+import Network.Socket
 import System.IO
 import Data.IP
 import qualified Data.Map.Strict as Data.Map
 import System.IO.Error
 import GHC.IO.Exception(ioe_description)
 import Foreign.C.Error
-import Network.Simple.TCP
 
 logger = hPutStrLn stderr
 main = do 
@@ -36,8 +56,6 @@ main = do
             void $ forkIO $ app sock 
         else
             app sock 
-
-        close sock
 
 wrap app sock = do
     SockAddrInet _ addr <- getPeerName' sock
@@ -79,6 +97,7 @@ echo sock = do
     putStrLn $ "my friend said: \"" ++ reply ++ "\"\n"
     send sock $ "you said " ++ (map toUpper reply) ++ "\n"
     send sock "Goodbye!\n"
+    close sock
     return ()
 
 inArgs :: String -> IO Bool
