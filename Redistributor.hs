@@ -14,7 +14,7 @@ import ZServ
 
 redistribute :: Global -> IO ()
 redistribute global@Global{..} = do
-    insertTestRoutes global (configTestRoutes config)
+    insertTestRoutes global (configTestRoutePath config) (configTestRouteCount config)
     if not (configEnableDataPlane config )
     then putStrLn "configEnableDataPlane not set, not starting zserv API"
     else do threadId <- myThreadId
@@ -88,11 +88,13 @@ zservReader global@Global{..} peer ( zStreamIn, zStreamOut ) = do
               msg
 
 
-insertTestRoutes _ "" = putStrLn "no test route data specified"
-insertTestRoutes Global{..} path = do
+insertTestRoutes _ "" _ = putStrLn "no test route data specified"
+insertTestRoutes Global{..} path count = do
     putStrLn $ "test route set requested: " ++ path
-    putStrLn "inserting routes"
     updates <- pathReadRib path
-    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) (take 1000000 updates)
-    mapM (ribUpdater rib ( localPeer gd )) updates'
+    let count' = if count == 0 then length updates else count
+    putStrLn $ "inserting " ++ show count' ++ " routes"
+    let updates' = concatMap (\((_,pas),pfxs) -> makeUpdate pfxs [] pas) updates
+        updates'' = if 0 == count then updates' else take count updates'
+    mapM (ribUpdater rib ( localPeer gd )) updates''
     putStrLn "done"

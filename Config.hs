@@ -17,7 +17,8 @@ data Config = Config { configAS :: Word32
                      , configAllowDynamicPeers :: Bool
                      , configEnableDataPlane :: Bool
                      , configEnableRedistribution :: Bool
-                     , configTestRoutes :: String
+                     , configTestRoutePath :: String
+                     , configTestRouteCount :: Int
                      , configOfferedCapabilities :: [ Capability ]
                      , configRequiredCapabilities :: [ Capability ]
                      , configOfferedHoldTime :: Word16
